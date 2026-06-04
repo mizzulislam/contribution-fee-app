@@ -1,0 +1,137 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 20% 98%; /* #F9FAFB */
+    --foreground: 222.2 84% 4.9%; /* Charcoal */
+    --card: 0 0% 100%; /* Pure White */
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    
+    /* Emerald Green #10B981 */
+    --primary: 160 84% 39%;
+    --primary-foreground: 0 0% 100%;
+    
+    /* Soft Mint #D1FAE5 */
+    --secondary: 149 80% 90%;
+    --secondary-foreground: 163 94% 24%; /* Deep Emerald */
+    
+    /* Muted Gray #F3F4F6 */
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    
+    /* Pale Green #ECFDF5 */
+    --accent: 152 76% 96%;
+    --accent-foreground: 163 94% 24%;
+    
+    /* Red Danger #EF4444 */
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Light Border #E5E7EB */
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 160 84% 39%; /* Emerald Green */
+
+    --radius: 0.875rem; /* 14px for Card */
+
+    /* Chart colors mapping based on DESIGN.md */
+    --chart-1: 160 84% 39%; /* Pemasukan */
+    --chart-2: 0 84.2% 60.2%; /* Pengeluaran */
+    --chart-3: 38 92% 50%; /* Dana Talangan (Amber) */
+    --chart-4: 142 71% 45%; /* Pembayaran Lunas (Green Success) */
+    --chart-5: 217 91% 60%; /* Info (Blue Info) */
+  }
+
+  .dark {
+    /* Optional: Basic dark mode setup (DESIGN.md doesn't explicitly focus on dark mode, keeping simple) */
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 160 84% 39%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 160 84% 39%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-sans;
+    font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-bold text-gray-900;
+  }
+}
+
+@layer components {
+  /* Button Styles from DESIGN.md */
+  .btn-primary {
+    @apply bg-[#10B981] hover:bg-[#047857] text-white rounded-[10px] font-semibold px-4 py-2.5 transition-colors focus:ring-2 focus:ring-offset-2 focus:ring-[#10B981];
+  }
+  .btn-secondary {
+    @apply bg-white hover:bg-gray-50 text-[#047857] border border-[#D1FAE5] rounded-[10px] font-semibold px-4 py-2.5 transition-colors focus:ring-2 focus:ring-offset-2 focus:ring-[#10B981];
+  }
+  .btn-danger {
+    @apply bg-[#EF4444] hover:bg-red-600 text-white rounded-[10px] font-semibold px-4 py-2.5 transition-colors focus:ring-2 focus:ring-offset-2 focus:ring-[#EF4444];
+  }
+  
+  /* Input Styles from DESIGN.md */
+  .form-input {
+    @apply bg-white border border-[#E5E7EB] rounded-[10px] px-3 py-2.5 text-[14px] w-full focus:outline-none focus:border-[#10B981] focus:ring-[3px] focus:ring-[#10B981]/10 transition-shadow;
+  }
+  
+  /* Hide arrows in number inputs */
+  .form-input[type="number"]::-webkit-inner-spin-button,
+  .form-input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  .form-input[type="number"] {
+    -moz-appearance: textfield;
+  }
+  
+  /* Card Styles */
+  .card-container {
+    @apply bg-white border border-[#E5E7EB] rounded-[14px] p-4 shadow-[0_8px_24px_rgba(15,23,42,0.04)];
+  }
+  
+  /* Badges from DESIGN.md */
+  .badge {
+    @apply px-2 py-1 rounded-full text-xs font-medium w-fit inline-flex items-center;
+  }
+  .badge-success {
+    @apply bg-[#D1FAE5] text-[#047857];
+  }
+  .badge-warning {
+    @apply bg-[#FEF3C7] text-[#92400E];
+  }
+  .badge-danger {
+    @apply bg-[#FEE2E2] text-[#B91C1C];
+  }
+  .badge-info {
+    @apply bg-[#DBEAFE] text-[#1D4ED8];
+  }
+}

@@ -1,0 +1,113 @@
+import { useState, useEffect } from 'react'
+import { spreadsheetApi } from '@/lib/spreadsheet'
+import { History, Search, CheckCircle2, Download } from 'lucide-react'
+
+export default function PaymentHistory() {
+  const [history, setHistory] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
+
+  useEffect(() => {
+    fetchHistory()
+  }, [])
+
+  const fetchHistory = async () => {
+    setLoading(true)
+    const { data, error } = await spreadsheetApi.get('Payments')
+    
+    if (data && Array.isArray(data) && data.length > 0) {
+      setHistory(data.filter((p: any) => p.status === 'verified'))
+    } else {
+      // Mock data fallback
+      setHistory([
+        { id: 1, title: 'Iuran Wajib Bulanan', amount: 500000, date_verified: '2026-05-12', month: 'Mei 2026' },
+        { id: 2, title: 'Iuran Wajib Bulanan', amount: 500000, date_verified: '2026-04-10', month: 'April 2026' },
+        { id: 3, title: 'Iuran Sampah', amount: 25000, date_verified: '2026-04-10', month: 'April 2026' },
+      ])
+    }
+    setLoading(false)
+  }
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount)
+  }
+
+  const filtered = history.filter(h => 
+    h.title?.toLowerCase().includes(search.toLowerCase()) || 
+    h.month?.toLowerCase().includes(search.toLowerCase())
+  )
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center">
+            <History className="mr-3 text-primary w-8 h-8" />
+            Riwayat Pembayaran
+          </h1>
+          <p className="text-text-secondary mt-1">Daftar pembayaran iuran Anda yang sudah lunas dan terverifikasi.</p>
+        </div>
+      </div>
+
+      <div className="card-container">
+        <div className="p-4 sm:p-6 border-b border-border flex flex-col sm:flex-row gap-4 justify-between items-center bg-gray-50/50 rounded-t-[20px]">
+          <div className="relative w-full sm:max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <input 
+              type="text" 
+              placeholder="Cari transaksi..." 
+              className="form-input pl-10 bg-white"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm text-gray-600">
+            <thead className="bg-[#F3F4F6] text-gray-700 text-xs uppercase font-semibold border-b border-border">
+              <tr>
+                <th className="px-6 py-4">Keterangan</th>
+                <th className="px-6 py-4">Periode</th>
+                <th className="px-6 py-4">Tanggal Lunas</th>
+                <th className="px-6 py-4">Nominal</th>
+                <th className="px-6 py-4 text-center">Status</th>
+                <th className="px-6 py-4 text-right">Aksi</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">Memuat riwayat pembayaran...</td>
+                </tr>
+              ) : filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">Tidak ada riwayat pembayaran yang ditemukan.</td>
+                </tr>
+              ) : (
+                filtered.map((item) => (
+                  <tr key={item.id} className="hover:bg-primary-soft/30 transition-colors">
+                    <td className="px-6 py-4 font-medium text-gray-900">{item.title}</td>
+                    <td className="px-6 py-4">{item.month}</td>
+                    <td className="px-6 py-4">{new Date(item.date_verified).toLocaleDateString('id-ID')}</td>
+                    <td className="px-6 py-4 font-semibold text-gray-900">{formatCurrency(item.amount)}</td>
+                    <td className="px-6 py-4 text-center">
+                      <span className="badge badge-success inline-flex">
+                        <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" /> Lunas
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <button className="btn-secondary py-1.5 px-3 text-xs inline-flex items-center">
+                        <Download className="w-3.5 h-3.5 mr-1.5" /> Kuitansi
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  )
+}
