@@ -19,7 +19,7 @@ export default function ContributionsList() {
     penghuni: 8 as number | string, hargaGalon: 20000 as number | string,
     calcMode: 'intensity' as 'intensity' | 'gallons',
     intensitas: 19/24, ukuranGalon: 19 as number | string, hariPerBulan: 30 as number | string,
-    isEstimasiManual: false, manualEstimasiGalon: 10, useAutoCalc: false as number | string
+    isEstimasiManual: false, manualEstimasiGalon: 10 as number | string, useAutoCalc: false
   })
   const [editingId, setEditingId] = useState<number | string | null>(null)
 
@@ -256,7 +256,7 @@ export default function ContributionsList() {
   const openAddModal = () => {
     setEditingId(null)
     setNewContribution({ 
-      title: '', category: 'Iuran Wajib', amount: '', due_date: '',
+      title: '', category: 'Iuran Wajib', amount: '', due_date: '', period_type: 'Bulanan',
       penghuni: 8, hargaGalon: 20000,
       calcMode: 'intensity', intensitas: 19/24, ukuranGalon: 19, hariPerBulan: 30,
       isEstimasiManual: false, manualEstimasiGalon: 10, useAutoCalc: false

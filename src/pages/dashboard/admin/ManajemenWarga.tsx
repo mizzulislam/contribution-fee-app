@@ -158,7 +158,7 @@ export default function ManajemenWarga() {
   }
 
   const resetForm = () => {
-    setFormData({ full_name: '', nickname: '', email: '', room_number: '', phone_number: '', role: 'user' })
+    setFormData({ full_name: '', nickname: '', email: '', room_number: '', phone_number: '', role: 'user', status: 'Aktif' })
     setIsEmailEdited(false)
     setEditingId(null)
   }
