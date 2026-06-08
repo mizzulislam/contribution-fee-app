@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { spreadsheetApi } from '@/lib/spreadsheet'
 import { Search, BadgeDollarSign, Plus, Loader2, X, Trash2 } from 'lucide-react'
 import Select from '@/components/ui/Select'
+import { TableLoader } from '@/components/ui/TableLoader'
 
 export default function Expenses() {
   const [expenses, setExpenses] = useState<any[]>([])
@@ -27,14 +28,10 @@ export default function Expenses() {
     setLoading(true)
     const { data, error } = await spreadsheetApi.get('Expenses')
     
-    if (data && Array.isArray(data) && data.length > 0) {
+    if (data && Array.isArray(data)) {
       setExpenses(data)
     } else {
-      // Mock data fallback
-      setExpenses([
-        { id: 1, title: 'Beli 3 Galon Aqua', category: 'Air & Galon', amount: 60000, date: '2026-06-05', note: 'Via warung Pak Somad' },
-        { id: 2, title: 'Iuran Sampah RT', category: 'Kebersihan', amount: 50000, date: '2026-06-01', note: 'Bulanan' },
-      ])
+      setExpenses([])
     }
     setLoading(false)
   }
@@ -76,7 +73,12 @@ export default function Expenses() {
   }
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount)
+    return (
+      <div className="flex justify-between items-center w-full min-w-[80px]">
+        <span className="text-gray-500 mr-2">Rp</span>
+        <span>{new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(amount)}</span>
+      </div>
+    )
   }
 
   const filtered = expenses.filter(e => 
@@ -128,9 +130,7 @@ export default function Expenses() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {loading ? (
-                <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">Memuat data...</td>
-                </tr>
+                <TableLoader colSpan={6} text="Memuat data pengeluaran..." />
               ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-8 text-center text-gray-500">Tidak ada pengeluaran ditemukan.</td>
@@ -146,7 +146,7 @@ export default function Expenses() {
                       </span>
                     </td>
                     <td className="px-6 py-4">{item.note || '-'}</td>
-                    <td className="px-6 py-4 font-semibold text-danger text-right">
+                    <td className="px-6 py-4 font-semibold text-danger text-center">
                       - {formatCurrency(item.amount)}
                     </td>
                     <td className="px-6 py-4 text-center">

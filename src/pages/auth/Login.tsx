@@ -36,34 +36,6 @@ export default function Login() {
           })
           userFound = true
         }
-      } else {
-        // Fallback untuk Testing Lokal jika Spreadsheet belum dikonfigurasi
-        if (email === 'admin@soematra.com' && password === 'admin123') {
-          setProfile({
-            id: 'mock-1',
-            email,
-            full_name: 'Super Admin Soematra',
-            role: 'super admin'
-          })
-          userFound = true
-        } else if (email === 'bendahara@soematra.com' && password === 'admin123') {
-          setProfile({
-            id: 'mock-2',
-            email,
-            full_name: 'Admin Keuangan',
-            role: 'admin'
-          })
-          userFound = true
-        } else if (email === 'user@soematra.com' && password === 'user123') {
-          setProfile({
-            id: 'mock-3',
-            email,
-            full_name: 'Penghuni Kos',
-            role: 'user',
-            room_number: '101'
-          })
-          userFound = true
-        }
       }
 
       if (userFound) {

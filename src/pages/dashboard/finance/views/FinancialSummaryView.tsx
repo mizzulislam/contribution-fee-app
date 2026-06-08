@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { defaultEngine } from '@/lib/accounting'
 import type { FinancialStatements } from '@/lib/accounting'
-import { ArrowUpRight, ArrowDownRight, Building2, Landmark, Wallet } from 'lucide-react'
+import { ArrowUpRight, ArrowDownRight, Building2, Landmark, Wallet, Loader2 } from 'lucide-react'
 
 export default function FinancialSummaryView() {
   const [statements, setStatements] = useState<FinancialStatements | null>(null)
@@ -11,7 +11,12 @@ export default function FinancialSummaryView() {
     setStatements(defaultEngine.getFinancialStatements())
   }, [])
 
-  if (!statements) return <div>Memuat data keuangan...</div>
+  if (!statements) return (
+    <div className="flex flex-col items-center justify-center py-20 text-gray-500">
+      <Loader2 className="w-10 h-10 animate-spin text-primary mb-4" />
+      <span className="text-lg font-medium">Memuat data keuangan...</span>
+    </div>
+  )
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount)

@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { LayoutDashboard, BookOpen, ScrollText, Scale, FileBarChart } from 'lucide-react'
+import { LayoutDashboard, BookOpen, ScrollText, Scale, FileBarChart, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
+import { defaultEngine } from '@/lib/accounting'
+import { spreadsheetApi } from '@/lib/spreadsheet'
+import { mergeAccounts } from '@/lib/chartOfAccounts'
+
 // IFRS Views
-import FinancialSummaryView from './views/FinancialSummaryView'
 import GeneralJournalView from './views/GeneralJournalView'
 import GeneralLedgerView from './views/GeneralLedgerView'
 import TrialBalanceView from './views/TrialBalanceView'
@@ -13,13 +16,66 @@ import FinancialStatementsView from './views/FinancialStatementsView'
 export default function FinanceDashboard() {
   const [searchParams, setSearchParams] = useSearchParams()
   const tabParam = searchParams.get('tab')
-  const [activeTab, setActiveTab] = useState(tabParam || 'summary')
+  const [activeTab, setActiveTab] = useState(tabParam || 'journal')
+  const [isSyncing, setIsSyncing] = useState(true)
 
   useEffect(() => {
-    if (tabParam && ['summary', 'journal', 'ledger', 'trial_balance', 'statements'].includes(tabParam)) {
+    if (tabParam && ['journal', 'ledger', 'trial_balance', 'statements'].includes(tabParam)) {
       setActiveTab(tabParam)
     }
   }, [tabParam])
+
+  useEffect(() => {
+    const initData = async () => {
+      setIsSyncing(true)
+      try {
+        const { data: coaData } = await spreadsheetApi.get('MasterData')
+        const merged = mergeAccounts(coaData && Array.isArray(coaData) ? coaData : [])
+        
+        const typeMap: Record<string, any> = {
+          'Harta': 'Assets',
+          'Kewajiban': 'Liabilities',
+          'Modal': 'Equity',
+          'Pendapatan': 'Revenues',
+          'Beban': 'Expenses'
+        }
+
+        defaultEngine.journal.getEntries().length = 0
+        
+        merged.forEach(acc => {
+          if (acc.status === 'Aktif') {
+            const mappedType = typeMap[acc.account_type] || 'Expenses'
+            defaultEngine.coa.addAccount(acc.account_number, acc.account_name, mappedType)
+            defaultEngine.ledger.ensureLedger(acc.account_number)
+          }
+        })
+
+        const { data: journalData } = await spreadsheetApi.get('JournalEntries')
+        if (journalData && Array.isArray(journalData)) {
+          journalData.forEach(je => {
+            try {
+              const debits = typeof je.debits === 'string' ? JSON.parse(je.debits) : (je.debits || [])
+              const credits = typeof je.credits === 'string' ? JSON.parse(je.credits) : (je.credits || [])
+              
+              if (debits.length > 0 || credits.length > 0) {
+                defaultEngine.recordTransaction(
+                  je.date || new Date().toISOString().split('T')[0],
+                  debits,
+                  credits,
+                  je.description || 'Tanpa Deskripsi'
+                )
+              }
+            } catch (e) {}
+          })
+        }
+      } catch (err) {
+        console.error("Gagal sinkronisasi akuntansi:", err)
+      } finally {
+        setIsSyncing(false)
+      }
+    }
+    initData()
+  }, [])
 
   const handleTabChange = (id: string) => {
     setActiveTab(id)
@@ -27,7 +83,6 @@ export default function FinanceDashboard() {
   }
 
   const tabs = [
-    { id: 'summary', label: 'Dashboard Keuangan', icon: LayoutDashboard },
     { id: 'journal', label: 'Jurnal Umum', icon: BookOpen },
     { id: 'ledger', label: 'Buku Besar', icon: ScrollText },
     { id: 'trial_balance', label: 'Neraca Saldo', icon: Scale },
@@ -61,11 +116,19 @@ export default function FinanceDashboard() {
 
       {/* Render Active Component */}
       <div className="pt-2">
-        {activeTab === 'summary' && <FinancialSummaryView />}
-        {activeTab === 'journal' && <GeneralJournalView />}
-        {activeTab === 'ledger' && <GeneralLedgerView />}
-        {activeTab === 'trial_balance' && <TrialBalanceView />}
-        {activeTab === 'statements' && <FinancialStatementsView />}
+        {isSyncing ? (
+          <div className="flex flex-col items-center justify-center py-20 text-emerald-700">
+             <Loader2 className="w-10 h-10 animate-spin mb-4" />
+             <p className="font-medium">Mensinkronisasi Data Keuangan...</p>
+          </div>
+        ) : (
+          <>
+            {activeTab === 'journal' && <GeneralJournalView />}
+            {activeTab === 'ledger' && <GeneralLedgerView />}
+            {activeTab === 'trial_balance' && <TrialBalanceView />}
+            {activeTab === 'statements' && <FinancialStatementsView />}
+          </>
+        )}
       </div>
     </div>
   )

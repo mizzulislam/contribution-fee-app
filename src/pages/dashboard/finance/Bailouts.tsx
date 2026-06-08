@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { spreadsheetApi } from '@/lib/spreadsheet'
 import { Search, Shield, Plus, CheckCircle2, Clock } from 'lucide-react'
+import { TableLoader } from '@/components/ui/TableLoader'
 
 export default function Bailouts() {
   const [bailouts, setBailouts] = useState<any[]>([])
@@ -15,20 +16,21 @@ export default function Bailouts() {
     setLoading(true)
     const { data, error } = await spreadsheetApi.get('Bailouts')
     
-    if (data && Array.isArray(data) && data.length > 0) {
+    if (data && Array.isArray(data)) {
       setBailouts(data)
     } else {
-      // Mock data fallback
-      setBailouts([
-        { id: 1, admin_name: 'Bendahara Soematra', amount: 50000, purpose: 'Kurang bayar air galon', date: '2026-06-05', status: 'unpaid' },
-        { id: 2, admin_name: 'Bendahara Soematra', amount: 150000, purpose: 'Beli token listrik mendadak', date: '2026-05-20', status: 'paid' },
-      ])
+      setBailouts([])
     }
     setLoading(false)
   }
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount)
+    return (
+      <div className="flex justify-between items-center w-full min-w-[80px]">
+        <span className="text-gray-500 mr-2">Rp</span>
+        <span>{new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(amount)}</span>
+      </div>
+    )
   }
 
   const filtered = bailouts.filter(b => 
@@ -110,9 +112,7 @@ export default function Bailouts() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {loading ? (
-                <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">Memuat data...</td>
-                </tr>
+                <TableLoader colSpan={6} text="Memuat data dana talangan..." />
               ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-8 text-center text-gray-500">Tidak ada dana talangan ditemukan.</td>

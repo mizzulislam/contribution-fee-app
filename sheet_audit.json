@@ -1,0 +1,108 @@
+{
+  "Users": {
+    "status": "success",
+    "rowCount": 4,
+    "headers": [
+      "id",
+      "full_name",
+      "nickname",
+      "email",
+      "phone_number",
+      "room_number",
+      "role",
+      "status",
+      "created_at",
+      "phone",
+      "updated_at"
+    ],
+    "sampleRow": {
+      "id": 1780527957827,
+      "full_name": "Muhammad Izzul Islam",
+      "nickname": "",
+      "email": "admin@soematra.com",
+      "phone_number": "",
+      "room_number": "",
+      "role": "super admin",
+      "status": "",
+      "created_at": "",
+      "phone": 81234567890,
+      "updated_at": "2026-06-04T18:33:40.820Z"
+    }
+  },
+  "Gallons": {
+    "status": "success",
+    "rowCount": 0,
+    "headers": [],
+    "sampleRow": null
+  },
+  "Payments": {
+    "status": "success",
+    "rowCount": 0,
+    "headers": [],
+    "sampleRow": null
+  },
+  "MasterData": {
+    "status": "success",
+    "rowCount": 1,
+    "headers": [
+      "id",
+      "account_number",
+      "account_name",
+      "account_type",
+      "status",
+      "updated_at",
+      "created_at"
+    ],
+    "sampleRow": {
+      "id": 5999,
+      "account_number": 5999,
+      "account_name": "test",
+      "account_type": "Beban",
+      "status": "Aktif",
+      "updated_at": "2026-06-04T16:49:24.030Z",
+      "created_at": "2026-06-04T16:49:24.030Z"
+    }
+  },
+  "JournalEntries": {
+    "status": "success",
+    "rowCount": 0,
+    "headers": [],
+    "sampleRow": null
+  },
+  "Expenses": {
+    "status": "success",
+    "rowCount": 0,
+    "headers": [],
+    "sampleRow": null
+  },
+  "Bills": {
+    "status": "success",
+    "rowCount": 0,
+    "headers": [],
+    "sampleRow": null
+  },
+  "Bailouts": {
+    "status": "success",
+    "rowCount": 0,
+    "headers": [],
+    "sampleRow": null
+  },
+  "Schedules": {
+    "status": "success",
+    "rowCount": 0,
+    "headers": [],
+    "sampleRow": null
+  },
+  "Contributions": {
+    "status": "success",
+    "rowCount": 0,
+    "headers": [],
+    "sampleRow": null
+  },
+  "Settings": {
+    "status": "success",
+    "rowCount": 0,
+    "headers": [],
+    "sampleRow": null
+  }
+}

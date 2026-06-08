@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { defaultEngine } from '@/lib/accounting'
 import type { LedgerAccount, Account } from '@/lib/accounting'
 import Select from '@/components/ui/Select'
+import { Loader2 } from 'lucide-react'
 
 export default function GeneralLedgerView() {
   const [accounts, setAccounts] = useState<Account[]>([])
@@ -18,7 +19,12 @@ export default function GeneralLedgerView() {
   }
 
   const formatCurrency = (val: number) => {
-    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val)
+    return (
+      <div className="flex justify-between items-center w-full min-w-[80px]">
+        <span className="text-gray-500 mr-2">Rp</span>
+        <span>{new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(val)}</span>
+      </div>
+    )
   }
 
   return (
@@ -91,7 +97,10 @@ export default function GeneralLedgerView() {
             </div>
           </div>
         ) : (
-          <div className="text-center py-12 text-text-muted">Memuat data buku besar...</div>
+          <div className="flex flex-col items-center justify-center py-12 text-text-muted">
+            <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
+            <span className="font-medium">Memuat data buku besar...</span>
+          </div>
         )}
       </div>
     </div>

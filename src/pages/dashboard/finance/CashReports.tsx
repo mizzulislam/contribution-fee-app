@@ -7,19 +7,50 @@ export default function CashReports() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Simulate fetching transparent data for users
-    setTimeout(() => {
-      setData({
-        incoming: 15500000,
-        outgoing: 4200000,
-        balance: 11300000
-      })
-      setLoading(false)
-    }, 1000)
+    fetchCash()
   }, [])
 
+  const fetchCash = async () => {
+    setLoading(true)
+    const { data } = await spreadsheetApi.get('JournalEntries')
+    
+    if (data && Array.isArray(data)) {
+      let incoming = 0
+      let outgoing = 0
+      let balance = 0
+
+      data.forEach(je => {
+        try {
+          const debits = typeof je.debits === 'string' ? JSON.parse(je.debits) : (je.debits || [])
+          const credits = typeof je.credits === 'string' ? JSON.parse(je.credits) : (je.credits || [])
+          
+          // Asumsi Kas Besar (1100-...)
+          debits.forEach((d: any) => { 
+            if (d.accountNumber?.startsWith('110')) {
+              incoming += Number(d.amount)
+              balance += Number(d.amount)
+            }
+          })
+          credits.forEach((c: any) => { 
+            if (c.accountNumber?.startsWith('110')) {
+              outgoing += Number(c.amount)
+              balance -= Number(c.amount)
+            }
+          })
+        } catch (e) {}
+      })
+      setData({ incoming, outgoing, balance })
+    }
+    setLoading(false)
+  }
+
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount)
+    return (
+      <div className="flex justify-between items-center w-full min-w-[80px]">
+        <span className="text-gray-500 mr-2">Rp</span>
+        <span>{new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(amount)}</span>
+      </div>
+    )
   }
 
   return (

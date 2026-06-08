@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { spreadsheetApi } from '@/lib/spreadsheet'
-import { Search, SearchCheck, CheckCircle2, XCircle, Eye, X, AlertTriangle, Info } from 'lucide-react'
+import { Search, SearchCheck, CheckCircle2, XCircle, Eye, X, AlertTriangle, Info, FileText } from 'lucide-react'
+import { TableLoader } from '@/components/ui/TableLoader'
 
 export default function Verification() {
   const [verifications, setVerifications] = useState<any[]>([])
@@ -19,19 +20,21 @@ export default function Verification() {
     setLoading(true)
     const { data, error } = await spreadsheetApi.get('Payments')
     
-    if (data && Array.isArray(data) && data.length > 0) {
+    if (data && Array.isArray(data)) {
       setVerifications(data.filter((p: any) => p.status === 'Menunggu Verifikasi' || p.status === 'pending_verification'))
     } else {
-      // Mock data fallback
-      setVerifications([
-        { id: 1, resident_name: 'Ahmad Dahlan', room_number: '103', title: 'Iuran Sampah', amount: 25000, date_submitted: '2026-06-02', receipt_url: '#' }
-      ])
+      setVerifications([])
     }
     setLoading(false)
   }
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount)
+    return (
+      <div className="flex justify-between items-center w-full min-w-[80px]">
+        <span className="text-gray-500 mr-2">Rp</span>
+        <span>{new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(amount)}</span>
+      </div>
+    )
   }
 
   const filtered = verifications.filter(v => 
@@ -110,9 +113,7 @@ export default function Verification() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {loading ? (
-                <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">Memuat data...</td>
-                </tr>
+                <TableLoader colSpan={6} text="Memuat data pembayaran..." />
               ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-8 text-center text-gray-500">Tidak ada antrean verifikasi saat ini.</td>

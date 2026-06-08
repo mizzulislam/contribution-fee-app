@@ -15,7 +15,12 @@ export default function TrialBalanceView() {
 
   const formatCurrency = (val: number) => {
     if (val === 0) return '-'
-    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val)
+    return (
+      <div className="flex justify-between items-center w-full min-w-[80px]">
+        <span className="text-gray-500 mr-2">Rp</span>
+        <span>{new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(val)}</span>
+      </div>
+    )
   }
 
   const totalDebit = items.reduce((sum, item) => sum + item.debit, 0)

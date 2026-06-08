@@ -83,5 +83,6 @@ export class ChartOfAccounts {
     this.addAccount('5103', 'Beban Perawatan Bangunan', 'Expenses')
     this.addAccount('5104', 'Beban Gaji Karyawan', 'Expenses')
     this.addAccount('5105', 'Beban Administrasi Bank', 'Expenses')
+    this.addAccount('5106', 'Beban Air Galon & Konsumsi', 'Expenses')
   }
 }

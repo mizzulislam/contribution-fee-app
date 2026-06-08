@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useState, useEffect } from 'react'
+import { Printer, Download, BookOpen, Loader2 } from 'lucide-react'
 import { defaultEngine } from '@/lib/accounting'
 import type { FinancialStatements } from '@/lib/accounting'
 
@@ -9,10 +10,20 @@ export default function FinancialStatementsView() {
     setStatements(defaultEngine.getFinancialStatements())
   }, [])
 
-  if (!statements) return <div>Memuat laporan keuangan...</div>
+  if (!statements) return (
+    <div className="flex flex-col items-center justify-center py-20 text-gray-500">
+      <Loader2 className="w-10 h-10 animate-spin text-primary mb-4" />
+      <span className="text-lg font-medium">Memuat laporan keuangan...</span>
+    </div>
+  )
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount)
+    return (
+      <div className="flex justify-between items-center w-full min-w-[80px]">
+        <span className="text-gray-500 mr-2">Rp</span>
+        <span>{new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(amount)}</span>
+      </div>
+    )
   }
 
   const inc = statements.incomeStatement

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { spreadsheetApi } from '@/lib/spreadsheet'
 import { History, Search, CheckCircle2, Download } from 'lucide-react'
+import { TableLoader } from '@/components/ui/TableLoader'
 
 export default function PaymentHistory() {
   const [history, setHistory] = useState<any[]>([])
@@ -15,21 +16,21 @@ export default function PaymentHistory() {
     setLoading(true)
     const { data, error } = await spreadsheetApi.get('Payments')
     
-    if (data && Array.isArray(data) && data.length > 0) {
+    if (data && Array.isArray(data)) {
       setHistory(data.filter((p: any) => p.status === 'verified'))
     } else {
-      // Mock data fallback
-      setHistory([
-        { id: 1, title: 'Iuran Wajib Bulanan', amount: 500000, date_verified: '2026-05-12', month: 'Mei 2026' },
-        { id: 2, title: 'Iuran Wajib Bulanan', amount: 500000, date_verified: '2026-04-10', month: 'April 2026' },
-        { id: 3, title: 'Iuran Sampah', amount: 25000, date_verified: '2026-04-10', month: 'April 2026' },
-      ])
+      setHistory([])
     }
     setLoading(false)
   }
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount)
+    return (
+      <div className="flex justify-between items-center w-full min-w-[80px]">
+        <span className="text-gray-500 mr-2">Rp</span>
+        <span>{new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(amount)}</span>
+      </div>
+    )
   }
 
   const filtered = history.filter(h => 
@@ -77,9 +78,7 @@ export default function PaymentHistory() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {loading ? (
-                <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">Memuat riwayat pembayaran...</td>
-                </tr>
+                <TableLoader colSpan={6} text="Memuat riwayat pembayaran..." />
               ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-8 text-center text-gray-500">Tidak ada riwayat pembayaran yang ditemukan.</td>
@@ -96,7 +95,7 @@ export default function PaymentHistory() {
                         <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" /> Lunas
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-6 py-4 text-center">
                       <button className="btn-secondary py-1.5 px-3 text-xs inline-flex items-center">
                         <Download className="w-3.5 h-3.5 mr-1.5" /> Kuitansi
                       </button>

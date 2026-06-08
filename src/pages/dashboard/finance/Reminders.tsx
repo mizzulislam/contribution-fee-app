@@ -1,18 +1,60 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { BellRing, Send, Clock, Users, CheckCircle2 } from 'lucide-react'
+import { spreadsheetApi } from '@/lib/spreadsheet'
 
 export default function Reminders() {
   const [loading, setLoading] = useState(false)
+  const [loadingData, setLoadingData] = useState(true)
   const [success, setSuccess] = useState(false)
   const [toastMessage, setToastMessage] = useState('')
+  
+  const [totalPenghuni, setTotalPenghuni] = useState(0)
+  const [sudahLunas, setSudahLunas] = useState(0)
+  const [belumLunas, setBelumLunas] = useState(0)
+
+  useEffect(() => {
+    fetchData()
+  }, [])
+
+  const fetchData = async () => {
+    setLoadingData(true)
+    try {
+      const [usersRes, billsRes] = await Promise.all([
+        spreadsheetApi.get('Users'),
+        spreadsheetApi.get('Bills')
+      ])
+
+      let usersList: any[] = []
+      let billsList: any[] = []
+
+      if (usersRes.data && Array.isArray(usersRes.data)) {
+        usersList = usersRes.data.filter(u => (!u.status || u.status === 'Aktif') && String(u.role).includes('user'))
+        setTotalPenghuni(usersList.length)
+      }
+
+      if (billsRes.data && Array.isArray(billsRes.data)) {
+        billsList = billsRes.data
+        const unpaidBills = billsList.filter(b => b.status === 'unpaid' || b.status === 'pending' || b.status === 'Belum Bayar')
+        
+        // Count unique users who have unpaid bills
+        const unpaidUsers = new Set(unpaidBills.map(b => b.resident_name)).size
+        setBelumLunas(unpaidUsers)
+        setSudahLunas(Math.max(0, usersList.length - unpaidUsers))
+      }
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoadingData(false)
+    }
+  }
 
   const handleSendReminders = () => {
     setLoading(true)
     setTimeout(() => {
       setLoading(false)
       setSuccess(true)
-      setToastMessage('Berhasil mengirim 5 pesan pengingat tagihan ke WhatsApp penghuni!')
+      setToastMessage(`Berhasil mengirim ${belumLunas} pesan pengingat tagihan ke WhatsApp penghuni!`)
       setTimeout(() => {
         setSuccess(false)
         setToastMessage('')
@@ -34,34 +76,40 @@ export default function Reminders() {
         <div className="card-container p-6">
           <h2 className="text-xl font-bold text-gray-900 mb-6">Status Tagihan Bulan Ini</h2>
           
-          <div className="space-y-4 mb-8">
-            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-              <span className="text-gray-600">Total Penghuni</span>
-              <span className="font-bold text-gray-900">20 Orang</span>
+          {loadingData ? (
+            <div className="py-12 text-center text-gray-500 text-sm animate-pulse">Memuat data real-time...</div>
+          ) : (
+            <div className="space-y-4 mb-8">
+              <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                <span className="text-gray-600">Total Penghuni</span>
+                <span className="font-bold text-gray-900">{totalPenghuni} Orang</span>
+              </div>
+              <div className="flex justify-between items-center p-3 bg-success/10 rounded-lg">
+                <span className="text-success-dark">Sudah Lunas</span>
+                <span className="font-bold text-success">{sudahLunas} Orang</span>
+              </div>
+              <div className="flex justify-between items-center p-3 bg-orange-50 rounded-lg">
+                <span className="text-orange-700 font-medium">Belum Lunas / Pending</span>
+                <span className="font-bold text-orange-600">{belumLunas} Orang</span>
+              </div>
             </div>
-            <div className="flex justify-between items-center p-3 bg-success/10 rounded-lg">
-              <span className="text-success-dark">Sudah Lunas</span>
-              <span className="font-bold text-success">15 Orang</span>
-            </div>
-            <div className="flex justify-between items-center p-3 bg-orange-50 rounded-lg">
-              <span className="text-orange-700 font-medium">Belum Lunas (Jatuh Tempo H-3)</span>
-              <span className="font-bold text-orange-600">5 Orang</span>
-            </div>
-          </div>
+          )}
 
           <button 
             className={`w-full py-3 flex items-center justify-center font-medium rounded-lg text-white transition-all ${
               success ? 'bg-success' : 'bg-primary hover:bg-primary-dark shadow-md hover:shadow-lg'
             }`}
             onClick={handleSendReminders}
-            disabled={loading || success}
+            disabled={loading || success || loadingData || belumLunas === 0}
           >
             {loading ? (
               <>Memproses...</>
             ) : success ? (
               <>Pengingat Berhasil Terkirim!</>
+            ) : belumLunas === 0 ? (
+              <><CheckCircle2 className="w-5 h-5 mr-2" /> Semua Sudah Lunas</>
             ) : (
-              <><Send className="w-5 h-5 mr-2" /> Kirim Pengingat Massal (5 Orang)</>
+              <><Send className="w-5 h-5 mr-2" /> Kirim Pengingat Massal ({belumLunas} Orang)</>
             )}
           </button>
         </div>
@@ -69,16 +117,16 @@ export default function Reminders() {
         <div className="card-container p-6 bg-gradient-to-br from-white to-gray-50">
           <h2 className="text-lg font-bold text-gray-900 mb-4">Template Pesan Pengingat</h2>
           <div className="p-4 bg-white border border-gray-200 rounded-lg shadow-sm text-sm text-gray-700 font-mono leading-relaxed relative">
-            <p>Halo <span className="text-primary">[Nama Penghuni]</span>,</p>
+            <p>Halo bang <span className="text-primary">[Nama Penghuni]</span>! 👋</p>
             <br />
-            <p>Mengingatkan bahwa tagihan Iuran Kos untuk periode <span className="text-primary">[Bulan]</span> akan jatuh tempo pada <span className="text-primary">[Tanggal Jatuh Tempo]</span>.</p>
+            <p>Sekadar ngingetin nih, tagihan kos untuk bulan <span className="text-primary">[Bulan]</span> udah mau jatuh tempo pada <span className="text-primary">[Tanggal Jatuh Tempo]</span>.</p>
             <br />
-            <p>Total Tagihan: Rp <span className="text-primary">[Nominal]</span></p>
+            <p>Total tagihannya: <strong>Rp <span className="text-primary">[Nominal]</span></strong></p>
             <br />
-            <p>Silakan melakukan pembayaran dan mengunggah bukti transfer melalui Portal Penghuni.</p>
+            <p>Boleh minta tolong diselesaikan pembayarannya dan <i>upload</i> buktinya lewat Portal Penghuni ya bang. Kalo ada kendala atau pertanyaan, kabarin aja!</p>
             <br />
-            <p>Terima kasih,</p>
-            <p>Bendahara Soematra Kost</p>
+            <p>Makasih banyak kerjasamanya, sehat selalu! 🙏</p>
+            <p>— Bendahara Soematra Kost</p>
           </div>
         </div>
       </div>
@@ -96,3 +144,4 @@ export default function Reminders() {
     </div>
   )
 }
+

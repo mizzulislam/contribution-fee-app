@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { spreadsheetApi } from '@/lib/spreadsheet'
 import { useAuth } from '@/hooks/useAuth'
 import { CheckCircle2, Clock, XCircle, FileText } from 'lucide-react'
+import { TableLoader } from '@/components/ui/TableLoader'
 
 export default function ResidentBillsList() {
   const { profile } = useAuth()
@@ -18,21 +19,23 @@ export default function ResidentBillsList() {
     setLoading(true)
     const { data, error } = await spreadsheetApi.get('Bills')
     
-    if (data && Array.isArray(data) && data.length > 0) {
+    if (data && Array.isArray(data)) {
       // Filter tagihan milik user yang sedang login
-      setBills(data.filter((b: any) => b.resident_email === profile?.email))
+      setBills(data.filter((b: any) => b.resident_email === profile?.email || b.resident_name === profile?.full_name))
     } else {
-      // Mock data fallback
-      setBills([
-        { id: 1, contributions: { title: 'Iuran Wajib Bulanan', contribution_types: { name: 'Iuran Wajib' } }, due_date: '2026-06-10', amount: 500000, status: 'unpaid' },
-        { id: 2, contributions: { title: 'Iuran Wajib Bulanan', contribution_types: { name: 'Iuran Wajib' } }, due_date: '2026-05-10', amount: 500000, status: 'paid' }
-      ])
+      // Jika terjadi error (data null), kosongkan saja daripada memuat mock data
+      setBills([])
     }
     setLoading(false)
   }
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount)
+    return (
+      <div className="flex justify-between items-center w-full min-w-[80px]">
+        <span className="text-gray-500 mr-2">Rp</span>
+        <span>{new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(amount)}</span>
+      </div>
+    )
   }
 
   const getStatusBadge = (status: string) => {
@@ -73,9 +76,7 @@ export default function ResidentBillsList() {
             </thead>
             <tbody className="divide-y divide-border text-gray-700 bg-white">
               {loading ? (
-                <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-text-muted">Memuat data tagihan...</td>
-                </tr>
+                <TableLoader colSpan={5} text="Memuat data tagihan..." />
               ) : bills.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-6 py-12 text-center text-text-muted flex flex-col items-center">
@@ -93,7 +94,7 @@ export default function ResidentBillsList() {
                     <td className="px-6 py-4 text-text-secondary">{new Date(bill.due_date).toLocaleDateString('id-ID')}</td>
                     <td className="px-6 py-4 font-semibold">{formatCurrency(bill.amount)}</td>
                     <td className="px-6 py-4">{getStatusBadge(bill.status)}</td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-6 py-4 text-center">
                       {bill.status === 'unpaid' || bill.status === 'rejected' ? (
                         <button className="btn-primary py-1.5 px-4 text-xs">
                           Bayar Sekarang

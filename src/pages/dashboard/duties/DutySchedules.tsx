@@ -20,13 +20,10 @@ export default function DutySchedules() {
   const fetchSchedules = async () => {
     setLoading(true)
     const { data } = await spreadsheetApi.get('Schedules')
-    if (data && Array.isArray(data) && data.length > 0) {
-      setSchedules(data)
+    if (data && Array.isArray(data)) {
+      setSchedules(data.reverse())
     } else {
-      setSchedules([
-        { id: 1, date: 'Hari Ini', user: 'Ahmad (Kamar 101)', status: 'Menunggu' },
-        { id: 2, date: 'Besok', user: 'Budi (Kamar 102)', status: 'Menunggu' }
-      ])
+      setSchedules([])
     }
     setLoading(false)
   }
@@ -34,16 +31,36 @@ export default function DutySchedules() {
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsGenerating(true)
-    setTimeout(() => {
-      setIsGenerating(false)
-      setIsModalOpen(false)
-      setSchedules([
-        { id: Date.now(), date: 'Hari Ini (Baru)', user: 'Warga Random', status: 'Menunggu' },
-        ...schedules
-      ])
-      setToastMessage('Jadwal piket berhasil di-generate secara otomatis.')
-      setTimeout(() => setToastMessage(''), 3000)
-    }, 1500)
+    
+    // Fetch users first to assign schedules
+    const { data: users } = await spreadsheetApi.get('Users')
+    
+    if (users && Array.isArray(users) && users.length > 0) {
+      // Pick a random user for demo purposes, or loop
+      const activeUsers = users.filter(u => u.status === 'Aktif' || u.role === 'user')
+      if (activeUsers.length > 0) {
+        const randomUser = activeUsers[Math.floor(Math.random() * activeUsers.length)]
+        const newSchedule = {
+          id: Date.now(),
+          date: new Date().toISOString().split('T')[0], // Today's date
+          user: `${randomUser.full_name} (Kamar ${randomUser.room_number || '?'})`,
+          user_id: randomUser.id,
+          task: 'Angkat Galon & Buang Sampah',
+          status: 'Menunggu',
+          created_at: new Date().toISOString()
+        }
+        
+        await spreadsheetApi.post('Schedules', newSchedule)
+        setSchedules([newSchedule, ...schedules])
+        setToastMessage('Jadwal piket berhasil di-generate secara otomatis.')
+      } else {
+        setToastMessage('Gagal: Tidak ada penghuni aktif.')
+      }
+    }
+    
+    setIsGenerating(false)
+    setIsModalOpen(false)
+    setTimeout(() => setToastMessage(''), 3000)
   }
 
   const handleConfirm = async (id: number | string) => {
@@ -70,7 +87,10 @@ export default function DutySchedules() {
         <h2 className="text-xl font-bold mb-6 text-center text-gray-900">Piket Mendatang</h2>
         <div className="max-w-md mx-auto space-y-4">
           {loading ? (
-            <p className="text-center text-gray-500 py-4">Memuat jadwal...</p>
+            <div className="py-8 text-center text-gray-500 flex flex-col items-center">
+              <Loader2 className="w-6 h-6 animate-spin text-primary mb-2" />
+              Memuat jadwal...
+            </div>
           ) : (
             schedules.map((schedule, index) => (
               <div 

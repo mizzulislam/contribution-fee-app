@@ -46,7 +46,7 @@ export default function Corrections() {
                       <span className="badge badge-success">Selesai</span>
                     )}
                   </td>
-                  <td className="px-6 py-4 text-right space-x-2">
+                  <td className="px-6 py-4 text-center space-x-2">
                     {corr.status === 'Pending' ? (
                       <>
                         <button className="text-green-600 hover:text-green-900 p-1 bg-green-50 hover:bg-green-100 rounded" title="Setujui">

@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react'
 import { defaultEngine } from '@/lib/accounting'
 import type { JournalEntry, Account, AccountType } from '@/lib/accounting'
-import { spreadsheetApi } from '@/lib/spreadsheet'
-import { mergeAccounts } from '@/lib/chartOfAccounts'
 import JournalEntryModal from '@/components/accounting/JournalEntryModal'
 import { PlusCircle } from 'lucide-react'
 
@@ -16,34 +14,10 @@ export default function GeneralJournalView() {
     refreshData()
   }, [])
 
-  const refreshData = async () => {
-    setIsSyncing(true)
-    try {
-      const { data } = await spreadsheetApi.get('MasterData')
-      const merged = mergeAccounts(data && Array.isArray(data) ? data : [])
-      
-      const typeMap: Record<string, AccountType> = {
-        'Harta': 'Assets',
-        'Kewajiban': 'Liabilities',
-        'Modal': 'Equity',
-        'Pendapatan': 'Revenues',
-        'Beban': 'Expenses'
-      }
-
-      merged.forEach(acc => {
-        if (acc.status === 'Aktif') {
-          const mappedType = typeMap[acc.account_type] || 'Expenses'
-          defaultEngine.coa.addAccount(acc.account_number, acc.account_name, mappedType)
-          defaultEngine.ledger.ensureLedger(acc.account_number)
-        }
-      })
-    } catch (err) {
-      console.error("Gagal sinkronisasi data COA:", err)
-    } finally {
-      setIsSyncing(false)
-      setEntries(defaultEngine.journal.getEntries().reverse())
-      setAccounts(defaultEngine.coa.getAllAccounts())
-    }
+  const refreshData = () => {
+    setEntries(defaultEngine.journal.getEntries().reverse())
+    setAccounts(defaultEngine.coa.getAllAccounts())
+    setIsSyncing(false)
   }
 
   const handleModalClose = () => {

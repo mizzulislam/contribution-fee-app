@@ -7,13 +7,14 @@ interface ProtectedRouteProps {
 }
 
 export default function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
-  const { profile } = useAuth()
+  const { profile, activeRole } = useAuth()
 
   if (!profile) {
     return <Navigate to="/login" replace />
   }
 
-  if (!allowedRoles.includes(profile.role)) {
+  // Use activeRole instead of profile.role to support users with multiple roles switching modes
+  if (!activeRole || !allowedRoles.includes(activeRole as Role)) {
     // Redirect to dashboard if they don't have permission for this specific route
     return <Navigate to="/dashboard" replace />
   }

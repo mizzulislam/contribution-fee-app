@@ -101,5 +101,27 @@ export const spreadsheetApi = {
       console.error('Spreadsheet DELETE Error:', error)
       return { success: false, error }
     }
+  },
+
+  /**
+   * Mengembalikan data (restore) ke sheet tertentu, menimpa data yang ada
+   */
+  async restore(sheetName: string, data: any[]) {
+    if (SPREADSHEET_API_URL.includes('YOUR_SCRIPT_ID')) {
+      return { success: false, error: new Error('Development Mode: Simulation success.') }
+    }
+    try {
+      const response = await fetch(SPREADSHEET_API_URL, {
+        method: 'POST', 
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'restore', sheet: sheetName, data })
+      })
+      const result = await response.json()
+      if (result.status !== 'success') throw new Error(result.message)
+      return { success: true, error: null }
+    } catch (error) {
+      console.error('Spreadsheet RESTORE Error:', error)
+      return { success: false, error }
+    }
   }
 }

@@ -10,11 +10,12 @@ import { useSidebarStore } from "@/stores/sidebar-store"
 import { SidebarLogo } from "./SidebarLogo"
 import { SidebarToggle } from "./SidebarToggle"
 import { SidebarNavItem } from "./SidebarNavItem"
+import { SidebarProfile } from "./SidebarProfile"
 import { useAuth } from "@/hooks/useAuth"
 
 export function Sidebar() {
   const location = useLocation()
-  const { profile, signOut } = useAuth()
+  const { profile, activeRole, signOut } = useAuth()
   const { isCollapsed, isMobileOpen, toggleCollapsed, closeMobile } = useSidebarStore()
 
   // --- NAVIGATION MENUS PER ROLE ---
@@ -26,17 +27,14 @@ export function Sidebar() {
     { name: 'Audit Log', path: '/dashboard/audit', icon: Activity },
     { name: 'Notifikasi', path: '/dashboard/notifications-settings', icon: Bell },
     { name: 'Backup Data', path: '/dashboard/backup', icon: RefreshCw },
-    { name: 'Pengaturan', path: '/dashboard/settings', icon: Settings },
-    { name: 'Profil', path: '/dashboard/profile', icon: UserCircle },
   ]
 
   const adminNav = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { name: 'Kelola Tagihan', path: '/dashboard/billing', icon: WalletCards },
-    { name: 'Buku Kas', path: '/dashboard/finance', icon: ArrowDownCircle },
+    { name: 'Akuntansi & Laporan', path: '/dashboard/finance', icon: ArrowDownCircle },
     { name: 'Sistem Galon', path: '/dashboard/gallons-management', icon: Droplets },
     { name: 'Jadwal Piket', path: '/dashboard/duties', icon: CalendarCheck },
-    { name: 'Profil', path: '/dashboard/profile', icon: UserCircle },
   ]
 
   const userNav = [
@@ -50,12 +48,11 @@ export function Sidebar() {
     { name: 'Lapor Piket', path: '/dashboard/duties-confirm', icon: ShieldCheck },
     { name: 'Notifikasi', path: '/dashboard/notifications', icon: Bell },
     { name: 'Pengumuman', path: '/dashboard/announcements', icon: FileText },
-    { name: 'Profil Saya', path: '/dashboard/profile', icon: UserCircle },
   ]
 
   let navItems = userNav
-  if (profile?.role === 'super admin') navItems = superAdminNav
-  else if (profile?.role === 'admin') navItems = adminNav
+  if (activeRole === 'super admin') navItems = superAdminNav
+  else if (activeRole === 'admin') navItems = adminNav
 
   return (
     <>
@@ -79,7 +76,7 @@ export function Sidebar() {
       >
         <div className="absolute inset-0 -z-10 bg-gradient-to-br from-white/30 via-white/5 to-transparent mix-blend-overlay pointer-events-none" />
 
-        <div className="pt-2">
+        <div>
           <SidebarLogo 
             collapsed={isCollapsed} 
             onClick={() => {
@@ -109,17 +106,8 @@ export function Sidebar() {
           })}
         </nav>
 
-        <div className="p-4 border-t border-white/10 mt-auto bg-transparent">
-          <button 
-            onClick={() => signOut()}
-            className={cn(
-              "flex items-center rounded-xl text-sm font-medium text-white/60 hover:bg-red-500/10 hover:text-red-400 w-full transition-colors h-11",
-              isCollapsed ? "justify-center px-0" : "px-3 space-x-3"
-            )}
-          >
-            <LogOut className={cn("shrink-0 transition-transform", isCollapsed ? "size-5" : "size-4")} />
-            {!isCollapsed && <span className="truncate">Keluar</span>}
-          </button>
+        <div className="p-3 mt-auto">
+          <SidebarProfile />
         </div>
       </aside>
     </>

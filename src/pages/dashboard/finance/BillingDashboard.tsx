@@ -27,7 +27,7 @@ export default function BillingDashboard() {
 
   const tabs = [
     { id: 'bills', label: 'Daftar Tagihan', icon: ReceiptText },
-    { id: 'contributions', label: 'Template Iuran', icon: FileText },
+    { id: 'contributions', label: 'Katalog Iuran', icon: FileText },
     { id: 'verification', label: 'Verifikasi Bayar', icon: SearchCheck },
     { id: 'reminders', label: 'Pengingat', icon: BellRing },
   ]

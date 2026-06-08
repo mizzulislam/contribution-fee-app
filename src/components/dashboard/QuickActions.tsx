@@ -3,9 +3,9 @@ import { PlusCircle, SearchCheck, ReceiptText, ShieldAlert } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 
 export function QuickActions({ onOpenTransaction }: { onOpenTransaction?: () => void }) {
-  const { profile } = useAuth()
+  const { activeRole } = useAuth()
 
-  if (profile?.role === 'super admin') {
+  if (activeRole === 'super admin') {
     return (
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
         <Link to="/dashboard/warga" className="group flex flex-col items-center justify-center p-4 rounded-2xl bg-white border border-gray-100 hover:border-emerald-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
@@ -36,7 +36,7 @@ export function QuickActions({ onOpenTransaction }: { onOpenTransaction?: () => 
     )
   }
 
-  if (profile?.role === 'admin') {
+  if (activeRole === 'admin') {
     return (
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
         <Link to="/dashboard/billing" className="group flex flex-col items-center justify-center p-4 rounded-2xl bg-white border border-gray-100 hover:border-blue-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">

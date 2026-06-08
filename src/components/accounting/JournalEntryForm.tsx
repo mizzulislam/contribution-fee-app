@@ -101,18 +101,36 @@ export default function JournalEntryForm({ onSuccess }: { onSuccess?: () => void
         throw new Error(`Total Debit tidak sama dengan Total Kredit. Neraca harus seimbang!`)
       }
 
-      // Record transaction
+      // Record transaction locally
       defaultEngine.recordTransaction(date, parsedDebits, parsedCredits, description)
+      const newEntryId = defaultEngine.journal.getEntries()[defaultEngine.journal.getEntries().length - 1].id
 
-      // Reset form
-      setDebits([{ accountNumber: '', amount: '' }])
-      setCredits([{ accountNumber: '', amount: '' }])
-      setDescription('')
-      
-      if (onSuccess) {
-        onSuccess()
+      // Post to Google Sheets
+      const entryData = {
+        id: newEntryId,
+        date: date,
+        description: description,
+        debits: JSON.stringify(parsedDebits),
+        credits: JSON.stringify(parsedCredits),
+        created_at: new Date().toISOString()
       }
+      
+      // Don't await directly to avoid blocking UI too long, or await and show loading.
+      // Since there's no loading state for submit, we will just await it.
+      setIsSyncing(true)
+      spreadsheetApi.post('JournalEntries', entryData).finally(() => {
+        setIsSyncing(false)
+        // Reset form
+        setDebits([{ accountNumber: '', amount: '' }])
+        setCredits([{ accountNumber: '', amount: '' }])
+        setDescription('')
+        
+        if (onSuccess) {
+          onSuccess()
+        }
+      })
     } catch (err: any) {
+      setIsSyncing(false)
       setError(err.message)
     }
   }

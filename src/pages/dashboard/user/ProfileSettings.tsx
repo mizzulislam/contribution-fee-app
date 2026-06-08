@@ -25,29 +25,71 @@ export default function ProfileSettings() {
     e.preventDefault()
     setIsSaving(true)
     
-    // Asumsikan data profile disimpan di tabel Users
-    if (profile?.id) {
-      const payload = {
-        id: profile.id,
-        full_name: formData.name,
-        phone: formData.phone,
-        updated_at: new Date().toISOString()
+    try {
+      // Asumsikan data profile disimpan di tabel Users
+      if (profile?.id) {
+        const payload = {
+          id: profile.id,
+          full_name: formData.name,
+          phone: formData.phone,
+          updated_at: new Date().toISOString()
+        }
+        const { success, error } = await spreadsheetApi.put('Users', payload)
+        
+        if (!success) {
+          throw new Error((error as any)?.message || 'Gagal menyimpan profil')
+        }
+        
+        // Update the local authentication state so UI reflects the changes instantly
+        setProfile({
+          ...profile,
+          full_name: formData.name
+        })
       }
-      await spreadsheetApi.put('Users', payload)
-      
-      // Update the local authentication state so UI reflects the changes instantly
-      setProfile({
-        ...profile,
-        full_name: formData.name
-      })
-    }
 
-    setToastMessage('Profil berhasil diperbarui!')
-    setTimeout(() => setToastMessage(''), 3000)
-    setIsSaving(false)
-    setIsEditing(false)
+      setToastMessage('Profil berhasil diperbarui!')
+      setTimeout(() => setToastMessage(''), 3000)
+    } catch (error: any) {
+      alert("Error: " + error.message)
+    } finally {
+      setIsSaving(false)
+      setIsEditing(false)
+    }
   }
 
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (profile?.id) {
+      const savedPhoto = localStorage.getItem(`profile_photo_${profile.id}`)
+      if (savedPhoto) setPhotoUrl(savedPhoto)
+    }
+  }, [profile?.id])
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Ukuran foto maksimal 2MB')
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      const base64String = reader.result as string
+      setPhotoUrl(base64String)
+      if (profile?.id) {
+        localStorage.setItem(`profile_photo_${profile.id}`, base64String)
+        window.dispatchEvent(new Event('profile_photo_updated'))
+      }
+      setToastMessage('Foto profil berhasil diperbarui!')
+      setTimeout(() => setToastMessage(''), 3000)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  // ... rest of the render up to the camera button
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       <div className="relative">
@@ -70,11 +112,16 @@ export default function ProfileSettings() {
           <div className="card-container p-6 text-center">
             <div className="relative inline-block mb-4">
               <div className="w-24 h-24 rounded-full bg-primary-soft/30 flex items-center justify-center border-4 border-white shadow-sm overflow-hidden">
-                <User className="w-12 h-12 text-primary" />
+                {photoUrl ? (
+                  <img src={photoUrl} alt="Profile" className="w-full h-full object-cover" />
+                ) : (
+                  <User className="w-12 h-12 text-primary" />
+                )}
               </div>
-              <button className="absolute bottom-0 right-0 bg-white p-1.5 rounded-full shadow border border-gray-100 text-gray-600 hover:text-primary transition-colors">
+              <label className="absolute bottom-0 right-0 bg-white p-1.5 rounded-full shadow border border-gray-100 text-gray-600 hover:text-primary transition-colors cursor-pointer">
                 <Camera className="w-4 h-4" />
-              </button>
+                <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
+              </label>
             </div>
             <h2 className="text-lg font-bold text-gray-900">{formData.name}</h2>
             <p className="text-sm text-text-secondary mb-4 capitalize">{profile?.role || 'Penghuni'}</p>

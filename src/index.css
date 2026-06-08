@@ -84,6 +84,10 @@
   h1, h2, h3, h4, h5, h6 {
     @apply font-bold text-gray-900;
   }
+
+  th {
+    text-align: center !important;
+  }
 }
 
 @layer components {
@@ -133,5 +137,21 @@
   }
   .badge-info {
     @apply bg-[#DBEAFE] text-[#1D4ED8];
+  }
+}
+
+@keyframes waveSpin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes splash-fly {
+  0% { 
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  100% { 
+    transform: translate(var(--tx), var(--ty)) scale(0.2);
+    opacity: 0;
   }
 }

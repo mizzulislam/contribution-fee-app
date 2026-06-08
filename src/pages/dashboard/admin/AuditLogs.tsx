@@ -1,18 +1,35 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Activity, Search, Filter } from 'lucide-react'
+import { spreadsheetApi } from '@/lib/spreadsheet'
+import { TableLoader } from '@/components/ui/TableLoader'
 
 export default function AuditLogs() {
-  const [logs] = useState([
-    { id: 1, action: 'User Login', user: 'Super Admin Utama', ip: '192.168.1.5', date: '2026-06-03 08:00:00' },
-    { id: 2, action: 'Update Tagihan #102', user: 'Budi Santoso', ip: '192.168.1.12', date: '2026-06-03 09:15:22' },
-    { id: 3, action: 'Verifikasi Pembayaran', user: 'Budi Santoso', ip: '192.168.1.12', date: '2026-06-03 09:16:05' },
-    { id: 4, action: 'Tambah User Baru', user: 'Super Admin Utama', ip: '192.168.1.5', date: '2026-06-02 14:30:00' },
-  ])
+  const [logs, setLogs] = useState<any[]>([])
   const [search, setSearch] = useState('')
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchLogs()
+  }, [])
+
+  const fetchLogs = async () => {
+    try {
+      setLoading(true)
+      const { data } = await spreadsheetApi.get('AuditLogs')
+      if (data && Array.isArray(data)) {
+        // Sort descending by date
+        setLogs(data.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()))
+      }
+    } catch (error) {
+      console.error(error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const filteredLogs = logs.filter(l => 
-    l.action.toLowerCase().includes(search.toLowerCase()) || 
-    l.user.toLowerCase().includes(search.toLowerCase())
+    (l.action && l.action.toLowerCase().includes(search.toLowerCase())) || 
+    (l.user && l.user.toLowerCase().includes(search.toLowerCase()))
   )
 
   return (
@@ -55,17 +72,19 @@ export default function AuditLogs() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filteredLogs.length === 0 ? (
+              {loading ? (
+                <TableLoader colSpan={4} text="Memuat audit log..." />
+              ) : filteredLogs.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="px-6 py-8 text-center text-gray-500">Tidak ada log aktivitas ditemukan.</td>
                 </tr>
               ) : (
                 filteredLogs.map((log) => (
                   <tr key={log.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 text-text-muted">{log.date}</td>
+                    <td className="px-6 py-4 text-text-muted">{new Date(log.created_at).toLocaleString('id-ID')}</td>
                     <td className="px-6 py-4 font-medium text-gray-900">{log.user}</td>
                     <td className="px-6 py-4">{log.action}</td>
-                    <td className="px-6 py-4 text-right text-xs font-mono text-gray-500">{log.ip}</td>
+                    <td className="px-6 py-4 text-center text-xs font-mono text-gray-500">{log.ip || '-'}</td>
                   </tr>
                 ))
               )}
