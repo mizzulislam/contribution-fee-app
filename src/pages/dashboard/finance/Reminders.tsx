@@ -73,7 +73,7 @@ export default function Reminders() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="card-container p-6">
+        <div className="card-container p-6 flex flex-col h-full">
           <h2 className="text-xl font-bold text-gray-900 mb-6">Status Tagihan Bulan Ini</h2>
           
           {loadingData ? (
@@ -96,7 +96,7 @@ export default function Reminders() {
           )}
 
           <button 
-            className={`w-full py-3 flex items-center justify-center font-medium rounded-lg text-white transition-all ${
+            className={`w-full py-3 mt-auto flex items-center justify-center font-medium rounded-lg text-white transition-all ${
               success ? 'bg-success' : 'bg-primary hover:bg-primary-dark shadow-md hover:shadow-lg'
             }`}
             onClick={handleSendReminders}

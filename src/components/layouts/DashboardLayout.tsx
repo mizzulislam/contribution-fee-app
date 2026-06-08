@@ -117,7 +117,10 @@ export default function DashboardLayout() {
               </div>
             )}
             
-            <button className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-50 relative">
+            <button 
+              onClick={() => navigate('/dashboard/information?tab=notifications')}
+              className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-50 relative"
+            >
               <Bell className="w-5 h-5" />
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-danger rounded-full"></span>
             </button>

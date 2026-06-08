@@ -1,17 +1,19 @@
 import { useState } from 'react'
-import { Droplets, Activity, Store } from 'lucide-react'
+import { WalletCards, SearchCheck, History } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 // Import Sub-pages
-import GallonTracker from './GallonTracker'
-import Vendors from './Vendors'
+import ResidentBillsList from './ResidentBillsList'
+import PaymentConfirm from './PaymentConfirm'
+import PaymentHistory from './PaymentHistory'
 
-export default function GallonsDashboard() {
-  const [activeTab, setActiveTab] = useState('tracker')
+export default function UserBillingDashboard() {
+  const [activeTab, setActiveTab] = useState('bills')
 
   const tabs = [
-    { id: 'tracker', label: 'Stok Galon & AI', icon: Droplets },
-    { id: 'vendors', label: 'Daftar Kios', icon: Store },
+    { id: 'bills', label: 'Tagihan Saya', icon: WalletCards },
+    { id: 'confirm', label: 'Konfirmasi Bayar', icon: SearchCheck },
+    { id: 'history', label: 'Riwayat Bayar', icon: History },
   ]
 
   return (
@@ -41,8 +43,9 @@ export default function GallonsDashboard() {
 
       {/* Render Active Component */}
       <div className="pt-2">
-        {activeTab === 'tracker' && <GallonTracker />}
-        {activeTab === 'vendors' && <Vendors />}
+        {activeTab === 'bills' && <ResidentBillsList />}
+        {activeTab === 'confirm' && <PaymentConfirm />}
+        {activeTab === 'history' && <PaymentHistory />}
       </div>
     </div>
   )

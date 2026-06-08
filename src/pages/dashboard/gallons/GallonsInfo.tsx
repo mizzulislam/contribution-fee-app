@@ -5,6 +5,7 @@ import { Droplets, Info, CheckCircle2, AlertCircle, Loader2, Plus, X, Activity, 
 import { useAuth } from '@/hooks/useAuth'
 import { spreadsheetApi } from '@/lib/spreadsheet'
 import Select from '@/components/ui/Select'
+import { defaultEngine } from '@/lib/accounting'
 
 export default function GallonsInfo() {
   const { profile } = useAuth()
@@ -15,7 +16,7 @@ export default function GallonsInfo() {
   // Usage state
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
-  const [formData, setFormData] = useState({ containerId: '' })
+  const [formData, setFormData] = useState({ containerId: '', note: '' })
   const [volumeScale, setVolumeScale] = useState(1)
   const [isScanning, setIsScanning] = useState(false)
 
@@ -88,16 +89,28 @@ export default function GallonsInfo() {
   const fetchStock = async () => {
     setLoading(true)
     const { data } = await spreadsheetApi.get('Gallons')
-    if (data && Array.isArray(data)) {
-      let stock = 0
-      data.forEach(g => {
-        if (g.type === 'Pembelian') stock += Number(g.quantity || 0)
-        if (g.type === 'Penggunaan') stock -= Number(g.quantity || 0)
+    const rawData = Array.isArray(data) ? data : []
+    const usageData = rawData.filter(g => g.type === 'Penggunaan')
+    
+    let usedGallons = 0
+    usageData.forEach(g => { usedGallons += Number(g.quantity || 0) })
+
+    let purchasedGallons = 0
+    const entries = defaultEngine.journal.getEntries()
+    entries.forEach(entry => {
+      entry.debits.forEach(d => {
+        if (d.accountNumber === '5106') {
+          const match = entry.description.match(/(\d+)\s*galon/i)
+          if (match) {
+            purchasedGallons += parseInt(match[1], 10)
+          } else {
+            purchasedGallons += Math.floor(d.amount / 20000)
+          }
+        }
       })
-      setGallons(stock)
-    } else {
-      setGallons(0)
-    }
+    })
+
+    setGallons(purchasedGallons - usedGallons)
     setLoading(false)
   }
 
@@ -118,7 +131,8 @@ export default function GallonsInfo() {
     }
 
     const quantityNum = Number(((selectedContainer.capacity / 19) * volumeScale).toFixed(3))
-    const finalNote = `Pemakaian oleh ${profile?.full_name || 'Penghuni'}`
+    const userName = profile?.nickname || profile?.full_name || 'Penghuni'
+    const finalNote = formData.note || ''
     
     const payload = {
       id: Date.now(),
@@ -126,9 +140,10 @@ export default function GallonsInfo() {
       type: 'Penggunaan',
       quantity: quantityNum,
       note: finalNote,
+      userName: userName,
       containerName: selectedContainer.name,
       containerType: selectedContainer.type,
-      containerCapacity: selectedContainer.capacity,
+      containerCapacity: Number((selectedContainer.capacity * volumeScale).toFixed(2)),
       photoUrl: selectedContainer.photoUrl || '',
       created_at: new Date().toISOString()
     }
@@ -140,7 +155,7 @@ export default function GallonsInfo() {
     
     setIsModalOpen(false)
     setIsSaving(false)
-    setFormData({ containerId: '' })
+    setFormData({ containerId: '', note: '' })
     setVolumeScale(1)
   }
 
@@ -468,24 +483,32 @@ export default function GallonsInfo() {
                   
                   <input 
                     type="range" 
-                    min="0.25" 
-                    max="1" 
-                    step="0.25" 
-                    value={volumeScale} 
+                    min="0" 
+                    max="2" 
+                    step="1" 
+                    value={volumeScale === 0.25 ? 0 : volumeScale === 0.5 ? 1 : 2} 
                     onChange={e => {
                       const val = Number(e.target.value);
-                      if (val === 0.75) setVolumeScale(1); // skip 0.75 for 3 steps
-                      else setVolumeScale(val);
+                      setVolumeScale(val === 0 ? 0.25 : val === 1 ? 0.5 : 1);
                     }}
                     className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary"
                   />
-                  <div className="flex justify-between text-xs text-gray-500 mt-2 px-1">
-                    <span>1/4</span>
-                    <span>1/2</span>
-                    <span>Penuh</span>
+                  <div className="relative flex justify-between text-xs text-gray-500 mt-2 px-1">
+                    <span className="w-10 text-left">1/4</span>
+                    <span className="absolute left-1/2 -translate-x-1/2 text-center">1/2</span>
+                    <span className="w-10 text-right">Penuh</span>
                   </div>
                 </div>
               )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Catatan / Keterangan (Opsional)</label>
+                <input
+                  type="text" className="form-input w-full"
+                  placeholder={`Misal: Pemakaian oleh ${profile?.nickname || profile?.full_name || 'Penghuni'}`}
+                  value={formData.note} onChange={e => setFormData({...formData, note: e.target.value})}
+                />
+              </div>
 
               <div className="flex justify-end space-x-3 pt-2">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">

@@ -19,10 +19,10 @@ export default function FinancialStatementsView() {
 
   const formatCurrency = (amount: number) => {
     return (
-      <div className="flex justify-between items-center w-full min-w-[80px]">
+      <span className="inline-flex justify-between items-center min-w-[120px]">
         <span className="text-gray-500 mr-2">Rp</span>
         <span>{new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(amount)}</span>
-      </div>
+      </span>
     )
   }
 
@@ -58,7 +58,7 @@ export default function FinancialStatementsView() {
               <span className="font-semibold text-red-600">({formatCurrency(inc.expenses)})</span>
             </div>
 
-            <div className="flex justify-between py-4 mt-4 bg-blue-50 px-3 rounded-lg border border-blue-100">
+            <div className="flex justify-between py-4 mt-4 bg-blue-50 px-3 -mx-3 rounded-lg border border-blue-100">
               <span className="font-bold text-blue-900">Laba Bersih (Net Income)</span>
               <span className="font-bold text-blue-900">{formatCurrency(inc.netIncome)}</span>
             </div>
@@ -123,7 +123,7 @@ export default function FinancialStatementsView() {
             </div>
 
             {/* Final Check */}
-            <div className="flex justify-between py-4 mt-4 bg-gray-900 text-white px-3 rounded-lg">
+            <div className="flex justify-between py-4 mt-4 bg-gray-900 text-white px-3 -mx-3 rounded-lg">
               <span className="font-bold">Total Kewajiban & Modal</span>
               <span className="font-bold">{formatCurrency(bal.totalLiabilitiesAndEquity)}</span>
             </div>

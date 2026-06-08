@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { PlusCircle, SearchCheck, ReceiptText, ShieldAlert } from 'lucide-react'
+import { PlusCircle, SearchCheck, ReceiptText, ShieldAlert, CalendarCheck, Bell, Droplets } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 
 export function QuickActions({ onOpenTransaction }: { onOpenTransaction?: () => void }) {
@@ -70,17 +70,29 @@ export function QuickActions({ onOpenTransaction }: { onOpenTransaction?: () => 
   // User role actions
   return (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
-      <Link to="/dashboard/bills" className="group flex flex-col items-center justify-center p-4 rounded-2xl bg-white border border-gray-100 hover:border-emerald-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
+      <Link to="/dashboard/billing-user" className="group flex flex-col items-center justify-center p-4 rounded-2xl bg-white border border-gray-100 hover:border-emerald-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
         <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 group-hover:bg-emerald-500 group-hover:text-white flex items-center justify-center mb-3 transition-colors">
           <ReceiptText className="w-6 h-6" />
         </div>
-        <span className="text-sm font-medium text-gray-700 group-hover:text-emerald-700">Bayar Iuran</span>
+        <span className="text-sm font-medium text-gray-700 group-hover:text-emerald-700">Pusat Pembayaran</span>
       </Link>
-      <Link to="/dashboard/duties-confirm" className="group flex flex-col items-center justify-center p-4 rounded-2xl bg-white border border-gray-100 hover:border-blue-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
+      <Link to="/dashboard/duties-mine" className="group flex flex-col items-center justify-center p-4 rounded-2xl bg-white border border-gray-100 hover:border-blue-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
         <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-600 group-hover:bg-blue-500 group-hover:text-white flex items-center justify-center mb-3 transition-colors">
-          <SearchCheck className="w-6 h-6" />
+          <CalendarCheck className="w-6 h-6" />
         </div>
-        <span className="text-sm font-medium text-gray-700 group-hover:text-blue-700">Lapor Piket</span>
+        <span className="text-sm font-medium text-gray-700 group-hover:text-blue-700">Kalender Kos</span>
+      </Link>
+      <Link to="/dashboard/information" className="group flex flex-col items-center justify-center p-4 rounded-2xl bg-white border border-gray-100 hover:border-orange-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
+        <div className="w-12 h-12 rounded-full bg-orange-50 text-orange-600 group-hover:bg-orange-500 group-hover:text-white flex items-center justify-center mb-3 transition-colors">
+          <Bell className="w-6 h-6" />
+        </div>
+        <span className="text-sm font-medium text-gray-700 group-hover:text-orange-700">Pusat Informasi</span>
+      </Link>
+      <Link to="/dashboard/gallons-info" className="group flex flex-col items-center justify-center p-4 rounded-2xl bg-white border border-gray-100 hover:border-purple-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
+        <div className="w-12 h-12 rounded-full bg-purple-50 text-purple-600 group-hover:bg-purple-500 group-hover:text-white flex items-center justify-center mb-3 transition-colors">
+          <Droplets className="w-6 h-6" />
+        </div>
+        <span className="text-sm font-medium text-gray-700 group-hover:text-purple-700">Info Galon</span>
       </Link>
     </div>
   )

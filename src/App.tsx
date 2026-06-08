@@ -11,8 +11,6 @@ import Dashboard from '@/pages/dashboard/Dashboard'
 import PlaceholderPage from '@/components/ui/PlaceholderPage'
 
 // Existing Pages
-import ContributionsList from '@/pages/dashboard/contributions/ContributionsList'
-import ResidentBillsList from '@/pages/dashboard/bills/ResidentBillsList'
 import FinanceDashboard from '@/pages/dashboard/finance/FinanceDashboard'
 import GallonTracker from '@/pages/dashboard/gallons/GallonTracker'
 import DutySchedules from '@/pages/dashboard/duties/DutySchedules'
@@ -21,14 +19,12 @@ import DutySchedules from '@/pages/dashboard/duties/DutySchedules'
 import BillingDashboard from '@/pages/dashboard/finance/BillingDashboard'
 import GallonsDashboard from '@/pages/dashboard/gallons/GallonsDashboard'
 
-// Sprint 2 Pages (User Portal)
-import PaymentConfirm from '@/pages/dashboard/bills/PaymentConfirm'
-import PaymentHistory from '@/pages/dashboard/bills/PaymentHistory'
+// Sprint 2 Pages (User Portal Consolidated)
+import UserBillingDashboard from '@/pages/dashboard/bills/UserBillingDashboard'
+import UserInformationDashboard from '@/pages/dashboard/user/UserInformationDashboard'
 import CashReports from '@/pages/dashboard/finance/CashReports'
 import GallonsInfo from '@/pages/dashboard/gallons/GallonsInfo'
 import MyDuties from '@/pages/dashboard/duties/MyDuties'
-import Notifications from '@/pages/dashboard/user/Notifications'
-import Announcements from '@/pages/dashboard/user/Announcements'
 
 // Sprint 3 Pages (Super Admin & Profil)
 import ManajemenWarga from '@/pages/dashboard/admin/ManajemenWarga'
@@ -41,8 +37,6 @@ import MasterData from '@/pages/dashboard/admin/MasterData'
 import NotificationSettings from '@/pages/dashboard/admin/NotificationSettings'
 import BackupRestore from '@/pages/dashboard/admin/BackupRestore'
 import SystemSettings from '@/pages/dashboard/admin/SystemSettings'
-
-// Sprint 4 Pages (Admin/Bendahara - Removed individual imports as they are used in tabs)
 
 export default function App() {
   const { loadUser, isLoading } = useAuth()
@@ -94,18 +88,20 @@ export default function App() {
 
           {/* USER / PENGHUNI ROUTES */}
           <Route element={<ProtectedRoute allowedRoles={['super admin', 'admin', 'user']} />}>
-            <Route path="/dashboard/bills" element={<ResidentBillsList />} />
+            <Route path="/dashboard/billing-user" element={<UserBillingDashboard />} />
+            <Route path="/dashboard/information" element={<UserInformationDashboard />} />
             <Route path="/dashboard/profile" element={<ProfileSettings />} />
-
-            {/* New User Pages (Sprint 2) */}
-            <Route path="/dashboard/payment-confirm" element={<PaymentConfirm />} />
-            <Route path="/dashboard/payment-history" element={<PaymentHistory />} />
             <Route path="/dashboard/cash-reports" element={<CashReports />} />
             <Route path="/dashboard/gallons-info" element={<GallonsInfo />} />
             <Route path="/dashboard/duties-mine" element={<MyDuties />} />
+
+            {/* Legacy Routes Redirect */}
+            <Route path="/dashboard/bills" element={<Navigate to="/dashboard/billing-user" replace />} />
+            <Route path="/dashboard/payment-confirm" element={<Navigate to="/dashboard/billing-user" replace />} />
+            <Route path="/dashboard/payment-history" element={<Navigate to="/dashboard/billing-user" replace />} />
             <Route path="/dashboard/duties-confirm" element={<Navigate to="/dashboard/duties-mine" replace />} />
-            <Route path="/dashboard/notifications" element={<Notifications />} />
-            <Route path="/dashboard/announcements" element={<Announcements />} />
+            <Route path="/dashboard/notifications" element={<Navigate to="/dashboard/information" replace />} />
+            <Route path="/dashboard/announcements" element={<Navigate to="/dashboard/information" replace />} />
           </Route>
 
         </Route>

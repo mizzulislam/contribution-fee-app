@@ -3,7 +3,7 @@ import {
   LayoutDashboard, Users, ReceiptText, WalletCards,
   ArrowDownCircle, Droplets, CalendarCheck, LogOut, Bell,
   Settings, ShieldCheck, Database, FileText, Activity, AlertTriangle, Shield,
-  BadgeDollarSign, SearchCheck, RefreshCw, FileLineChart, Store, BellRing, UserCircle, Sparkles
+  BadgeDollarSign, SearchCheck, RefreshCw, FileLineChart, Store, BellRing, UserCircle, Sparkles, Megaphone
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useSidebarStore } from "@/stores/sidebar-store"
@@ -39,15 +39,11 @@ export function Sidebar() {
 
   const userNav = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-    { name: 'Tagihan Saya', path: '/dashboard/bills', icon: WalletCards },
-    { name: 'Konfirmasi Bayar', path: '/dashboard/payment-confirm', icon: SearchCheck },
-    { name: 'Riwayat Bayar', path: '/dashboard/payment-history', icon: ReceiptText },
+    { name: 'Pusat Pembayaran', path: '/dashboard/billing-user', icon: WalletCards },
     { name: 'Kas Kos', path: '/dashboard/cash-reports', icon: FileLineChart },
     { name: 'Info Galon', path: '/dashboard/gallons-info', icon: Droplets },
-    { name: 'Piket Saya', path: '/dashboard/duties-mine', icon: CalendarCheck },
-    { name: 'Lapor Piket', path: '/dashboard/duties-confirm', icon: ShieldCheck },
-    { name: 'Notifikasi', path: '/dashboard/notifications', icon: Bell },
-    { name: 'Pengumuman', path: '/dashboard/announcements', icon: FileText },
+    { name: 'Kalender Kos', path: '/dashboard/duties-mine', icon: CalendarCheck },
+    { name: 'Pusat Informasi', path: '/dashboard/information', icon: Megaphone },
   ]
 
   let navItems = userNav
