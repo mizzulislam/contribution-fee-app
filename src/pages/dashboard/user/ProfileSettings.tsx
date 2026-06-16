@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { User, Mail, Lock, Camera, Save, Loader2, CheckCircle2 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { spreadsheetApi } from '@/lib/spreadsheet'
@@ -14,12 +14,6 @@ export default function ProfileSettings() {
     email: profile?.email || 'budi@example.com',
     phone: '081234567890'
   })
-
-  useEffect(() => {
-    if (profile) {
-      setFormData(prev => ({...prev, name: profile.full_name, email: profile.email}))
-    }
-  }, [profile])
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -37,7 +31,7 @@ export default function ProfileSettings() {
         const { success, error } = await spreadsheetApi.put('Users', payload)
         
         if (!success) {
-          throw new Error((error as any)?.message || 'Gagal menyimpan profil')
+          throw new Error(error instanceof Error ? error.message : 'Gagal menyimpan profil')
         }
         
         // Update the local authentication state so UI reflects the changes instantly
@@ -49,22 +43,17 @@ export default function ProfileSettings() {
 
       setToastMessage('Profil berhasil diperbarui!')
       setTimeout(() => setToastMessage(''), 3000)
-    } catch (error: any) {
-      alert("Error: " + error.message)
+    } catch (error) {
+      alert("Error: " + (error instanceof Error ? error.message : 'Terjadi kesalahan saat menyimpan profil'))
     } finally {
       setIsSaving(false)
       setIsEditing(false)
     }
   }
 
-  const [photoUrl, setPhotoUrl] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (profile?.id) {
-      const savedPhoto = localStorage.getItem(`profile_photo_${profile.id}`)
-      if (savedPhoto) setPhotoUrl(savedPhoto)
-    }
-  }, [profile?.id])
+  const [photoUrl, setPhotoUrl] = useState<string | null>(() => {
+    return profile?.id ? localStorage.getItem(`profile_photo_${profile.id}`) : null
+  })
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]

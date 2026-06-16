@@ -1,32 +1,54 @@
 import { useState, useEffect } from 'react'
-import { defaultEngine } from '@/lib/accounting'
+import { defaultEngine, syncAccountingWithSheet } from '@/lib/accounting'
 import type { Account, AccountType } from '@/lib/accounting'
 import { Save, AlertCircle, Plus, Trash2, CheckCircle2, AlertTriangle, Scale } from 'lucide-react'
 import { spreadsheetApi } from '@/lib/spreadsheet'
 import { mergeAccounts } from '@/lib/chartOfAccounts'
 import Select from '@/components/ui/Select'
+import { syncBillsWithAccountingEntries } from '@/lib/billingAccountingSync'
 
 interface EntryLineForm {
   accountNumber: string
   amount: string
 }
 
-export default function JournalEntryForm({ onSuccess }: { onSuccess?: () => void }) {
+interface JournalEntryFormProps {
+  onSuccess?: () => void
+  editingEntry?: {
+    id: string
+    date: string
+    description: string
+    debits: { accountNumber: string; amount: number }[]
+    credits: { accountNumber: string; amount: number }[]
+  }
+}
+
+export default function JournalEntryForm({ onSuccess, editingEntry }: JournalEntryFormProps) {
   const [accounts, setAccounts] = useState<Account[]>([])
   const [isSyncing, setIsSyncing] = useState(true)
 
   // Compound Entry State
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0])
-  const [debits, setDebits] = useState<EntryLineForm[]>([{ accountNumber: '', amount: '' }])
-  const [credits, setCredits] = useState<EntryLineForm[]>([{ accountNumber: '', amount: '' }])
-  const [description, setDescription] = useState('')
+  const [date, setDate] = useState(() => {
+    return editingEntry ? editingEntry.date : new Date().toISOString().split('T')[0]
+  })
+  const [debits, setDebits] = useState<EntryLineForm[]>(() => {
+    if (editingEntry) {
+      return editingEntry.debits.map(d => ({ accountNumber: d.accountNumber, amount: String(d.amount) }))
+    }
+    return [{ accountNumber: '', amount: '' }]
+  })
+  const [credits, setCredits] = useState<EntryLineForm[]>(() => {
+    if (editingEntry) {
+      return editingEntry.credits.map(c => ({ accountNumber: c.accountNumber, amount: String(c.amount) }))
+    }
+    return [{ accountNumber: '', amount: '' }]
+  })
+  const [description, setDescription] = useState(() => {
+    return editingEntry ? editingEntry.description : ''
+  })
   const [error, setError] = useState('')
 
-  useEffect(() => {
-    refreshData()
-  }, [])
-
-  const refreshData = async () => {
+  async function refreshData() {
     setIsSyncing(true)
     try {
       const { data } = await spreadsheetApi.get('MasterData')
@@ -55,6 +77,10 @@ export default function JournalEntryForm({ onSuccess }: { onSuccess?: () => void
     }
   }
 
+  useEffect(() => {
+    refreshData()
+  }, [])
+
   // --- Dynamic Form Handlers ---
   const addDebitRow = () => setDebits([...debits, { accountNumber: '', amount: '' }])
   const removeDebitRow = (index: number) => setDebits(debits.filter((_, i) => i !== index))
@@ -76,7 +102,7 @@ export default function JournalEntryForm({ onSuccess }: { onSuccess?: () => void
   const totalCreditAmount = credits.reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0)
   const isBalanced = totalDebitAmount > 0 && Math.abs(totalDebitAmount - totalCreditAmount) < 0.001
 
-  const handleRecord = () => {
+  const handleRecord = async () => {
     setError('')
     try {
       if (!description.trim()) {
@@ -101,37 +127,64 @@ export default function JournalEntryForm({ onSuccess }: { onSuccess?: () => void
         throw new Error(`Total Debit tidak sama dengan Total Kredit. Neraca harus seimbang!`)
       }
 
-      // Record transaction locally
-      defaultEngine.recordTransaction(date, parsedDebits, parsedCredits, description)
-      const newEntryId = defaultEngine.journal.getEntries()[defaultEngine.journal.getEntries().length - 1].id
+      setIsSyncing(true)
 
-      // Post to Google Sheets
-      const entryData = {
-        id: newEntryId,
+      let entryData: any = {
+        id: editingEntry ? editingEntry.id : `JE-${Date.now().toString().slice(-5)}`,
         date: date,
         description: description,
         debits: JSON.stringify(parsedDebits),
         credits: JSON.stringify(parsedCredits),
-        created_at: new Date().toISOString()
       }
-      
-      // Don't await directly to avoid blocking UI too long, or await and show loading.
-      // Since there's no loading state for submit, we will just await it.
-      setIsSyncing(true)
-      spreadsheetApi.post('JournalEntries', entryData).finally(() => {
-        setIsSyncing(false)
-        // Reset form
-        setDebits([{ accountNumber: '', amount: '' }])
-        setCredits([{ accountNumber: '', amount: '' }])
-        setDescription('')
-        
-        if (onSuccess) {
-          onSuccess()
+
+      if (editingEntry) {
+        // Fetch existing entry from sheet to merge other fields
+        const { data: sheetsData } = await spreadsheetApi.get('JournalEntries')
+        if (Array.isArray(sheetsData)) {
+          const original = sheetsData.find(e => String(e.id) === String(editingEntry.id))
+          if (original) {
+            entryData = {
+              ...original,
+              ...entryData,
+              updated_at: new Date().toISOString()
+            }
+          }
         }
-      })
-    } catch (err: any) {
+        await spreadsheetApi.put('JournalEntries', entryData)
+      } else {
+        entryData.created_at = new Date().toISOString()
+        await spreadsheetApi.post('JournalEntries', entryData)
+      }
+
+      const [billsRes, usersRes] = await Promise.all([
+        spreadsheetApi.get('Bills'),
+        spreadsheetApi.get('Users'),
+      ])
+
+      if (Array.isArray(billsRes.data)) {
+        await syncBillsWithAccountingEntries({
+          bills: billsRes.data,
+          journalEntries: [entryData],
+          users: Array.isArray(usersRes.data) ? usersRes.data : [],
+          persist: true,
+        })
+      }
+
+      // Re-synchronize local defaultEngine singleton so it is 100% updated with the spreadsheet
+      await syncAccountingWithSheet()
+
+      // Reset form
+      setDebits([{ accountNumber: '', amount: '' }])
+      setCredits([{ accountNumber: '', amount: '' }])
+      setDescription('')
+      
+      if (onSuccess) {
+        onSuccess()
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Gagal merekam transaksi')
+    } finally {
       setIsSyncing(false)
-      setError(err.message)
     }
   }
 
@@ -147,7 +200,7 @@ export default function JournalEntryForm({ onSuccess }: { onSuccess?: () => void
   return (
     <div className="bg-white p-6 sm:p-8 md:p-10 w-full">
       <div className="flex justify-between items-center border-b pb-5 mb-6 border-gray-100 pr-12">
-        <h3 className="font-bold text-gray-900 text-xl tracking-tight">Input Jurnal Cepat (Compound Entry)</h3>
+        <h3 className="font-bold text-gray-900 text-xl tracking-tight">{editingEntry ? 'Edit Jurnal Umum' : 'Input Jurnal Cepat (Compound Entry)'}</h3>
       </div>
       
       {error && (

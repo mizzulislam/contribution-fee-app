@@ -1,32 +1,57 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { spreadsheetApi } from '@/lib/spreadsheet'
-import { Search, SearchCheck, CheckCircle2, XCircle, Eye, X, AlertTriangle, Info, FileText } from 'lucide-react'
+import { Search, SearchCheck, CheckCircle2, XCircle, Eye, X, AlertTriangle, FileText } from 'lucide-react'
 import { TableLoader } from '@/components/ui/TableLoader'
+import { isDateInPeriod, type PeriodFilter } from '@/lib/accounting/period'
 
-export default function Verification() {
-  const [verifications, setVerifications] = useState<any[]>([])
+interface PaymentVerification {
+  id: number | string
+  billId?: number | string
+  bill_id?: number | string
+  resident_name?: string
+  room_number?: string
+  title?: string
+  date_submitted?: string
+  amount: number
+  status: string
+  date_verified?: string
+  updated_at?: string
+  fileName?: string
+  proofFileName?: string
+  proofMimeType?: string
+  proofDataUrl?: string
+}
+
+interface VerificationProps {
+  period?: PeriodFilter
+}
+
+const defaultPeriod: PeriodFilter = { preset: 'all' }
+
+export default function Verification({ period = defaultPeriod }: VerificationProps) {
+  const [verifications, setVerifications] = useState<PaymentVerification[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [toastMessage, setToastMessage] = useState('')
-  const [isImageModalOpen, setIsImageModalOpen] = useState(false)
+  const [previewPayment, setPreviewPayment] = useState<PaymentVerification | null>(null)
   const [alertDialog, setAlertDialog] = useState({ isOpen: false, title: '', message: '', isConfirm: false, onConfirm: () => {} })
 
-  useEffect(() => {
-    fetchVerifications()
-  }, [])
-
-  const fetchVerifications = async () => {
+  async function fetchVerifications() {
     setLoading(true)
-    const { data, error } = await spreadsheetApi.get('Payments')
+    const { data } = await spreadsheetApi.get('Payments')
     
     if (data && Array.isArray(data)) {
-      setVerifications(data.filter((p: any) => p.status === 'Menunggu Verifikasi' || p.status === 'pending_verification'))
+      setVerifications(data.filter((p: PaymentVerification) => p.status === 'Menunggu Verifikasi' || p.status === 'pending_verification'))
     } else {
       setVerifications([])
     }
     setLoading(false)
   }
+
+  useEffect(() => {
+    fetchVerifications()
+  }, [])
 
   const formatCurrency = (amount: number) => {
     return (
@@ -37,12 +62,15 @@ export default function Verification() {
     )
   }
 
-  const filtered = verifications.filter(v => 
-    v.resident_name?.toLowerCase().includes(search.toLowerCase()) || 
-    v.title?.toLowerCase().includes(search.toLowerCase())
-  )
+  const filtered = verifications.filter(v => {
+    const matchesSearch =
+      v.resident_name?.toLowerCase().includes(search.toLowerCase()) || 
+      v.title?.toLowerCase().includes(search.toLowerCase())
+    const matchesPeriod = isDateInPeriod(v.date_submitted || v.updated_at || '', period)
+    return matchesSearch && matchesPeriod
+  })
 
-  const confirmAction = (id: number, action: 'approve' | 'reject') => {
+  const confirmAction = (id: number | string, action: 'approve' | 'reject') => {
     const actName = action === 'approve' ? 'menyetujui' : 'menolak'
     setAlertDialog({
       isOpen: true,
@@ -53,20 +81,52 @@ export default function Verification() {
     })
   }
 
-  const handleAction = async (id: number, action: 'approve' | 'reject') => {
+  const handleAction = async (id: number | string, action: 'approve' | 'reject') => {
     const item = verifications.find(v => v.id === id)
     if (!item) return
     
-    const newStatus = action === 'approve' ? 'Lunas' : 'Ditolak'
+    const newStatus = action === 'approve' ? 'paid' : 'rejected'
+    const billStatus = action === 'approve' ? 'paid' : 'rejected'
     setVerifications(verifications.filter(v => v.id !== id)) // Optimistic update
     
     const payload = {
       ...item,
       status: newStatus,
+      date_verified: action === 'approve' ? new Date().toISOString() : item.date_verified,
       updated_at: new Date().toISOString()
     }
+
+    const targetBillId = item.billId || item.bill_id
+    let billPayload: any = null
+
+    if (targetBillId) {
+      const { data: billsData } = await spreadsheetApi.get('Bills')
+      if (Array.isArray(billsData)) {
+        const foundBill = billsData.find(b => String(b.id) === String(targetBillId))
+        if (foundBill) {
+          billPayload = {
+            ...foundBill,
+            status: billStatus,
+            updated_at: new Date().toISOString()
+          }
+        }
+      }
+    }
+
+    if (!billPayload && targetBillId) {
+      billPayload = {
+        id: targetBillId,
+        status: billStatus,
+        updated_at: new Date().toISOString()
+      }
+    }
     
-    await spreadsheetApi.put('Payments', payload)
+    await Promise.all([
+      spreadsheetApi.put('Payments', payload),
+      billPayload
+        ? spreadsheetApi.put('Bills', billPayload)
+        : Promise.resolve({ success: true, error: null }),
+    ])
     
     setAlertDialog(prev => ({...prev, isOpen: false}))
     setToastMessage(`Pembayaran berhasil di-${action === 'approve' ? 'setujui' : 'tolak'}.`)
@@ -129,12 +189,16 @@ export default function Verification() {
                     <td className="px-6 py-4">{item.date_submitted}</td>
                     <td className="px-6 py-4 font-semibold text-gray-900">{formatCurrency(item.amount)}</td>
                     <td className="px-6 py-4">
-                      <button 
-                        onClick={() => setIsImageModalOpen(true)}
-                        className="flex items-center text-primary hover:text-primary-dark transition-colors font-medium"
-                      >
-                        <Eye className="w-4 h-4 mr-1" /> Lihat Bukti
-                      </button>
+                      {item.proofDataUrl || item.proofFileName || item.fileName ? (
+                        <button
+                          onClick={() => setPreviewPayment(item)}
+                          className="flex items-center text-primary hover:text-primary-dark transition-colors font-medium"
+                        >
+                          <Eye className="w-4 h-4 mr-1" /> Lihat Bukti
+                        </button>
+                      ) : (
+                        <span className="text-xs text-gray-400">Tidak ada bukti</span>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex space-x-2">
@@ -173,26 +237,31 @@ export default function Verification() {
         document.body
       )}
 
-      {/* Image Preview Modal */}
-      {isImageModalOpen && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/80 backdrop-blur-sm" onClick={() => setIsImageModalOpen(false)}>
+      {/* Payment Proof Preview Modal */}
+      {previewPayment && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/80 backdrop-blur-sm" onClick={() => setPreviewPayment(null)}>
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-2 relative" onClick={e => e.stopPropagation()}>
             <button 
-              onClick={() => setIsImageModalOpen(false)}
+              onClick={() => setPreviewPayment(null)}
               className="absolute -top-12 right-0 text-white hover:text-gray-300 p-2"
             >
               <X className="w-8 h-8" />
             </button>
             <div className="bg-gray-100 rounded-xl overflow-hidden aspect-[3/4] flex items-center justify-center relative">
-              {/* Dummy Image Placeholder */}
-              <div className="text-center p-8">
-                <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500 font-medium">Bukti Transfer (Simulasi)</p>
-                <p className="text-xs text-gray-400 mt-2">Dalam versi produksi, gambar struk asli akan dirender di sini.</p>
-              </div>
+              {previewPayment.proofDataUrl?.startsWith('data:image/') ? (
+                <img src={previewPayment.proofDataUrl} alt="Bukti transfer" className="h-full w-full object-contain" />
+              ) : previewPayment.proofDataUrl?.startsWith('data:application/pdf') ? (
+                <iframe src={previewPayment.proofDataUrl} title="Bukti transfer PDF" className="h-full w-full bg-white" />
+              ) : (
+                <div className="text-center p-8">
+                  <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500 font-medium">{previewPayment.proofFileName || previewPayment.fileName || 'Bukti transfer'}</p>
+                  <p className="text-xs text-gray-400 mt-2">File tersimpan sebagai metadata tanpa pratinjau visual.</p>
+                </div>
+              )}
             </div>
             <div className="p-4 text-center">
-              <button onClick={() => setIsImageModalOpen(false)} className="btn-secondary w-full">Tutup Preview</button>
+              <button onClick={() => setPreviewPayment(null)} className="btn-secondary w-full">Tutup Preview</button>
             </div>
           </div>
         </div>,
@@ -201,8 +270,14 @@ export default function Verification() {
 
       {/* Alert Dialog */}
       {alertDialog.isOpen && createPortal(
-        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm transition-opacity">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden transform transition-all p-6 text-center">
+        <div
+          className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm transition-opacity"
+          onMouseDown={() => setAlertDialog(prev => ({...prev, isOpen: false}))}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden transform transition-all p-6 text-center"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
             <div className={`mx-auto w-14 h-14 flex items-center justify-center rounded-full mb-5 ${alertDialog.title.includes('Tolak') ? 'bg-red-100 text-red-600' : 'bg-primary-100 text-primary-600'}`}>
               <AlertTriangle className="w-7 h-7" />
             </div>

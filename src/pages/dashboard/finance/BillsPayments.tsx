@@ -1,11 +1,19 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { spreadsheetApi } from '@/lib/spreadsheet'
-import { CheckCircle2, Clock, XCircle, FileText, Search, Bell, Plus, X, Save, Check, Pencil, Trash2 } from 'lucide-react'
+import { CheckCircle2, Clock, XCircle, FileText, Search, Bell, Plus, X, Save, Check, Pencil, Trash2, Edit } from 'lucide-react'
 import { TableLoader } from '@/components/ui/TableLoader'
 import Select from '@/components/ui/Select'
+import { isDateInPeriod, toInputDate, type PeriodFilter } from '@/lib/accounting/period'
+import { syncBillsWithAccountingEntries } from '@/lib/billingAccountingSync'
 
-export default function BillsPayments() {
+interface BillsPaymentsProps {
+  period?: PeriodFilter
+}
+
+const defaultPeriod: PeriodFilter = { preset: 'all' }
+
+export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsProps) {
   const [bills, setBills] = useState<any[]>([])
   const [users, setUsers] = useState<any[]>([])
   const [templates, setTemplates] = useState<any[]>([])
@@ -18,7 +26,9 @@ export default function BillsPayments() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [toastMessage, setToastMessage] = useState('')
   const [newBill, setNewBill] = useState({ resident_name: '', title: '', due_date: '', amount: 0 })
+  const [billingDueDay, setBillingDueDay] = useState(12)
   const [editingBillId, setEditingBillId] = useState<number | string | null>(null)
+  const [isEditMode, setIsEditMode] = useState(false)
   const [selectedBillIds, setSelectedBillIds] = useState<(string | number)[]>([])
   const [isBulkActioning, setIsBulkActioning] = useState(false)
 
@@ -26,21 +36,53 @@ export default function BillsPayments() {
     fetchBills()
   }, [])
 
+  const clampDueDay = (day: number, baseDate = new Date()) => {
+    const lastDay = new Date(baseDate.getFullYear(), baseDate.getMonth() + 1, 0).getDate()
+    return Math.min(Math.max(day || 1, 1), lastDay)
+  }
+
+  const buildDefaultDueDate = (day = billingDueDay, baseDate = new Date()) => {
+    return toInputDate(new Date(baseDate.getFullYear(), baseDate.getMonth(), clampDueDay(day, baseDate)))
+  }
+
   const fetchBills = async () => {
     setLoading(true)
-    const [billsRes, usersRes] = await Promise.all([
+    const [billsRes, usersRes, settingsRes, journalRes] = await Promise.all([
       spreadsheetApi.get('Bills'),
-      spreadsheetApi.get('Users')
+      spreadsheetApi.get('Users'),
+      spreadsheetApi.get('Settings'),
+      spreadsheetApi.get('JournalEntries')
     ])
+
+    const userRows = usersRes.data && Array.isArray(usersRes.data) ? usersRes.data : []
     
     if (billsRes.data && Array.isArray(billsRes.data)) {
-      setBills(billsRes.data)
+      const { bills: syncedBills, syncedCount } = await syncBillsWithAccountingEntries({
+        bills: billsRes.data,
+        journalEntries: journalRes.data && Array.isArray(journalRes.data) ? journalRes.data : [],
+        users: userRows,
+        persist: true,
+      })
+      setBills(syncedBills)
+      if (syncedCount > 0) {
+        setToastMessage(`${syncedCount} status tagihan tersinkron dari jurnal akuntansi.`)
+        setTimeout(() => setToastMessage(''), 3000)
+      }
     } else {
       setBills([])
     }
 
-    if (usersRes.data && Array.isArray(usersRes.data)) {
-      setUsers(usersRes.data)
+    setUsers(userRows)
+
+    if (settingsRes.data && Array.isArray(settingsRes.data) && settingsRes.data[0]) {
+      const configuredDay = Number(settingsRes.data[0].defaultBillingDueDay || settingsRes.data[0].billingDueDay)
+      if (Number.isFinite(configuredDay) && configuredDay >= 1) {
+        const normalizedDay = Math.min(Math.max(configuredDay, 1), 31)
+        setBillingDueDay(normalizedDay)
+        setNewBill(prev => prev.due_date ? prev : { ...prev, due_date: buildDefaultDueDate(normalizedDay) })
+      }
+    } else {
+      setNewBill(prev => prev.due_date ? prev : { ...prev, due_date: buildDefaultDueDate(12) })
     }
 
     setLoading(false)
@@ -102,6 +144,7 @@ export default function BillsPayments() {
       setBills(bills.filter(b => !selectedBillIds.includes(b.id)))
       setToastMessage(`${successCount} tagihan berhasil dihapus.`)
       setSelectedBillIds([])
+      setIsEditMode(false)
     } else {
       setToastMessage('Gagal menghapus tagihan.')
     }
@@ -147,7 +190,7 @@ export default function BillsPayments() {
   const closeFormModal = () => {
     setIsAddModalOpen(false)
     setEditingBillId(null)
-    setNewBill({ resident_name: '', title: '', due_date: '', amount: 0 })
+    setNewBill({ resident_name: '', title: '', due_date: buildDefaultDueDate(), amount: 0 })
   }
 
   const getStatusBadge = (status: string) => {
@@ -182,10 +225,14 @@ export default function BillsPayments() {
     return contrib || {}
   }
 
-  const filteredBills = bills.filter(b => 
-    b.resident_name?.toLowerCase().includes(search.toLowerCase()) ||
-    getContributionData(b.contributions).title?.toLowerCase().includes(search.toLowerCase())
-  )
+  const filteredBills = bills.filter(b => {
+    const matchesSearch =
+      b.resident_name?.toLowerCase().includes(search.toLowerCase()) ||
+      getContributionData(b.contributions).title?.toLowerCase().includes(search.toLowerCase())
+
+    const matchesPeriod = isDateInPeriod(b.due_date || b.created_at || '', period)
+    return matchesSearch && matchesPeriod
+  })
 
   return (
     <div className="space-y-6">
@@ -198,7 +245,10 @@ export default function BillsPayments() {
           <p className="text-text-secondary mt-1">Pantau seluruh status tagihan penghuni dan riwayat pembayarannya.</p>
         </div>
         <button 
-          onClick={() => setIsAddModalOpen(true)}
+          onClick={() => {
+            setNewBill(prev => ({ ...prev, due_date: prev.due_date || buildDefaultDueDate() }))
+            setIsAddModalOpen(true)
+          }}
           className="btn-primary flex items-center"
         >
           <Plus className="w-5 h-5 mr-2" /> Buat Tagihan Baru
@@ -206,8 +256,8 @@ export default function BillsPayments() {
       </div>
 
       <div className="card-container">
-        <div className="p-4 sm:p-6 border-b border-border flex flex-col sm:flex-row gap-4 justify-between items-center bg-gray-50/50 rounded-t-[20px]">
-          <div className="relative w-full sm:max-w-md">
+        <div className="py-4 pr-4 pl-0 sm:py-6 sm:pr-6 sm:pl-0 border-b border-border flex flex-col sm:flex-row gap-4 justify-between items-center bg-gray-50/50 rounded-t-[20px]">
+          <div className="relative w-full sm:max-w-lg">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input 
               type="text" 
@@ -217,23 +267,35 @@ export default function BillsPayments() {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          {selectedBillIds.length > 0 && (
+          {!isEditMode ? (
+            <button
+              type="button"
+              onClick={() => setIsEditMode(true)}
+              className="btn-secondary flex h-[42px] w-full items-center justify-center whitespace-nowrap px-4 text-sm text-blue-700 hover:bg-blue-50 hover:border-blue-200 focus:border-gray-200 focus:outline-none focus:ring-0 focus-visible:border-gray-200 focus-visible:outline-none focus-visible:ring-0 sm:w-auto"
+            >
+              <Edit className="w-4 h-4 mr-2 flex-shrink-0" />
+              Edit
+            </button>
+          ) : (
             <div className="flex gap-2 w-full sm:w-auto animate-in fade-in slide-in-from-right-4 duration-300">
-              <button 
-                onClick={handleBulkDelete}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsEditMode(false)
+                  setSelectedBillIds([])
+                }}
                 disabled={isBulkActioning}
-                className="btn-secondary flex items-center justify-center whitespace-nowrap h-[42px] text-sm text-red-600 hover:bg-red-50 hover:border-red-200 border-gray-200 px-4 disabled:opacity-50"
+                className="btn-secondary flex items-center justify-center whitespace-nowrap h-[42px] text-sm px-4 disabled:opacity-50 focus:border-gray-200 focus:outline-none focus:ring-0 focus-visible:border-gray-200 focus-visible:outline-none focus-visible:ring-0"
               >
-                <Trash2 className="w-4 h-4 mr-2 flex-shrink-0" />
-                <span>Hapus Terpilih ({selectedBillIds.length})</span>
+                Batal
               </button>
               <button 
-                onClick={handleBulkPaid}
-                disabled={isBulkActioning}
-                className="btn-primary flex items-center justify-center whitespace-nowrap h-[42px] text-sm px-4 disabled:opacity-50"
+                onClick={handleBulkDelete}
+                disabled={isBulkActioning || selectedBillIds.length === 0}
+                className="btn-secondary flex items-center justify-center whitespace-nowrap h-[42px] text-sm text-red-600 hover:bg-red-50 hover:border-red-200 border-gray-200 px-4 disabled:opacity-50 focus:border-gray-200 focus:outline-none focus:ring-0 focus-visible:border-gray-200 focus-visible:outline-none focus-visible:ring-0"
               >
-                <CheckCircle2 className="w-4 h-4 mr-2 flex-shrink-0" />
-                <span>Tandai Lunas ({selectedBillIds.length})</span>
+                <Trash2 className="w-4 h-4 mr-2 flex-shrink-0" />
+                <span>Hapus Pilihan ({selectedBillIds.length})</span>
               </button>
             </div>
           )}
@@ -243,14 +305,16 @@ export default function BillsPayments() {
           <table className="w-full text-left text-sm">
             <thead className="bg-[#F3F4F6] border-b border-border text-gray-600">
               <tr>
-                <th className="px-6 py-3 font-semibold whitespace-nowrap text-center">
-                  <input 
-                    type="checkbox" 
-                    onChange={(e) => e.target.checked ? setSelectedBillIds(filteredBills.map(b => b.id)) : setSelectedBillIds([])}
-                    checked={filteredBills.length > 0 && selectedBillIds.length === filteredBills.length}
-                    className="form-checkbox h-4 w-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 transition-colors cursor-pointer"
-                  />
-                </th>
+                {isEditMode && (
+                  <th className="px-6 py-3 font-semibold whitespace-nowrap text-center">
+                    <input 
+                      type="checkbox" 
+                      onChange={(e) => e.target.checked ? setSelectedBillIds(filteredBills.map(b => b.id)) : setSelectedBillIds([])}
+                      checked={filteredBills.length > 0 && filteredBills.every(b => selectedBillIds.includes(b.id))}
+                      className="form-checkbox h-4 w-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 transition-colors cursor-pointer"
+                    />
+                  </th>
+                )}
                 <th className="px-6 py-3 font-semibold whitespace-nowrap text-center">Penghuni</th>
                 <th className="px-6 py-3 font-semibold whitespace-nowrap text-center">Keterangan</th>
                 <th className="px-6 py-3 font-semibold whitespace-nowrap text-center">Jatuh Tempo</th>
@@ -261,24 +325,26 @@ export default function BillsPayments() {
             </thead>
             <tbody className="divide-y divide-border text-gray-700 bg-white">
               {loading ? (
-                <TableLoader colSpan={7} text="Memuat data tagihan..." />
+                <TableLoader colSpan={isEditMode ? 7 : 6} text="Memuat data tagihan..." />
               ) : filteredBills.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-text-muted">
+                  <td colSpan={isEditMode ? 7 : 6} className="px-6 py-12 text-center text-text-muted">
                     Tidak ada tagihan yang ditemukan.
                   </td>
                 </tr>
               ) : (
                 filteredBills.map((bill) => (
                   <tr key={bill.id} className="hover:bg-[#ECFDF5] transition-colors">
-                    <td className="px-6 py-4 text-center">
-                      <input 
-                        type="checkbox" 
-                        checked={selectedBillIds.includes(bill.id)}
-                        onChange={(e) => e.target.checked ? setSelectedBillIds([...selectedBillIds, bill.id]) : setSelectedBillIds(selectedBillIds.filter(id => id !== bill.id))}
-                        className="form-checkbox h-4 w-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 transition-colors cursor-pointer"
-                      />
-                    </td>
+                    {isEditMode && (
+                      <td className="px-6 py-4 text-center">
+                        <input 
+                          type="checkbox" 
+                          checked={selectedBillIds.includes(bill.id)}
+                          onChange={(e) => e.target.checked ? setSelectedBillIds([...selectedBillIds, bill.id]) : setSelectedBillIds(selectedBillIds.filter(id => id !== bill.id))}
+                          className="form-checkbox h-4 w-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 transition-colors cursor-pointer"
+                        />
+                      </td>
+                    )}
                     <td className="px-6 py-4">
                       <div className="font-medium text-gray-900">
                         {users.find(u => u.full_name === bill.resident_name)?.nickname || bill.resident_name?.split(' ')[0]}
@@ -350,8 +416,14 @@ export default function BillsPayments() {
 
       {/* Add Bill Modal */}
       {isAddModalOpen && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm"
+          onMouseDown={closeFormModal}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
             <div className="flex justify-between items-center p-6 border-b border-gray-100 bg-gray-50/50">
               <h2 className="text-xl font-bold text-gray-900">{editingBillId ? 'Edit Tagihan' : 'Buat Tagihan Baru'}</h2>
               <button onClick={closeFormModal} className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-200">
@@ -429,7 +501,7 @@ export default function BillsPayments() {
               }
               setTimeout(() => setToastMessage(''), 3000)
               
-              setNewBill({ resident_name: '', title: '', due_date: '', amount: 0 })
+              setNewBill({ resident_name: '', title: '', due_date: buildDefaultDueDate(), amount: 0 })
             }} className="p-6 space-y-4">
               {isLoadingForm ? (
                 <div className="py-8 text-center text-gray-500 text-sm animate-pulse">Memuat form data...</div>
@@ -456,7 +528,7 @@ export default function BillsPayments() {
                       value={newBill.title}
                       onChange={val => {
                         const template = templates.find(t => t.title === val)
-                        let formattedDueDate = newBill.due_date
+                        let formattedDueDate = newBill.due_date || buildDefaultDueDate()
                         if (template && template.due_date) {
                           const today = new Date()
                           const pt = template.contribution_types?.period_type || 'Bulanan'
@@ -485,7 +557,7 @@ export default function BillsPayments() {
                             const days = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu']
                             const targetDay = days.indexOf(template.due_date)
                             if (targetDay !== -1) {
-                              let nextDate = new Date(today)
+                              const nextDate = new Date(today)
                               const diff = (targetDay + 7 - today.getDay()) % 7
                               nextDate.setDate(today.getDate() + (diff === 0 ? 7 : diff))
                               formattedDueDate = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}-${String(nextDate.getDate()).padStart(2, '0')}`
@@ -539,8 +611,14 @@ export default function BillsPayments() {
 
       {/* Detail Modal */}
       {isDetailModalOpen && selectedBill && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm"
+          onMouseDown={() => setIsDetailModalOpen(false)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
             <div className="flex justify-between items-center p-6 border-b border-gray-100 bg-gray-50/50">
               <h2 className="text-xl font-bold text-gray-900">Rincian Tagihan</h2>
               <button onClick={() => setIsDetailModalOpen(false)} className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-200">

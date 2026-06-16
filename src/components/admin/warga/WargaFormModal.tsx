@@ -48,8 +48,14 @@ export function WargaFormModal({
   }
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm transition-opacity">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md transform transition-all">
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm transition-opacity"
+      onMouseDown={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-xl w-full max-w-md transform transition-all"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
         <div className="flex justify-between items-center p-6 border-b border-gray-100 bg-gray-50/50 rounded-t-2xl">
           <h2 className="text-xl font-bold text-gray-900">{editingId ? 'Edit Pengguna' : 'Tambah Pengguna Baru'}</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-200">

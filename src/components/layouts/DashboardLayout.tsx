@@ -1,4 +1,4 @@
-import { Outlet, Link, useLocation, Navigate, useNavigate } from 'react-router-dom'
+import { Outlet, Navigate, useNavigate } from 'react-router-dom'
 import { useState, useRef, useEffect } from 'react'
 import { useAuth, type Role } from '@/hooks/useAuth'
 import { Bell, ArrowRightLeft, ChevronDown, Check } from 'lucide-react'
@@ -8,8 +8,8 @@ import { cn } from '@/lib/utils'
 
 export default function DashboardLayout() {
   const { profile, activeRole, setActiveRole } = useAuth()
-  const location = useLocation()
   const navigate = useNavigate()
+  const { isCollapsed, toggleMobile } = useSidebarStore()
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false)
   const [isSwitching, setIsSwitching] = useState(false)
   const roleDropdownRef = useRef<HTMLDivElement>(null)
@@ -30,8 +30,6 @@ export default function DashboardLayout() {
   if (!profile) {
     return <Navigate to="/login" replace />
   }
-
-  const { isCollapsed, toggleMobile } = useSidebarStore()
 
   const handleRoleSwitch = (role: string) => {
     setIsRoleDropdownOpen(false)

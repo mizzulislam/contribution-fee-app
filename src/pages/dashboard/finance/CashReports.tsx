@@ -2,15 +2,21 @@ import { useState, useEffect } from 'react'
 import { spreadsheetApi } from '@/lib/spreadsheet'
 import { PieChart, ArrowUpRight, ArrowDownRight, Wallet } from 'lucide-react'
 
+interface JournalLine {
+  accountNumber?: string
+  amount: number
+}
+
+interface JournalRow {
+  debits?: string | JournalLine[]
+  credits?: string | JournalLine[]
+}
+
 export default function CashReports() {
   const [data, setData] = useState({ incoming: 0, outgoing: 0, balance: 0 })
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    fetchCash()
-  }, [])
-
-  const fetchCash = async () => {
+  async function fetchCash() {
     setLoading(true)
     const { data } = await spreadsheetApi.get('JournalEntries')
     
@@ -19,30 +25,36 @@ export default function CashReports() {
       let outgoing = 0
       let balance = 0
 
-      data.forEach(je => {
+      data.forEach((je: JournalRow) => {
         try {
           const debits = typeof je.debits === 'string' ? JSON.parse(je.debits) : (je.debits || [])
           const credits = typeof je.credits === 'string' ? JSON.parse(je.credits) : (je.credits || [])
           
           // Asumsi Kas Besar (1100-...)
-          debits.forEach((d: any) => { 
+          debits.forEach((d: JournalLine) => { 
             if (d.accountNumber?.startsWith('110')) {
               incoming += Number(d.amount)
               balance += Number(d.amount)
             }
           })
-          credits.forEach((c: any) => { 
+          credits.forEach((c: JournalLine) => { 
             if (c.accountNumber?.startsWith('110')) {
               outgoing += Number(c.amount)
               balance -= Number(c.amount)
             }
           })
-        } catch (e) {}
+        } catch {
+          // Skip malformed journal rows in public cash transparency.
+        }
       })
       setData({ incoming, outgoing, balance })
     }
     setLoading(false)
   }
+
+  useEffect(() => {
+    fetchCash()
+  }, [])
 
   const formatCurrency = (amount: number) => {
     return (

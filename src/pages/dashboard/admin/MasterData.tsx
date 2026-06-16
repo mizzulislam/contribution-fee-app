@@ -45,7 +45,7 @@ export default function MasterData() {
     fetchPaymentMethods()
   }, [])
 
-  const fetchPaymentMethods = async () => {
+  async function fetchPaymentMethods() {
     try {
       setIsPaymentLoading(true)
       const { data } = await spreadsheetApi.get('PaymentMethods')
@@ -63,7 +63,7 @@ export default function MasterData() {
     }
   }
 
-  const fetchCategories = async () => {
+  async function fetchCategories() {
     try {
       setIsLoading(true)
       const { data } = await spreadsheetApi.get('MasterData')
@@ -83,7 +83,7 @@ export default function MasterData() {
     setIsModalOpen(true)
   }
 
-  const handleOpenEdit = (cat: any) => {
+  const handleOpenEdit = (cat: Account & { id?: string | number }) => {
     setEditingId(cat.id || cat.account_number)
     setFormData({ 
       account_number: cat.account_number, 
@@ -108,14 +108,12 @@ export default function MasterData() {
     if (editingId) {
       const res = await spreadsheetApi.put('MasterData', payload)
       // Jika gagal karena ID tidak ditemukan (berarti ini akun default yang baru pertama kali diedit) atau karena tabel masih kosong
-      const errMessage = (res.error as any)?.message || ''
+      const errMessage = res.error instanceof Error ? res.error.message : ''
       if (!res.success && (errMessage.includes('not found') || errMessage.includes('No data'))) {
-        (payload as any).created_at = new Date().toISOString()
-        await spreadsheetApi.post('MasterData', payload)
+        await spreadsheetApi.post('MasterData', { ...payload, created_at: new Date().toISOString() })
       }
     } else {
-      (payload as any).created_at = new Date().toISOString()
-      await spreadsheetApi.post('MasterData', payload)
+      await spreadsheetApi.post('MasterData', { ...payload, created_at: new Date().toISOString() })
     }
     
     await fetchCategories()
@@ -173,14 +171,12 @@ export default function MasterData() {
     
     if (editingPaymentId) {
       const res = await spreadsheetApi.put('PaymentMethods', payload)
-      const errMessage = (res.error as any)?.message || ''
+      const errMessage = res.error instanceof Error ? res.error.message : ''
       if (!res.success && (errMessage.includes('not found') || errMessage.includes('No data'))) {
-        (payload as any).created_at = new Date().toISOString()
-        await spreadsheetApi.post('PaymentMethods', payload)
+        await spreadsheetApi.post('PaymentMethods', { ...payload, created_at: new Date().toISOString() })
       }
     } else {
-      (payload as any).created_at = new Date().toISOString()
-      await spreadsheetApi.post('PaymentMethods', payload)
+      await spreadsheetApi.post('PaymentMethods', { ...payload, created_at: new Date().toISOString() })
     }
     
     await fetchPaymentMethods()
@@ -255,8 +251,14 @@ export default function MasterData() {
 
       {/* Alert Dialog */}
       {alertDialog.isOpen && createPortal(
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200 p-6 text-center">
+        <div
+          className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm animate-in fade-in duration-200"
+          onMouseDown={() => setAlertDialog(prev => ({...prev, isOpen: false}))}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200 p-6 text-center"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
             <div className="mx-auto w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-4">
               <Trash2 className="w-8 h-8 text-red-500" />
             </div>

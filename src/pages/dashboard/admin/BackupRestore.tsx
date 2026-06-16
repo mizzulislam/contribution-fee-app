@@ -15,7 +15,7 @@ export default function BackupRestore() {
       const tablesToBackup = [
         'Users', 'Gallons', 'Payments', 'MasterData', 'PaymentMethods', 
         'JournalEntries', 'Expenses', 'Bills', 'Bailouts', 'Schedules', 
-        'Contributions', 'Settings'
+        'Contributions', 'Settings', 'Announcements', 'Notifications', 'GallonContainers'
       ]
       
       const backupData: Record<string, any> = {}

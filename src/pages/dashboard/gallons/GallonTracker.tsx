@@ -4,17 +4,58 @@ import { spreadsheetApi } from '@/lib/spreadsheet'
 import { Plus, Loader2, X, Droplets, CalendarClock, Activity, Coffee, Trash2, Beaker, Pencil, Box, Camera, Eye, AlertTriangle, Info, Brain, TrendingUp, Calendar, AlertCircle } from 'lucide-react'
 import Select from '@/components/ui/Select'
 import { TableLoader } from '@/components/ui/TableLoader'
-import { defaultEngine } from '@/lib/accounting'
+import {
+  GALLON_CAPACITY,
+  calculateGallonStock,
+  daysBetween,
+  formatGallonQuantity,
+  isReliableGallonPrediction,
+  parseGallonStockDate,
+} from '@/lib/gallonStock'
+
+interface GallonActivity {
+  id: number
+  date: string
+  quantity: number
+  type: string
+  note?: string
+  userName?: string
+  containerName?: string
+  containerType?: string
+  containerCapacity?: number
+  photoUrl?: string
+  created_at?: string
+}
+
+interface GallonContainer {
+  id: number
+  name: string
+  capacity: number
+  type: string
+  photoUrl?: string
+}
+
+interface GallonPrediction {
+  nextRefillDate: string
+  estimatedGallons: number
+  accuracy: number
+  insight: string
+  chartData: number[]
+  chartDataNormalized: number[]
+  daysLeft: number
+  avgConsumption: string
+  isReliable: boolean
+}
 
 export default function GallonTracker() {
-  const [activities, setActivities] = useState<any[]>([])
+  const [activities, setActivities] = useState<GallonActivity[]>([])
   const [gallonStock, setGallonStock] = useState(0)
   const [loading, setLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [rotateX, setRotateX] = useState(0)
   const [rotateY, setRotateY] = useState(0)
   const [isHovered, setIsHovered] = useState(false)
-  const [prediction, setPrediction] = useState<any>(null)
+  const [prediction, setPrediction] = useState<GallonPrediction | null>(null)
 
   // History Edit State
   const [isHistoryEditMode, setIsHistoryEditMode] = useState(false)
@@ -26,7 +67,7 @@ export default function GallonTracker() {
   
   // Container Management State
   const [activeTab, setActiveTab] = useState<'overview' | 'containers'>('overview')
-  const [containers, setContainers] = useState<any[]>([])
+  const [containers, setContainers] = useState<GallonContainer[]>([])
   const [isContainerModalOpen, setIsContainerModalOpen] = useState(false)
   const [editingContainerId, setEditingContainerId] = useState<number | null>(null)
   const [containerForm, setContainerForm] = useState({ name: '', capacity: 0.6, type: 'Tumbler', photoUrl: '' })
@@ -39,7 +80,9 @@ export default function GallonTracker() {
   const percentRef = useRef(0)
 
   useEffect(() => {
-    setIsFilling(true)
+    const startTimer = setTimeout(() => {
+      setIsFilling(true)
+    }, 0)
     const timer = setTimeout(() => {
       setAnimatedStock(gallonStock)
     }, 100)
@@ -49,13 +92,14 @@ export default function GallonTracker() {
     }, 1600)
     
     return () => {
+      clearTimeout(startTimer)
       clearTimeout(timer)
       clearTimeout(stopFillTimer)
     }
   }, [gallonStock])
 
   useEffect(() => {
-    const targetPercent = Math.min(100, Math.max(0, Math.round((gallonStock / 5) * 100)))
+    const targetPercent = Math.min(100, Math.max(0, Math.round((gallonStock / GALLON_CAPACITY) * 100)))
     if (targetPercent === percentRef.current) return;
 
     let rafId: number;
@@ -91,69 +135,43 @@ export default function GallonTracker() {
     }
   }, [gallonStock])
 
-  useEffect(() => {
-    fetchData()
-  }, [])
-
-  const fetchData = async () => {
+  async function fetchData() {
     setLoading(true)
     
-    // Fetch Containers
-    const resContainers = await spreadsheetApi.get('GallonContainers')
-    const contData = Array.isArray(resContainers.data) ? resContainers.data : []
-    if (contData.length === 0) {
-      setContainers([
-        { id: 1, name: 'Tumbler Standar', capacity: 0.6, type: 'Tumbler' },
-        { id: 2, name: 'Gelas Kopi', capacity: 0.25, type: 'Gelas' },
-      ])
-    } else {
-      setContainers(contData)
-    }
+    const [resContainers, gallonsRes, journalRes] = await Promise.all([
+      spreadsheetApi.get('GallonContainers'),
+      spreadsheetApi.get('Gallons'),
+      spreadsheetApi.get('JournalEntries'),
+    ])
 
-    const { data } = await spreadsheetApi.get('Gallons')
-    
+    const contData = Array.isArray(resContainers.data) ? resContainers.data : []
+    setContainers(contData)
+
     // 1. Fetch usage data (pengurangan)
-    const rawData = Array.isArray(data) ? data : []
+    const rawData = Array.isArray(gallonsRes.data) ? gallonsRes.data as GallonActivity[] : []
+    const journalEntries = Array.isArray(journalRes.data) ? journalRes.data : []
     const usageData = rawData.filter(g => g.type === 'Penggunaan')
     setActivities(usageData.reverse())
 
-    let usedGallons = 0
-    usageData.forEach(g => { usedGallons += Number(g.quantity) })
-
-    // 2. Fetch financial data for purchases (penambahan) dari Ledger
-    let purchasedGallons = 0
-    const entries = defaultEngine.journal.getEntries()
-    entries.forEach(entry => {
-      entry.debits.forEach(d => {
-        // Asumsi akun 5106 adalah Beban Perlengkapan / Air Galon
-        if (d.accountNumber === '5106') {
-          const match = entry.description.match(/(\d+)\s*galon/i)
-          if (match) {
-            purchasedGallons += parseInt(match[1], 10)
-          } else {
-            // Fallback: asumsi harga 1 galon adalah Rp 20.000
-            purchasedGallons += Math.floor(d.amount / 20000)
-          }
-        }
-      })
+    const stockSummary = calculateGallonStock({
+      gallonRows: rawData,
+      journalEntries,
     })
-
-    const finalStock = purchasedGallons - usedGallons
+    const usedGallons = stockSummary.used
+    const finalStock = stockSummary.stock
     setGallonStock(finalStock)
 
     // Calculate real AI prediction data
     let avgConsumption = 0
-    let chartData = [0, 0, 0, 0, 0, 0, 0] // H-6 to H-0 (Today)
+    const chartData = [0, 0, 0, 0, 0, 0, 0] // H-6 to H-0 (Today)
     
     if (usageData.length > 0) {
-      const dates = usageData.map(d => new Date(d.date).getTime()).filter(t => !isNaN(t))
+      const dates = usageData.map(d => parseGallonStockDate(d.date).getTime()).filter(t => !isNaN(t))
       const oldest = dates.length > 0 ? Math.min(...dates) : new Date().getTime()
       const now = new Date().getTime()
-      let daysDiff = Math.ceil((now - oldest) / (1000 * 3600 * 24))
-      if (daysDiff < 1) daysDiff = 1
+      const daysDiff = daysBetween(new Date(oldest), new Date(now))
       
       avgConsumption = usedGallons / daysDiff
-      if (avgConsumption === 0) avgConsumption = 0.8 // fallback
       
       for (let i = 0; i < 7; i++) {
         const d = new Date(now - (6 - i) * 24 * 3600 * 1000)
@@ -161,12 +179,11 @@ export default function GallonTracker() {
         const dayUsed = usageData.filter(u => u.date === dateStr).reduce((acc, u) => acc + Number(u.quantity), 0)
         chartData[i] = dayUsed
       }
-    } else {
-      avgConsumption = 0.8 // fallback
     }
 
-    const daysLeft = avgConsumption > 0 ? finalStock / avgConsumption : 0
-    const estDate = new Date(Date.now() + daysLeft * 24 * 3600 * 1000)
+    const isReliable = isReliableGallonPrediction(usageData.length, avgConsumption)
+    const daysLeft = isReliable ? finalStock / avgConsumption : 0
+    const estDate = isReliable ? new Date(Date.now() + daysLeft * 24 * 3600 * 1000) : null
     const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
     
     // Normalize chart data for UI height (percentage)
@@ -174,18 +191,28 @@ export default function GallonTracker() {
     const chartDataNormalized = chartData.map(val => (val / maxChartVal) * 100)
 
     setPrediction({
-      nextRefillDate: `${estDate.getDate()} ${months[estDate.getMonth()]} ${estDate.getFullYear()}`,
-      estimatedGallons: Math.ceil(avgConsumption * 14) || 2, // 2 weeks rec
-      accuracy: 94, // AI model confidence score
-      insight: `Berdasarkan riwayat data nyata, rata-rata konsumsi harian adalah ${avgConsumption.toFixed(2)} Galon/hari. Stok saat ini diprediksi habis dalam ${Math.floor(daysLeft)} hari.`,
+      nextRefillDate: estDate ? `${estDate.getDate()} ${months[estDate.getMonth()]} ${estDate.getFullYear()}` : '-',
+      estimatedGallons: isReliable ? Math.ceil(avgConsumption * 14) : 0,
+      accuracy: Math.min(100, Math.round((usageData.length / 14) * 100)),
+      insight: isReliable
+        ? `Berdasarkan riwayat penggunaan yang tersimpan, rata-rata konsumsi harian adalah ${avgConsumption.toFixed(2)} Galon/hari. Stok saat ini diprediksi habis dalam ${Math.floor(daysLeft)} hari.`
+        : 'Riwayat penggunaan galon belum cukup kuat untuk membuat prediksi hari habis yang akurat.',
       chartData,
       chartDataNormalized,
       daysLeft: Math.max(0, Math.floor(daysLeft)),
-      avgConsumption: avgConsumption.toFixed(2)
+      avgConsumption: formatGallonQuantity(avgConsumption),
+      isReliable
     })
 
     setLoading(false)
   }
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchData()
+    }, 0)
+    return () => clearTimeout(timer)
+  }, [])
 
   const handleSaveContainer = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -201,8 +228,10 @@ export default function GallonTracker() {
       }
       
       const res = await spreadsheetApi.put('GallonContainers', payload)
-      if (res.success || !res.success) { // Mock fallback
+      if (res.success) {
         setContainers(containers.map(c => c.id === editingContainerId ? payload : c))
+      } else {
+        alert('Gagal menyimpan wadah ke sumber data.')
       }
     } else {
       const payload = {
@@ -214,8 +243,10 @@ export default function GallonTracker() {
       }
       
       const res = await spreadsheetApi.post('GallonContainers', payload)
-      if (res.success || !res.success) {
+      if (res.success) {
         setContainers([...containers, payload])
+      } else {
+        alert('Gagal menambahkan wadah ke sumber data.')
       }
     }
     
@@ -225,7 +256,7 @@ export default function GallonTracker() {
     setEditingContainerId(null)
   }
 
-  const handleEditContainer = (c: any) => {
+  const handleEditContainer = (c: GallonContainer) => {
     setContainerForm({ name: c.name, capacity: c.capacity, type: c.type, photoUrl: c.photoUrl || '' })
     setEditingContainerId(c.id)
     setIsContainerModalOpen(true)
@@ -249,9 +280,13 @@ export default function GallonTracker() {
       message: 'Yakin ingin menghapus wadah ini?',
       isConfirm: true,
       onConfirm: async () => {
+        const res = await spreadsheetApi.del('GallonContainers', id)
+        if (res.success) {
+          setContainers(containers.filter(c => c.id !== id))
+        } else {
+          alert('Gagal menghapus wadah dari sumber data.')
+        }
         setAlertDialog(prev => ({...prev, isOpen: false}))
-        setContainers(containers.filter(c => c.id !== id))
-        await spreadsheetApi.del('GallonContainers', id)
       }
     })
   }
@@ -387,7 +422,7 @@ export default function GallonTracker() {
                   height="200"
                 >
                   <div className="w-full h-full" style={{
-                    marginTop: `${160 - (145 * Math.min(100, Math.max(0, (animatedStock / 5) * 100)) / 100)}px`,
+                    marginTop: `${160 - (145 * Math.min(100, Math.max(0, (animatedStock / GALLON_CAPACITY) * 100)) / 100)}px`,
                     transition: 'margin-top 1.5s cubic-bezier(0.34, 1.56, 0.64, 1)'
                   }}>
                     <div className="w-full h-full relative" style={{
@@ -484,11 +519,11 @@ export default function GallonTracker() {
                 <CalendarClock className="w-4 h-4" /> Prediksi Habis
               </p>
               <h4 className="text-4xl font-extrabold text-emerald-900 mt-3 tracking-tight">
-                {prediction ? prediction.daysLeft : '...'} Hari <span className="text-2xl font-bold text-emerald-700">Lagi</span>
+                {prediction?.isReliable ? prediction.daysLeft : 'Data'} <span className="text-2xl font-bold text-emerald-700">{prediction?.isReliable ? 'Hari Lagi' : 'belum cukup'}</span>
               </h4>
               <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-200/50 text-emerald-800 text-xs font-semibold mt-3">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                Estimasi: {prediction ? prediction.nextRefillDate : '...'}
+                Estimasi: {prediction?.isReliable ? prediction.nextRefillDate : 'butuh riwayat penggunaan'}
               </div>
             </div>
           </div>
@@ -502,8 +537,8 @@ export default function GallonTracker() {
               <p className="text-sm font-semibold text-blue-800 flex items-center gap-1.5 uppercase tracking-wide">
                 <Droplets className="w-4 h-4" /> Sisa Stok Galon
               </p>
-              <h4 className="text-4xl font-extrabold text-blue-900 mt-3 tracking-tight">{loading ? '...' : gallonStock} <span className="text-2xl font-bold text-blue-700">Galon</span></h4>
-              <p className="text-sm font-medium text-blue-700/80 mt-2">Siap untuk digunakan penghuni</p>
+              <h4 className="text-4xl font-extrabold text-blue-900 mt-3 tracking-tight">{loading ? '...' : formatGallonQuantity(gallonStock)} <span className="text-2xl font-bold text-blue-700">Galon</span></h4>
+              <p className="text-sm font-medium text-blue-700/80 mt-2">Kapasitas fisik kos: {GALLON_CAPACITY} galon</p>
             </div>
           </div>
           
@@ -597,7 +632,9 @@ export default function GallonTracker() {
                     formattedDate = `${String(d.getDate()).padStart(2, '0')} ${months[d.getMonth()]} ${d.getFullYear()}`;
                     formattedTime = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
                   }
-                } catch(e) {}
+                } catch {
+                  // Keep malformed activity timestamps visible with fallback formatting.
+                }
                 
                 let penghuniName = item.userName;
                 if (!penghuniName) {
@@ -646,7 +683,7 @@ export default function GallonTracker() {
                       <div className="flex items-center gap-2">
                         <span>{item.containerName || 'Wadah Manual'}</span>
                         {item.photoUrl && (
-                          <button onClick={() => setPreviewImage(item.photoUrl)} className="text-gray-400 hover:text-gray-600 transition-colors" title="Lihat Foto">
+                          <button onClick={() => setPreviewImage(item.photoUrl || null)} className="text-gray-400 hover:text-gray-600 transition-colors" title="Lihat Foto">
                             <Eye className="w-3.5 h-3.5" />
                           </button>
                         )}
@@ -664,15 +701,15 @@ export default function GallonTracker() {
           </table>
         </div>
       </div>
-{/* AI Prediction UI (Merged from tab) */}
+      {/* Prediction UI */}
       {prediction && (
         <div className="space-y-6">
           <div>
             <h2 className="text-2xl font-bold text-gray-900 tracking-tight flex items-center">
               <Brain className="mr-3 text-primary w-7 h-7" />
-              AI Prediksi Kebutuhan Galon
+              Prediksi Kebutuhan Galon
             </h2>
-            <p className="text-text-secondary mt-1">Menggunakan analitik data riil untuk memprediksi stok dan pola konsumsi.</p>
+            <p className="text-text-secondary mt-1">Menggunakan riwayat penggunaan yang tersimpan untuk memprediksi stok dan pola konsumsi.</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -687,13 +724,13 @@ export default function GallonTracker() {
                   <div>
                     <p className="text-sm text-text-secondary mb-1">Perkiraan Habis Pada</p>
                     <div className="text-2xl font-black text-primary flex items-center">
-                      <Calendar className="w-6 h-6 mr-2" /> {prediction.nextRefillDate}
+                      <Calendar className="w-6 h-6 mr-2" /> {prediction.isReliable ? prediction.nextRefillDate : 'Data belum cukup'}
                     </div>
                   </div>
                   <div>
                     <p className="text-sm text-text-secondary mb-1">Rekomendasi Pesanan</p>
                     <div className="text-2xl font-black text-gray-900 flex items-center">
-                      <TrendingUp className="w-6 h-6 mr-2 text-success" /> {prediction.estimatedGallons} Galon
+                      <TrendingUp className="w-6 h-6 mr-2 text-success" /> {prediction.isReliable ? `${prediction.estimatedGallons} Galon` : '-'}
                     </div>
                   </div>
                 </div>
@@ -702,7 +739,7 @@ export default function GallonTracker() {
                   <div className="flex items-start">
                     <AlertCircle className="w-5 h-5 text-primary mr-3 flex-shrink-0 mt-0.5" />
                     <div>
-                      <p className="font-semibold text-gray-900 text-sm">Insight AI Terkini</p>
+                      <p className="font-semibold text-gray-900 text-sm">Insight Data Terkini</p>
                       <p className="text-sm text-gray-700">{prediction.insight}</p>
                     </div>
                   </div>
@@ -721,19 +758,19 @@ export default function GallonTracker() {
                     <span className="text-2xl font-bold">{prediction.accuracy}%</span>
                   </div>
                 </div>
-                <h3 className="font-semibold text-gray-900 mt-4">Akurasi Berdasarkan Data Historis</h3>
-                <p className="text-xs text-text-muted mt-1">Menggunakan analisis deret waktu dari tabel riwayat penggunaan.</p>
+                <h3 className="font-semibold text-gray-900 mt-4">Kelengkapan Data Historis</h3>
+                <p className="text-xs text-text-muted mt-1">Berdasarkan jumlah riwayat penggunaan yang tersedia.</p>
               </div>
             </div>
 
             <div className="col-span-1 md:col-span-3">
               <div className="card-container p-6">
-                <h3 className="text-lg font-bold text-gray-900 mb-4">Tren Konsumsi Mingguan (L)</h3>
+                <h3 className="text-lg font-bold text-gray-900 mb-4">Tren Konsumsi Mingguan (Galon)</h3>
                 <div className="h-48 flex items-end space-x-2 w-full justify-between mt-8">
                   {prediction.chartDataNormalized.map((percent: number, i: number) => (
                     <div key={i} className="flex flex-col items-center w-full group">
                       <div className="w-full bg-primary-soft/50 rounded-t-sm group-hover:bg-primary transition-colors relative" style={{ height: `${Math.max(5, percent)}%` }}>
-                        <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs font-bold text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity">{prediction.chartData[i].toFixed(1)}L</span>
+                        <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs font-bold text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity">{formatGallonQuantity(prediction.chartData[i])}</span>
                       </div>
                       <span className="text-xs text-gray-400 mt-2">H-{6-i}</span>
                     </div>
@@ -783,7 +820,7 @@ export default function GallonTracker() {
                     <td className="px-4 py-3 text-center">
                       <div className="flex items-center justify-center space-x-1">
                         {c.photoUrl && (
-                          <button onClick={() => setPreviewImage(c.photoUrl)} className="text-gray-500 hover:text-gray-700 p-1.5 hover:bg-gray-100 rounded-lg transition-colors" title="Lihat Foto">
+                          <button onClick={() => setPreviewImage(c.photoUrl || null)} className="text-gray-500 hover:text-gray-700 p-1.5 hover:bg-gray-100 rounded-lg transition-colors" title="Lihat Foto">
                             <Eye className="w-4 h-4" />
                           </button>
                         )}
@@ -806,8 +843,18 @@ export default function GallonTracker() {
 
 
       {isContainerModalOpen && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-visible animate-in zoom-in-95 duration-200">
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm animate-in fade-in duration-200"
+          onMouseDown={() => {
+            setIsContainerModalOpen(false)
+            setEditingContainerId(null)
+            setContainerForm({ name: '', capacity: 0.6, type: 'Tumbler', photoUrl: '' })
+          }}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-visible animate-in zoom-in-95 duration-200"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
             <div className="flex justify-between items-center p-6 border-b border-border">
               <h2 className="text-xl font-bold text-gray-900">{editingContainerId ? 'Edit Wadah' : 'Tambah Wadah Baru'}</h2>
               <button onClick={() => { setIsContainerModalOpen(false); setEditingContainerId(null); setContainerForm({ name: '', capacity: 0.6, type: 'Tumbler', photoUrl: '' }); }} className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-200">
@@ -901,8 +948,14 @@ export default function GallonTracker() {
       )}
       {/* Custom Alert/Confirm Dialog */}
       {alertDialog.isOpen && createPortal(
-        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm transition-opacity">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden transform transition-all p-6 text-center">
+        <div
+          className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm transition-opacity"
+          onMouseDown={() => setAlertDialog(prev => ({...prev, isOpen: false}))}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden transform transition-all p-6 text-center"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
             <div className={`mx-auto w-14 h-14 flex items-center justify-center rounded-full mb-5 ${alertDialog.isConfirm ? 'bg-red-100 text-red-600' : 'bg-primary-100 text-primary-600'}`}>
               {alertDialog.isConfirm ? <AlertTriangle className="w-7 h-7" /> : <Info className="w-7 h-7" />}
             </div>

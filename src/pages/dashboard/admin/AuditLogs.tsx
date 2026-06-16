@@ -3,16 +3,20 @@ import { Activity, Search, Filter } from 'lucide-react'
 import { spreadsheetApi } from '@/lib/spreadsheet'
 import { TableLoader } from '@/components/ui/TableLoader'
 
+interface AuditLog {
+  id: number | string
+  created_at: string
+  user?: string
+  action?: string
+  ip?: string
+}
+
 export default function AuditLogs() {
-  const [logs, setLogs] = useState<any[]>([])
+  const [logs, setLogs] = useState<AuditLog[]>([])
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    fetchLogs()
-  }, [])
-
-  const fetchLogs = async () => {
+  async function fetchLogs() {
     try {
       setLoading(true)
       const { data } = await spreadsheetApi.get('AuditLogs')
@@ -26,6 +30,10 @@ export default function AuditLogs() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    fetchLogs()
+  }, [])
 
   const filteredLogs = logs.filter(l => 
     (l.action && l.action.toLowerCase().includes(search.toLowerCase())) || 

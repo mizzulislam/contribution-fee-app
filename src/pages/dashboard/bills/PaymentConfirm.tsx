@@ -1,42 +1,153 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { UploadCloud, FileText, CheckCircle2, Loader2 } from 'lucide-react'
 import Select from '@/components/ui/Select'
 import { spreadsheetApi } from '@/lib/spreadsheet'
+import { useAuth } from '@/hooks/useAuth'
+
+interface Bill {
+  id: string | number
+  title?: string
+  description?: string
+  category?: string
+  month?: string
+  amount: number
+  status: string
+  due_date?: string
+  resident_email?: string
+  resident_name?: string
+  room_number?: string
+  contributions?: {
+    title?: string
+    contribution_types?: {
+      name?: string
+    }
+  }
+}
 
 export default function PaymentConfirm() {
-  const [billId, setBillId] = useState('')
+  const { profile } = useAuth()
+  const [searchParams] = useSearchParams()
+  const [billId, setBillId] = useState(searchParams.get('billId') || '')
   const [bankTarget, setBankTarget] = useState('')
   const [amount, setAmount] = useState('')
   const [date, setDate] = useState('')
   const [note, setNote] = useState('')
   const [file, setFile] = useState<File | null>(null)
+  const [bills, setBills] = useState<Bill[]>([])
+  const [isLoadingBills, setIsLoadingBills] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
+  const [submitError, setSubmitError] = useState('')
+
+  function getBillTitle(bill: Bill) {
+    return bill.contributions?.title || bill.title || bill.description || 'Tagihan Kos'
+  }
+
+  async function fetchBills() {
+    setIsLoadingBills(true)
+    const { data } = await spreadsheetApi.get('Bills')
+
+    if (Array.isArray(data)) {
+      const residentBills = data.filter((bill: Bill) => {
+        const belongsToUser = bill.resident_email === profile?.email || bill.resident_name === profile?.full_name
+        const canBePaid = bill.status === 'unpaid' || bill.status === 'rejected'
+        return belongsToUser && canBePaid
+      })
+
+      setBills(residentBills)
+      const selectedBillId = searchParams.get('billId') || billId
+      const selectedBill = residentBills.find((bill: Bill) => String(bill.id) === String(selectedBillId))
+      if (selectedBill) {
+        setBillId(String(selectedBill.id))
+        setAmount(String(selectedBill.amount || ''))
+      }
+    } else {
+      setBills([])
+    }
+
+    setIsLoadingBills(false)
+  }
+
+  useEffect(() => {
+    if (profile?.id) {
+      fetchBills()
+    }
+  }, [profile?.id])
+
+  // Synchronize state when the URL parameter 'billId' changes
+  useEffect(() => {
+    const urlBillId = searchParams.get('billId')
+    if (urlBillId && bills.length > 0) {
+      const selectedBill = bills.find((bill: Bill) => String(bill.id) === String(urlBillId))
+      if (selectedBill) {
+        setBillId(String(selectedBill.id))
+        setAmount(String(selectedBill.amount || ''))
+      }
+    }
+  }, [searchParams, bills])
+
+  const handleBillChange = (selectedBillId: string) => {
+    setBillId(selectedBillId)
+    const selectedBill = bills.find(bill => String(bill.id) === String(selectedBillId))
+    if (selectedBill) setAmount(String(selectedBill.amount || ''))
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    const selectedBill = bills.find(bill => String(bill.id) === String(billId))
+    if (!selectedBill) return
+
     setIsSubmitting(true)
-    
-    const payload = {
-      id: Date.now(),
-      billId,
-      bankTarget,
-      amount: Number(amount),
-      date,
-      note,
-      fileName: file?.name || '',
-      status: 'Menunggu Verifikasi',
-      created_at: new Date().toISOString()
-    }
+    setSubmitError('')
 
     try {
-      await spreadsheetApi.post('Payments', payload)
+      const proofDataUrl = file ? await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(String(reader.result || ''))
+        reader.onerror = () => reject(new Error('Gagal membaca file bukti transfer.'))
+        reader.readAsDataURL(file)
+      }) : ''
+
+      const payload = {
+        id: Date.now(),
+        billId,
+        bankTarget,
+        amount: Number(amount),
+        date,
+        date_submitted: date,
+        note,
+        fileName: file?.name || '',
+        proofFileName: file?.name || '',
+        proofMimeType: file?.type || '',
+        proofDataUrl,
+        status: 'pending_verification',
+        title: getBillTitle(selectedBill),
+        resident_name: profile?.full_name || selectedBill.resident_name || '',
+        resident_email: profile?.email || selectedBill.resident_email || '',
+        room_number: profile?.room_number || selectedBill.room_number || '',
+        created_at: new Date().toISOString()
+      }
+
+      const [paymentRes, billRes] = await Promise.all([
+        spreadsheetApi.post('Payments', payload),
+        spreadsheetApi.put('Bills', {
+          ...selectedBill,
+          id: selectedBill.id,
+          status: 'pending_verification',
+          updated_at: new Date().toISOString(),
+        }),
+      ])
+      if (!paymentRes.success || !billRes.success) {
+        throw new Error('Gagal menyimpan konfirmasi pembayaran ke sumber data.')
+      }
+      setIsSuccess(true)
     } catch (err) {
       console.error(err)
+      setSubmitError(err instanceof Error ? err.message : 'Gagal mengirim konfirmasi pembayaran.')
+    } finally {
+      setIsSubmitting(false)
     }
-
-    setIsSubmitting(false)
-    setIsSuccess(true)
   }
 
   if (isSuccess) {
@@ -74,6 +185,11 @@ export default function PaymentConfirm() {
 
       <div className="card-container p-6 sm:p-8">
         <form onSubmit={handleSubmit} className="space-y-6">
+          {submitError && (
+            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+              {submitError}
+            </div>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Pilih Tagihan</label>
@@ -81,12 +197,15 @@ export default function PaymentConfirm() {
                 className="w-full text-sm"
                 placeholder="-- Pilih Tagihan yang Dibayar --"
                 value={billId}
-                onChange={setBillId}
-                options={[
-                  { label: 'Iuran Wajib Bulanan - Juni 2026 (Rp 500.000)', value: '1' },
-                  { label: 'Iuran Sampah - Juni 2026 (Rp 25.000)', value: '2' }
-                ]}
+                onChange={handleBillChange}
+                options={bills.map(bill => ({
+                  label: `${getBillTitle(bill)}${bill.month ? ` - ${bill.month}` : ''} (${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(Number(bill.amount) || 0)})`,
+                  value: String(bill.id),
+                }))}
               />
+              {!isLoadingBills && bills.length === 0 && (
+                <p className="mt-2 text-xs text-text-muted">Tidak ada tagihan yang bisa dikonfirmasi saat ini.</p>
+              )}
             </div>
             
             <div>

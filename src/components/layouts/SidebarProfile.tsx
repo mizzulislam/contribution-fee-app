@@ -1,16 +1,18 @@
 import { useState, useRef, useEffect } from 'react'
-import { LogOut, Settings, UserCircle, ChevronUp, ChevronRight } from 'lucide-react'
+import { LogOut, Settings, UserCircle, ChevronUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { Link, useLocation } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import { useSidebarStore } from '@/stores/sidebar-store'
 
 export function SidebarProfile() {
   const { profile, signOut } = useAuth()
   const { isCollapsed } = useSidebarStore()
-  const location = useLocation()
   const [isOpen, setIsOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+  const [photoUrl, setPhotoUrl] = useState<string | null>(() => {
+    return profile?.id ? localStorage.getItem(`profile_photo_${profile.id}`) : null
+  })
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -24,13 +26,7 @@ export function SidebarProfile() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [isOpen])
 
-  const [photoUrl, setPhotoUrl] = useState<string | null>(null)
-
   useEffect(() => {
-    if (profile?.id) {
-      setPhotoUrl(localStorage.getItem(`profile_photo_${profile.id}`))
-    }
-
     const handleUpdate = () => {
       if (profile?.id) {
         setPhotoUrl(localStorage.getItem(`profile_photo_${profile.id}`))

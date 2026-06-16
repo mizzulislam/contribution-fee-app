@@ -1,21 +1,16 @@
-import { useState, useEffect } from 'react'
-import { Printer, Download, BookOpen, Loader2 } from 'lucide-react'
-import { defaultEngine } from '@/lib/accounting'
+import { useMemo } from 'react'
+import { buildPeriodAccountingEngine, getPeriodLabel, type PeriodFilter } from '@/lib/accounting/period'
+import AccountingDownloadMenu from '@/components/accounting/AccountingDownloadMenu'
 import type { FinancialStatements } from '@/lib/accounting'
 
-export default function FinancialStatementsView() {
-  const [statements, setStatements] = useState<FinancialStatements | null>(null)
+interface FinancialStatementsViewProps {
+  period: PeriodFilter
+}
 
-  useEffect(() => {
-    setStatements(defaultEngine.getFinancialStatements())
-  }, [])
+export default function FinancialStatementsView({ period }: FinancialStatementsViewProps) {
+  const periodEngine = useMemo(() => buildPeriodAccountingEngine(period), [period])
+  const statements = useMemo<FinancialStatements>(() => periodEngine.getFinancialStatements(), [periodEngine])
 
-  if (!statements) return (
-    <div className="flex flex-col items-center justify-center py-20 text-gray-500">
-      <Loader2 className="w-10 h-10 animate-spin text-primary mb-4" />
-      <span className="text-lg font-medium">Memuat laporan keuangan...</span>
-    </div>
-  )
 
   const formatCurrency = (amount: number) => {
     return (
@@ -28,14 +23,37 @@ export default function FinancialStatementsView() {
 
   const inc = statements.incomeStatement
   const bal = statements.balanceSheet
+  const periodLabel = getPeriodLabel(period)
+  const formatAmountText = (amount: number) => `Rp ${new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(amount)}`
+  const statementsExportRows = [
+    ['Laporan Laba Rugi', 'Total Pendapatan', formatAmountText(inc.revenues)],
+    ['Laporan Laba Rugi', 'Total Beban', formatAmountText(inc.expenses)],
+    ['Laporan Laba Rugi', 'Laba Bersih', formatAmountText(inc.netIncome)],
+    ['Neraca', 'Aset Lancar', formatAmountText(bal.assets.currentAssets)],
+    ['Neraca', 'Aset Tetap', formatAmountText(bal.assets.propertyPlantEquipment)],
+    ['Neraca', 'Total Aset', formatAmountText(bal.assets.totalAssets)],
+    ['Neraca', 'Kewajiban Jangka Pendek', formatAmountText(bal.liabilities.currentLiabilities)],
+    ['Neraca', 'Total Kewajiban', formatAmountText(bal.liabilities.totalLiabilities)],
+    ['Neraca', 'Total Modal & Laba Ditahan', formatAmountText(bal.equity.totalEquity)],
+    ['Neraca', 'Total Ekuitas', formatAmountText(bal.equity.totalEquity)],
+    ['Neraca', 'Total Kewajiban & Modal', formatAmountText(bal.totalLiabilitiesAndEquity)],
+  ]
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Laporan Keuangan</h1>
           <p className="text-text-secondary mt-1">Laporan Laba/Rugi dan Neraca (Balance Sheet) standar IFRS.</p>
         </div>
+        <AccountingDownloadMenu
+          fileName={`laporan-keuangan-${periodLabel.toLowerCase().replace(/[^a-z0-9]+/gi, '-').replace(/(^-|-$)/g, '') || 'semua-periode'}`}
+          title="Laporan Keuangan"
+          meta={`Periode: ${periodLabel} | Dicetak: ${new Date().toLocaleString('id-ID')}`}
+          headers={['Laporan', 'Pos', 'Nilai']}
+          rows={statementsExportRows}
+          amountColumnIndexes={[2]}
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

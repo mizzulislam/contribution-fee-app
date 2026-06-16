@@ -1,13 +1,48 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { spreadsheetApi } from '@/lib/spreadsheet'
 import { useAuth } from '@/hooks/useAuth'
 import { CheckCircle2, Clock, XCircle, FileText } from 'lucide-react'
 import { TableLoader } from '@/components/ui/TableLoader'
 
+interface ResidentBill {
+  id: number | string
+  resident_email?: string
+  resident_name?: string
+  title?: string
+  description?: string
+  category?: string
+  month?: string
+  due_date: string
+  amount: number
+  status: string
+  contributions?: {
+    title?: string
+    contribution_types?: {
+      name?: string
+    }
+  }
+}
+
 export default function ResidentBillsList() {
   const { profile } = useAuth()
-  const [bills, setBills] = useState<any[]>([])
+  const navigate = useNavigate()
+  const [bills, setBills] = useState<ResidentBill[]>([])
   const [loading, setLoading] = useState(true)
+
+  async function fetchBills() {
+    setLoading(true)
+    const { data } = await spreadsheetApi.get('Bills')
+    
+    if (data && Array.isArray(data)) {
+      // Filter tagihan milik user yang sedang login
+      setBills(data.filter((b: ResidentBill) => b.resident_email === profile?.email || b.resident_name === profile?.full_name))
+    } else {
+      // Jika terjadi error koneksi, kosongkan tampilan agar tidak menampilkan data non-sumber.
+      setBills([])
+    }
+    setLoading(false)
+  }
 
   useEffect(() => {
     if (profile?.id) {
@@ -15,18 +50,8 @@ export default function ResidentBillsList() {
     }
   }, [profile?.id])
 
-  const fetchBills = async () => {
-    setLoading(true)
-    const { data, error } = await spreadsheetApi.get('Bills')
-    
-    if (data && Array.isArray(data)) {
-      // Filter tagihan milik user yang sedang login
-      setBills(data.filter((b: any) => b.resident_email === profile?.email || b.resident_name === profile?.full_name))
-    } else {
-      // Jika terjadi error (data null), kosongkan saja daripada memuat mock data
-      setBills([])
-    }
-    setLoading(false)
+  const handlePayNow = (billId: number | string) => {
+    navigate(`/dashboard/billing-user?tab=confirm&billId=${encodeURIComponent(String(billId))}`)
   }
 
   const formatCurrency = (amount: number) => {
@@ -67,11 +92,11 @@ export default function ResidentBillsList() {
           <table className="w-full text-left text-sm">
             <thead className="bg-[#F3F4F6] border-b border-border text-gray-600">
               <tr>
-                <th className="px-6 py-3 font-semibold whitespace-nowrap">Keterangan</th>
-                <th className="px-6 py-3 font-semibold whitespace-nowrap">Jatuh Tempo</th>
-                <th className="px-6 py-3 font-semibold whitespace-nowrap">Nominal</th>
-                <th className="px-6 py-3 font-semibold whitespace-nowrap">Status</th>
-                <th className="px-6 py-3 font-semibold whitespace-nowrap text-right">Aksi</th>
+                <th className="px-3 sm:px-6 py-3 font-semibold whitespace-nowrap">Keterangan</th>
+                <th className="px-3 sm:px-6 py-3 font-semibold whitespace-nowrap">Jatuh Tempo</th>
+                <th className="px-3 sm:px-6 py-3 font-semibold whitespace-nowrap">Nominal</th>
+                <th className="px-3 sm:px-6 py-3 font-semibold whitespace-nowrap">Status</th>
+                <th className="px-3 sm:px-6 py-3 font-semibold whitespace-nowrap text-right">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border text-gray-700 bg-white">
@@ -87,16 +112,16 @@ export default function ResidentBillsList() {
               ) : (
                 bills.map((bill) => (
                   <tr key={bill.id} className="hover:bg-[#ECFDF5] transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="font-medium text-gray-900">{bill.contributions?.title}</div>
-                      <div className="text-xs text-text-secondary mt-0.5">{bill.contributions?.contribution_types?.name}</div>
+                    <td className="px-3 sm:px-6 py-4">
+                      <div className="font-medium text-gray-900">{bill.contributions?.title || bill.title || bill.description || 'Tagihan Kos'}</div>
+                      <div className="text-xs text-text-secondary mt-0.5">{bill.contributions?.contribution_types?.name || bill.category || bill.month || '-'}</div>
                     </td>
-                    <td className="px-6 py-4 text-text-secondary">{new Date(bill.due_date).toLocaleDateString('id-ID')}</td>
-                    <td className="px-6 py-4 font-semibold">{formatCurrency(bill.amount)}</td>
-                    <td className="px-6 py-4">{getStatusBadge(bill.status)}</td>
-                    <td className="px-6 py-4 text-center">
+                    <td className="px-3 sm:px-6 py-4 text-text-secondary">{new Date(bill.due_date).toLocaleDateString('id-ID')}</td>
+                    <td className="px-3 sm:px-6 py-4 font-semibold">{formatCurrency(bill.amount)}</td>
+                    <td className="px-3 sm:px-6 py-4">{getStatusBadge(bill.status)}</td>
+                    <td className="px-3 sm:px-6 py-4 text-center">
                       {bill.status === 'unpaid' || bill.status === 'rejected' ? (
-                        <button className="btn-primary py-1.5 px-4 text-xs">
+                        <button onClick={() => handlePayNow(bill.id)} className="btn-primary py-1.5 px-3 sm:px-4 text-xs">
                           Bayar Sekarang
                         </button>
                       ) : (

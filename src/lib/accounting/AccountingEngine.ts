@@ -32,8 +32,8 @@ export class AccountingEngine {
   /**
    * Facade method: Record a transaction and immediately post it to ledger
    */
-  public recordTransaction(date: string, debits: JournalEntryLine[], credits: JournalEntryLine[], description: string): JournalEntry {
-    const entry = this.journal.journalize(date, debits, credits, description)
+  public recordTransaction(date: string, debits: JournalEntryLine[], credits: JournalEntryLine[], description: string, existingId?: string): JournalEntry {
+    const entry = this.journal.journalize(date, debits, credits, description, existingId)
     this.ledger.postEntry(entry)
     return entry
   }

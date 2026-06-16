@@ -18,11 +18,15 @@ export default function UserInformationDashboard() {
 
   // Update tab state if URL changes externally
   useEffect(() => {
-    const tab = queryParams.get('tab')
-    if (tab && (tab === 'announcements' || tab === 'notifications')) {
-      setActiveTab(tab)
+    const params = new URLSearchParams(location.search)
+    const tab = params.get('tab')
+    if (tab && (tab === 'announcements' || tab === 'notifications') && tab !== activeTab) {
+      const timer = setTimeout(() => {
+        setActiveTab(tab)
+      }, 0)
+      return () => clearTimeout(timer)
     }
-  }, [location.search])
+  }, [location.search, activeTab])
 
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId)

@@ -3,8 +3,10 @@ import { createPortal } from 'react-dom'
 import { CheckSquare, Loader2, X, Settings, CheckCircle2, Users, RefreshCw, ListOrdered, Trash2, Pencil, Save, AlertTriangle, Info } from 'lucide-react'
 import { spreadsheetApi } from '@/lib/spreadsheet'
 import Select from '@/components/ui/Select'
+import { useAuth } from '@/hooks/useAuth'
 
 export default function DutySchedules() {
+  const { activeRole } = useAuth()
   const [schedules, setSchedules] = useState<any[]>([])
   const [allUsers, setAllUsers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -38,10 +40,6 @@ export default function DutySchedules() {
   const [currentSpinnerName, setCurrentSpinnerName] = useState('Menyiapkan Mesin Pengundi...')
   const spinnerInterval = useRef<any>(null)
 
-  useEffect(() => {
-    fetchInitialData()
-  }, [])
-
   const fetchInitialData = async () => {
     setLoading(true)
     try {
@@ -65,6 +63,10 @@ export default function DutySchedules() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    fetchInitialData()
+  }, [])
 
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -310,7 +312,7 @@ export default function DutySchedules() {
                       <span className="badge badge-success px-4 py-2 flex items-center justify-center w-full shadow-sm bg-emerald-100 text-emerald-700">
                         <CheckCircle2 className="w-4 h-4 mr-2" /> Selesai
                       </span>
-                    ) : isNextInLine ? (
+                    ) : isNextInLine && activeRole === 'user' ? (
                       <button 
                         onClick={() => handleConfirm(schedule.id)}
                         disabled={isConfirming === schedule.id || editingId === schedule.id}
@@ -319,6 +321,8 @@ export default function DutySchedules() {
                         {isConfirming === schedule.id ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <CheckSquare className="w-5 h-5 mr-2" />} 
                         Selesaikan Giliran
                       </button>
+                    ) : isNextInLine ? (
+                      <span className="badge bg-emerald-50 text-emerald-700 px-3 py-1.5 w-full text-center">Giliran Berjalan</span>
                     ) : (
                       <span className="badge bg-gray-100 text-gray-600 px-3 py-1.5 w-full text-center">Menunggu</span>
                     )}
@@ -343,8 +347,16 @@ export default function DutySchedules() {
 
       {/* Configuration & Spinner Modal */}
       {isModalOpen && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/70 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/70 backdrop-blur-md animate-in fade-in duration-300"
+          onMouseDown={() => {
+            if (!isGenerating) setIsModalOpen(false)
+          }}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
             
             {!isSpinning ? (
               // FORM KONFIGURASI
@@ -483,8 +495,14 @@ export default function DutySchedules() {
 
       {/* Alert Dialog */}
       {alertDialog.isOpen && createPortal(
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden text-center p-6 animate-in zoom-in-95 duration-200">
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in duration-200"
+          onMouseDown={() => setAlertDialog(prev => ({ ...prev, isOpen: false }))}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden text-center p-6 animate-in zoom-in-95 duration-200"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
             <div className={`mx-auto w-14 h-14 flex items-center justify-center rounded-full mb-5 ${alertDialog.isConfirm ? 'bg-red-100 text-red-600' : 'bg-primary-100 text-primary-600'}`}>
               {alertDialog.isConfirm ? <AlertTriangle className="w-7 h-7" /> : <Info className="w-7 h-7" />}
             </div>

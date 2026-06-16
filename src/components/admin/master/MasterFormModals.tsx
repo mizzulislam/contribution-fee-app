@@ -33,8 +33,14 @@ export function CategoryFormModal({
   if (!isOpen) return null
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm animate-in fade-in duration-200"
+      onMouseDown={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
         <div className="flex justify-between items-center p-6 border-b border-border">
           <h2 className="text-xl font-bold text-gray-900">{editingId ? 'Edit Kategori' : 'Tambah Kategori'}</h2>
           <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-200">
@@ -140,8 +146,14 @@ export function PaymentMethodFormModal({
   if (!isOpen) return null
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm animate-in fade-in duration-200"
+      onMouseDown={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
         <div className="flex justify-between items-center p-6 border-b border-border">
           <h2 className="text-xl font-bold text-gray-900">{editingId ? 'Edit Metode Pembayaran' : 'Tambah Metode Pembayaran'}</h2>
           <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-200">

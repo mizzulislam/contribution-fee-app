@@ -11,3 +11,4 @@ export * from './AccountingEngine'
 // Create a singleton instance for global use
 import { AccountingEngine } from './AccountingEngine'
 export const defaultEngine = new AccountingEngine()
+export * from './sync'

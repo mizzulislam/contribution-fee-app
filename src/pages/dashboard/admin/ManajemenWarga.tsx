@@ -5,8 +5,13 @@ import { Plus, Users, AlertTriangle, Info } from 'lucide-react'
 import { WargaTable } from '@/components/admin/warga/WargaTable'
 import { WargaFormModal, type WargaFormData } from '@/components/admin/warga/WargaFormModal'
 
+interface WargaUser extends WargaFormData {
+  id: number | string
+  name?: string
+}
+
 export default function ManajemenWarga() {
-  const [users, setUsers] = useState<any[]>([])
+  const [users, setUsers] = useState<WargaUser[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState('')
@@ -33,26 +38,26 @@ export default function ManajemenWarga() {
   })
   const [isEmailEdited, setIsEmailEdited] = useState(false)
 
-  useEffect(() => {
-    fetchUsers()
-  }, [])
-
   // Auto-generate email based on name/nickname
   useEffect(() => {
     if (!isEmailEdited) {
       const baseName = formData.nickname || formData.full_name.split(' ')[0]
+      let nextEmail = ''
+
       if (baseName) {
-        const generatedEmail = `${baseName.toLowerCase().replace(/[^a-z0-9]/g, '')}@soematra.com`
-        if (formData.email !== generatedEmail) {
-          setFormData(prev => ({ ...prev, email: generatedEmail }))
-        }
-      } else if (formData.email !== '') {
-        setFormData(prev => ({ ...prev, email: '' }))
+        nextEmail = `${baseName.toLowerCase().replace(/[^a-z0-9]/g, '')}@soematra.com`
+      }
+
+      if (formData.email !== nextEmail) {
+        const timer = setTimeout(() => {
+          setFormData(prev => ({ ...prev, email: nextEmail }))
+        }, 0)
+        return () => clearTimeout(timer)
       }
     }
-  }, [formData.full_name, formData.nickname, isEmailEdited])
+  }, [formData.email, formData.full_name, formData.nickname, isEmailEdited])
 
-  const fetchUsers = async () => {
+  async function fetchUsers() {
     setLoading(true)
     const { data } = await spreadsheetApi.get('Users')
     
@@ -63,6 +68,10 @@ export default function ManajemenWarga() {
     }
     setLoading(false)
   }
+
+  useEffect(() => {
+    fetchUsers()
+  }, [])
 
   const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -92,7 +101,8 @@ export default function ManajemenWarga() {
       }
     } else {
       // Mode Tambah
-      const newUser = { id: Date.now(), ...formData }
+      const generatedId = globalThis.crypto?.randomUUID?.() || String(Date.now())
+      const newUser = { id: generatedId, ...formData }
       const { success } = await spreadsheetApi.post('Users', newUser)
       
       setUsers([...users, newUser])
@@ -116,7 +126,7 @@ export default function ManajemenWarga() {
     setIsSubmitting(false)
   }
 
-  const handleEdit = (user: any) => {
+  const handleEdit = (user: WargaUser) => {
     setFormData({
       full_name: user.full_name || user.name || '',
       nickname: user.nickname || '',
@@ -209,8 +219,14 @@ export default function ManajemenWarga() {
 
       {/* Custom Alert/Confirm Dialog */}
       {alertDialog.isOpen && createPortal(
-        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm transition-opacity">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden transform transition-all p-6 text-center">
+        <div
+          className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm transition-opacity"
+          onMouseDown={() => setAlertDialog(prev => ({...prev, isOpen: false}))}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden transform transition-all p-6 text-center"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
             <div className={`mx-auto w-14 h-14 flex items-center justify-center rounded-full mb-5 ${alertDialog.isConfirm ? 'bg-red-100 text-red-600' : 'bg-primary-100 text-primary-600'}`}>
               {alertDialog.isConfirm ? <AlertTriangle className="w-7 h-7" /> : <Info className="w-7 h-7" />}
             </div>

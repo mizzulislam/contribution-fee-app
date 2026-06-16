@@ -8,11 +8,9 @@ import DashboardLayout from '@/components/layouts/DashboardLayout'
 import ProtectedRoute from '@/components/auth/ProtectedRoute'
 import Login from '@/pages/auth/Login'
 import Dashboard from '@/pages/dashboard/Dashboard'
-import PlaceholderPage from '@/components/ui/PlaceholderPage'
 
 // Existing Pages
 import FinanceDashboard from '@/pages/dashboard/finance/FinanceDashboard'
-import GallonTracker from '@/pages/dashboard/gallons/GallonTracker'
 import DutySchedules from '@/pages/dashboard/duties/DutySchedules'
 
 // Sprint 1 & Consolidated Pages
@@ -97,8 +95,8 @@ export default function App() {
 
             {/* Legacy Routes Redirect */}
             <Route path="/dashboard/bills" element={<Navigate to="/dashboard/billing-user" replace />} />
-            <Route path="/dashboard/payment-confirm" element={<Navigate to="/dashboard/billing-user" replace />} />
-            <Route path="/dashboard/payment-history" element={<Navigate to="/dashboard/billing-user" replace />} />
+            <Route path="/dashboard/payment-confirm" element={<Navigate to="/dashboard/billing-user?tab=confirm" replace />} />
+            <Route path="/dashboard/payment-history" element={<Navigate to="/dashboard/billing-user?tab=history" replace />} />
             <Route path="/dashboard/duties-confirm" element={<Navigate to="/dashboard/duties-mine" replace />} />
             <Route path="/dashboard/notifications" element={<Navigate to="/dashboard/information" replace />} />
             <Route path="/dashboard/announcements" element={<Navigate to="/dashboard/information" replace />} />

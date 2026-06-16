@@ -8,14 +8,11 @@ export default function SystemSettings() {
   const [contactEmail, setContactEmail] = useState('support@soematrakost.com')
   const [timezone, setTimezone] = useState('Asia/Jakarta (WIB)')
   const [currency, setCurrency] = useState('IDR (Rupiah)')
+  const [defaultBillingDueDay, setDefaultBillingDueDay] = useState(12)
   
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [toastMessage, setToastMessage] = useState('')
-
-  useEffect(() => {
-    fetchSettings()
-  }, [])
 
   const fetchSettings = async () => {
     try {
@@ -26,6 +23,10 @@ export default function SystemSettings() {
         if (settings.contactEmail) setContactEmail(settings.contactEmail)
         if (settings.timezone) setTimezone(settings.timezone)
         if (settings.currency) setCurrency(settings.currency)
+        const configuredDueDay = Number(settings.defaultBillingDueDay || settings.billingDueDay)
+        if (Number.isFinite(configuredDueDay) && configuredDueDay >= 1) {
+          setDefaultBillingDueDay(Math.min(Math.max(configuredDueDay, 1), 31))
+        }
       }
     } catch (err) {
       console.error(err)
@@ -33,6 +34,10 @@ export default function SystemSettings() {
       setIsLoading(false)
     }
   }
+
+  useEffect(() => {
+    fetchSettings()
+  }, [])
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -44,6 +49,7 @@ export default function SystemSettings() {
       contactEmail,
       timezone,
       currency,
+      defaultBillingDueDay,
       updated_at: new Date().toISOString()
     }
 
@@ -131,6 +137,21 @@ export default function SystemSettings() {
                   { label: 'IDR (Rupiah)', value: 'IDR (Rupiah)' }
                 ]}
               />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Tanggal Jatuh Tempo Tagihan Bulanan</label>
+              <input
+                type="number"
+                min="1"
+                max="31"
+                className="form-input"
+                value={defaultBillingDueDay}
+                onChange={event => {
+                  const value = Number(event.target.value)
+                  setDefaultBillingDueDay(Number.isFinite(value) ? Math.min(Math.max(value, 1), 31) : 1)
+                }}
+              />
+              <p className="mt-2 text-xs text-gray-500">Dipakai sebagai tanggal default saat bendahara membuat tagihan baru.</p>
             </div>
           </div>
 

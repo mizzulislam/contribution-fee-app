@@ -12,28 +12,18 @@ export default function MyDuties() {
   const [bills, setBills] = useState<any[]>([])
   const [schedules, setSchedules] = useState<any[]>([])
   const [contributions, setContributions] = useState<any[]>([])
+  const [announcements, setAnnouncements] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [isConfirming, setIsConfirming] = useState(false)
-
-  // Hardcoded announcements for demonstration of important dates
-  const systemAnnouncements = [
-    { id: 101, title: 'Pemadaman Listrik', dateStr: '2026-06-06' },
-    { id: 102, title: 'Rapat Warga Kos', dateStr: '2026-06-15' }
-  ]
-
-  useEffect(() => {
-    if (profile?.id) {
-      fetchData()
-    }
-  }, [profile])
 
   const fetchData = async () => {
     setLoading(true)
     try {
-      const [schedRes, billRes, contribRes] = await Promise.all([
+      const [schedRes, billRes, contribRes, announcementRes] = await Promise.all([
         spreadsheetApi.get('Schedules'),
         spreadsheetApi.get('Bills'),
-        spreadsheetApi.get('Contributions')
+        spreadsheetApi.get('Contributions'),
+        spreadsheetApi.get('Announcements')
       ])
       
       if (schedRes.data && Array.isArray(schedRes.data)) {
@@ -57,11 +47,23 @@ export default function MyDuties() {
         // Only active catalogs
         setContributions(contribRes.data.filter((c: any) => c.status !== 'inactive' && c.status !== 'Archived'))
       }
+
+      if (announcementRes.data && Array.isArray(announcementRes.data)) {
+        setAnnouncements(announcementRes.data.filter((a: any) => String(a.status || 'active').toLowerCase() !== 'inactive'))
+      } else {
+        setAnnouncements([])
+      }
     } catch (e) {
       console.error(e)
     }
     setLoading(false)
   }
+
+  useEffect(() => {
+    if (profile?.id) {
+      fetchData()
+    }
+  }, [profile])
 
   const handleConfirm = async (dutyId: string | number) => {
     setIsConfirming(true)
@@ -152,7 +154,15 @@ export default function MyDuties() {
     )
 
     // 3. System Announcements (Tanggal Penting Lainnya)
-    const dayAnnouncements = systemAnnouncements.filter(a => a.dateStr === dateStr)
+    const dayAnnouncements = announcements.filter(a => {
+      const sourceDate = a.date || a.created_at
+      if (!sourceDate) return false
+      const parsed = new Date(sourceDate)
+      if (Number.isNaN(parsed.getTime())) return String(sourceDate).startsWith(dateStr)
+      return parsed.getFullYear() === currentDate.getFullYear() &&
+        parsed.getMonth() === currentDate.getMonth() &&
+        parsed.getDate() === day
+    })
 
     return { 
       bills: dayBills, 

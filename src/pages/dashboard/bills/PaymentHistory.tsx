@@ -1,28 +1,47 @@
 import { useState, useEffect } from 'react'
 import { spreadsheetApi } from '@/lib/spreadsheet'
+import { useAuth } from '@/hooks/useAuth'
 import { History, Search, CheckCircle2, Download } from 'lucide-react'
 import { TableLoader } from '@/components/ui/TableLoader'
 
+interface PaymentRecord {
+  id: number | string
+  resident_email?: string
+  resident_name?: string
+  title?: string
+  month?: string
+  date_verified?: string
+  amount: number
+  status: string
+}
+
 export default function PaymentHistory() {
-  const [history, setHistory] = useState<any[]>([])
+  const { profile } = useAuth()
+  const [history, setHistory] = useState<PaymentRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
 
-  useEffect(() => {
-    fetchHistory()
-  }, [])
-
-  const fetchHistory = async () => {
+  async function fetchHistory() {
     setLoading(true)
-    const { data, error } = await spreadsheetApi.get('Payments')
+    const { data } = await spreadsheetApi.get('Payments')
     
     if (data && Array.isArray(data)) {
-      setHistory(data.filter((p: any) => p.status === 'verified'))
+      setHistory(data.filter((p: PaymentRecord) => {
+        const isPaid = ['verified', 'paid', 'Lunas'].includes(p.status)
+        const belongsToUser = p.resident_email === profile?.email || p.resident_name === profile?.full_name
+        return isPaid && belongsToUser
+      }))
     } else {
       setHistory([])
     }
     setLoading(false)
   }
+
+  useEffect(() => {
+    if (profile?.id) {
+      fetchHistory()
+    }
+  }, [profile?.id])
 
   const formatCurrency = (amount: number) => {
     return (
@@ -88,7 +107,7 @@ export default function PaymentHistory() {
                   <tr key={item.id} className="hover:bg-primary-soft/30 transition-colors">
                     <td className="px-6 py-4 font-medium text-gray-900">{item.title}</td>
                     <td className="px-6 py-4">{item.month}</td>
-                    <td className="px-6 py-4">{new Date(item.date_verified).toLocaleDateString('id-ID')}</td>
+                    <td className="px-6 py-4">{item.date_verified ? new Date(item.date_verified).toLocaleDateString('id-ID') : '-'}</td>
                     <td className="px-6 py-4 font-semibold text-gray-900">{formatCurrency(item.amount)}</td>
                     <td className="px-6 py-4 text-center">
                       <span className="badge badge-success inline-flex">

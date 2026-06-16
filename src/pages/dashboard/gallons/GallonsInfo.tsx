@@ -1,17 +1,52 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { Droplets, Info, CheckCircle2, AlertCircle, Loader2, Plus, X, Activity, Coffee, Beaker, Camera, Box, Pencil, Trash2, Eye, CalendarClock, ScanLine } from 'lucide-react'
+import { Droplets, Info, Loader2, Plus, X, Activity, Coffee, Beaker, Camera, Box, Pencil, Trash2, Eye, CalendarClock, ScanLine } from 'lucide-react'
 
 import { useAuth } from '@/hooks/useAuth'
 import { spreadsheetApi } from '@/lib/spreadsheet'
 import Select from '@/components/ui/Select'
-import { defaultEngine } from '@/lib/accounting'
+import {
+  GALLON_CAPACITY,
+  calculateGallonStock,
+  daysBetween,
+  formatGallonQuantity,
+  isReliableGallonPrediction,
+  parseGallonStockDate,
+} from '@/lib/gallonStock'
+
+interface GallonContainer {
+  id: number
+  name: string
+  capacity: number
+  type: string
+  photoUrl?: string
+  createdBy?: string
+}
+
+interface GallonActivity {
+  date?: string
+  type: string
+  quantity?: number
+}
+
+interface GallonPredictionState {
+  isReliable: boolean
+  daysLeft: number
+  nextRefillDate: string
+  avgConsumption: string
+}
 
 export default function GallonsInfo() {
   const { profile } = useAuth()
   const [gallons, setGallons] = useState(0)
   const [loading, setLoading] = useState(true)
-  const [containers, setContainers] = useState<any[]>([])
+  const [containers, setContainers] = useState<GallonContainer[]>([])
+  const [prediction, setPrediction] = useState<GallonPredictionState>({
+    isReliable: false,
+    daysLeft: 0,
+    nextRefillDate: 'Data belum cukup',
+    avgConsumption: '0,00',
+  })
 
   // Usage state
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -39,13 +74,8 @@ export default function GallonsInfo() {
 
   // Animate the water fill when gallons changes
   useEffect(() => {
-    let timer: any;
-    let rafId: any;
-    const targetPercent = Math.min(100, Math.max(0, (gallons / 5) * 100));
-    
-    setIsFilling(true);
-    setAnimatedStock(0);
-    setDisplayPercent(0);
+    let rafId: number | undefined;
+    const targetPercent = Math.min(100, Math.max(0, (gallons / GALLON_CAPACITY) * 100));
 
     const animate = () => {
       setAnimatedStock(prev => {
@@ -64,55 +94,70 @@ export default function GallonsInfo() {
       });
     };
 
-    rafId = requestAnimationFrame(animate);
+    const startTimer = setTimeout(() => {
+      setIsFilling(true);
+      setAnimatedStock(0);
+      setDisplayPercent(0);
+      rafId = requestAnimationFrame(animate);
+    }, 0);
 
-    timer = setTimeout(() => {
+    const timer = setTimeout(() => {
       setIsFilling(false);
     }, 1500);
 
     return () => {
+      clearTimeout(startTimer);
       clearTimeout(timer);
       if (rafId) cancelAnimationFrame(rafId);
     };
   }, [gallons])
 
-  useEffect(() => {
-    fetchStock()
-    fetchContainers()
-  }, [])
-
-  const fetchContainers = async () => {
+  async function fetchContainers() {
     const { data } = await spreadsheetApi.get('GallonContainers')
-    if (data) setContainers(data)
+    if (Array.isArray(data)) setContainers(data as GallonContainer[])
   }
 
-  const fetchStock = async () => {
+  async function fetchStock() {
     setLoading(true)
-    const { data } = await spreadsheetApi.get('Gallons')
-    const rawData = Array.isArray(data) ? data : []
-    const usageData = rawData.filter(g => g.type === 'Penggunaan')
-    
-    let usedGallons = 0
-    usageData.forEach(g => { usedGallons += Number(g.quantity || 0) })
+    const [gallonsRes, journalRes] = await Promise.all([
+      spreadsheetApi.get('Gallons'),
+      spreadsheetApi.get('JournalEntries'),
+    ])
 
-    let purchasedGallons = 0
-    const entries = defaultEngine.journal.getEntries()
-    entries.forEach(entry => {
-      entry.debits.forEach(d => {
-        if (d.accountNumber === '5106') {
-          const match = entry.description.match(/(\d+)\s*galon/i)
-          if (match) {
-            purchasedGallons += parseInt(match[1], 10)
-          } else {
-            purchasedGallons += Math.floor(d.amount / 20000)
-          }
-        }
-      })
+    const rawData = Array.isArray(gallonsRes.data) ? gallonsRes.data as GallonActivity[] : []
+    const journalEntries = Array.isArray(journalRes.data) ? journalRes.data : []
+    const stockSummary = calculateGallonStock({
+      gallonRows: rawData,
+      journalEntries,
     })
+    setGallons(stockSummary.stock)
 
-    setGallons(purchasedGallons - usedGallons)
+    const usageData = rawData.filter(g => g.type === 'Penggunaan')
+    const usageDates = usageData.map(d => parseGallonStockDate(d.date).getTime()).filter(t => !Number.isNaN(t))
+    const oldest = usageDates.length ? Math.min(...usageDates) : Date.now()
+    const avgConsumption = stockSummary.used > 0 ? stockSummary.used / daysBetween(new Date(oldest), new Date()) : 0
+    const isReliable = isReliableGallonPrediction(usageData.length, avgConsumption)
+    const daysLeft = isReliable ? Math.max(0, Math.floor(stockSummary.stock / avgConsumption)) : 0
+    const nextDate = isReliable ? new Date(Date.now() + daysLeft * 24 * 60 * 60 * 1000) : null
+
+    setPrediction({
+      isReliable,
+      daysLeft,
+      nextRefillDate: nextDate
+        ? nextDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+        : 'Data belum cukup',
+      avgConsumption: formatGallonQuantity(avgConsumption),
+    })
     setLoading(false)
   }
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchStock()
+      fetchContainers()
+    }, 0)
+    return () => clearTimeout(timer)
+  }, [])
 
   const handleSaveUsage = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -149,8 +194,12 @@ export default function GallonsInfo() {
     }
     
     const res = await spreadsheetApi.post('Gallons', payload)
-    if (res.success || !res.success) { // Mock fallback
-      setGallons(prev => prev - quantityNum)
+    if (res.success) {
+      setGallons(prev => Math.max(0, prev - quantityNum))
+    } else {
+      alert('Gagal menyimpan penggunaan galon ke sumber data.')
+      setIsSaving(false)
+      return
     }
     
     setIsModalOpen(false)
@@ -198,13 +247,21 @@ export default function GallonsInfo() {
     
     if (editingContainerId) {
       const res = await spreadsheetApi.put('GallonContainers', payload)
-      if (res.success || !res.success) {
+      if (res.success) {
         setContainers(containers.map(c => c.id === editingContainerId ? payload : c))
+      } else {
+        alert('Gagal menyimpan wadah ke sumber data.')
+        setIsSaving(false)
+        return
       }
     } else {
       const res = await spreadsheetApi.post('GallonContainers', payload)
-      if (res.success || !res.success) {
+      if (res.success) {
         setContainers([...containers, payload])
+      } else {
+        alert('Gagal menambahkan wadah ke sumber data.')
+        setIsSaving(false)
+        return
       }
     }
     
@@ -214,7 +271,7 @@ export default function GallonsInfo() {
     setEditingContainerId(null)
   }
 
-  const handleEditContainer = (c: any) => {
+  const handleEditContainer = (c: GallonContainer) => {
     setContainerForm({ name: c.name, capacity: c.capacity, type: c.type, photoUrl: c.photoUrl || '' })
     setEditingContainerId(c.id)
     setIsContainerModalOpen(true)
@@ -222,8 +279,12 @@ export default function GallonsInfo() {
 
   const handleDeleteContainer = async (id: number) => {
     if (confirm('Hapus wadah ini?')) {
-      setContainers(containers.filter(c => c.id !== id))
-      await spreadsheetApi.del('GallonContainers', id)
+      const res = await spreadsheetApi.del('GallonContainers', id)
+      if (res.success) {
+        setContainers(containers.filter(c => c.id !== id))
+      } else {
+        alert('Gagal menghapus wadah dari sumber data.')
+      }
     }
   }
 
@@ -304,7 +365,7 @@ export default function GallonsInfo() {
               <g clipPath="url(#gallon-clip)">
                 <foreignObject x="-50" y="0" width="200" height="200">
                   <div className="w-full h-full" style={{
-                    marginTop: `${160 - (145 * Math.min(100, Math.max(0, (animatedStock / 5) * 100)) / 100)}px`,
+                    marginTop: `${160 - (145 * Math.min(100, Math.max(0, (animatedStock / GALLON_CAPACITY) * 100)) / 100)}px`,
                     transition: 'margin-top 1.5s cubic-bezier(0.34, 1.56, 0.64, 1)'
                   }}>
                     <div className="w-full h-full relative" style={{
@@ -375,10 +436,12 @@ export default function GallonsInfo() {
               <p className="text-sm font-semibold text-emerald-800 flex items-center gap-1.5 uppercase tracking-wide">
                 <CalendarClock className="w-4 h-4" /> Prediksi Habis
               </p>
-              <h4 className="text-4xl font-extrabold text-emerald-900 mt-3 tracking-tight">3 Hari <span className="text-2xl font-bold text-emerald-700">Lagi</span></h4>
+              <h4 className="text-4xl font-extrabold text-emerald-900 mt-3 tracking-tight">
+                {loading ? '...' : prediction.isReliable ? prediction.daysLeft : 'Data'} <span className="text-2xl font-bold text-emerald-700">{prediction.isReliable ? 'Hari Lagi' : 'belum cukup'}</span>
+              </h4>
               <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-200/50 text-emerald-800 text-xs font-semibold mt-3">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                Estimasi: 15 Juni 2026
+                Estimasi: {loading ? '...' : prediction.nextRefillDate}
               </div>
             </div>
           </div>
@@ -391,8 +454,8 @@ export default function GallonsInfo() {
               <p className="text-sm font-semibold text-blue-800 flex items-center gap-1.5 uppercase tracking-wide">
                 <Droplets className="w-4 h-4" /> Sisa Stok Galon
               </p>
-              <h4 className="text-4xl font-extrabold text-blue-900 mt-3 tracking-tight">{loading ? '...' : gallons} <span className="text-2xl font-bold text-blue-700">Galon</span></h4>
-              <p className="text-sm font-medium text-blue-700/80 mt-2">Siap untuk digunakan penghuni</p>
+              <h4 className="text-4xl font-extrabold text-blue-900 mt-3 tracking-tight">{loading ? '...' : formatGallonQuantity(gallons)} <span className="text-2xl font-bold text-blue-700">Galon</span></h4>
+              <p className="text-sm font-medium text-blue-700/80 mt-2">Kapasitas fisik kos: {GALLON_CAPACITY} galon</p>
             </div>
           </div>
           
@@ -404,8 +467,8 @@ export default function GallonsInfo() {
               <p className="text-sm font-semibold text-amber-800 flex items-center gap-1.5 uppercase tracking-wide">
                 <Activity className="w-4 h-4" /> Rata-rata Konsumsi
               </p>
-              <h4 className="text-4xl font-extrabold text-amber-900 mt-3 tracking-tight">0.8 <span className="text-2xl font-bold text-amber-700">Galon / hari</span></h4>
-              <p className="text-sm font-medium text-amber-700/80 mt-2">Relatif stabil bulan ini</p>
+              <h4 className="text-4xl font-extrabold text-amber-900 mt-3 tracking-tight">{loading ? '...' : prediction.avgConsumption} <span className="text-2xl font-bold text-amber-700">Galon / hari</span></h4>
+              <p className="text-sm font-medium text-amber-700/80 mt-2">{prediction.isReliable ? 'Dihitung dari riwayat penggunaan' : 'Butuh minimal 3 catatan penggunaan'}</p>
             </div>
           </div>
         </div>
@@ -421,8 +484,14 @@ export default function GallonsInfo() {
 
       {/* Modal Catat Penggunaan */}
       {isModalOpen && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-visible animate-in zoom-in-95 duration-200">
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm animate-in fade-in duration-200"
+          onMouseDown={() => setIsModalOpen(false)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-visible animate-in zoom-in-95 duration-200"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
             <div className="flex justify-between items-center p-6 border-b border-border">
               <h2 className="text-xl font-bold text-gray-900">Catat Penggunaan</h2>
               <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-200">
@@ -527,8 +596,14 @@ export default function GallonsInfo() {
 
       {/* Modal Daftar Wadah Saya */}
       {isContainerListOpen && createPortal(
-        <div className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+        <div
+          className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm animate-in fade-in duration-200"
+          onMouseDown={() => setIsContainerListOpen(false)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
             <div className="flex justify-between items-center p-6 border-b border-border">
               <div>
                 <h2 className="text-xl font-bold text-gray-900">Kelola Wadah Saya</h2>
@@ -572,7 +647,7 @@ export default function GallonsInfo() {
                         <td className="px-4 py-3 text-center">
                           <div className="flex items-center justify-center space-x-1">
                             {c.photoUrl && (
-                              <button onClick={() => setPreviewImage(c.photoUrl)} className="text-gray-500 hover:text-gray-700 p-1.5 hover:bg-gray-100 rounded-lg transition-colors" title="Lihat Foto">
+                              <button onClick={() => setPreviewImage(c.photoUrl || null)} className="text-gray-500 hover:text-gray-700 p-1.5 hover:bg-gray-100 rounded-lg transition-colors" title="Lihat Foto">
                                 <Eye className="w-4 h-4" />
                               </button>
                             )}
@@ -597,8 +672,18 @@ export default function GallonsInfo() {
 
       {/* Modal Tambah/Edit Wadah */}
       {isContainerModalOpen && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-visible animate-in zoom-in-95 duration-200">
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm animate-in fade-in duration-200"
+          onMouseDown={() => {
+            setIsContainerModalOpen(false)
+            setEditingContainerId(null)
+            setContainerForm({ name: '', capacity: 0.6, type: 'Tumbler', photoUrl: '' })
+          }}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-visible animate-in zoom-in-95 duration-200"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
             <div className="flex justify-between items-center p-6 border-b border-border">
               <h2 className="text-xl font-bold text-gray-900">{editingContainerId ? 'Edit Wadah Saya' : 'Tambah Wadah Baru'}</h2>
               <button onClick={() => { setIsContainerModalOpen(false); setEditingContainerId(null); setContainerForm({ name: '', capacity: 0.6, type: 'Tumbler', photoUrl: '' }); }} className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-200">

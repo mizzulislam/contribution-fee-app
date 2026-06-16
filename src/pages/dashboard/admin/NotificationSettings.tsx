@@ -22,10 +22,6 @@ export default function NotificationSettings() {
   const [isLoading, setIsLoading] = useState(true)
   const [toastMessage, setToastMessage] = useState('')
 
-  useEffect(() => {
-    fetchSettings()
-  }, [])
-
   const fetchSettings = async () => {
     try {
       const { data } = await spreadsheetApi.get('NotificationSettings')
@@ -51,6 +47,10 @@ export default function NotificationSettings() {
       setIsLoading(false)
     }
   }
+
+  useEffect(() => {
+    fetchSettings()
+  }, [])
 
   const handleSave = async () => {
     setIsSaving(true)

@@ -372,8 +372,14 @@ export default function ContributionsList() {
 
       {/* Add Contribution Modal */}
       {isAddModalOpen && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden max-h-[90vh] flex flex-col">
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm"
+          onMouseDown={() => setIsAddModalOpen(false)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden max-h-[90vh] flex flex-col"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
             <div className="flex justify-between items-center p-6 border-b border-gray-100 bg-gray-50/50 shrink-0">
               <h2 className="text-xl font-bold text-gray-900">{editingId ? 'Edit Iuran' : 'Buat Iuran Baru'}</h2>
               <button onClick={() => setIsAddModalOpen(false)} className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-200">
@@ -646,8 +652,14 @@ export default function ContributionsList() {
 
       {/* Detail Modal */}
       {isDetailModalOpen && selectedContribution && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm"
+          onMouseDown={() => setIsDetailModalOpen(false)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
             <div className="flex justify-between items-center p-6 border-b border-gray-100 bg-gray-50/50">
               <h2 className="text-xl font-bold text-gray-900">Detail Iuran</h2>
               <button onClick={() => setIsDetailModalOpen(false)} className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-200">

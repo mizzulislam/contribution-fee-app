@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { WalletCards, SearchCheck, History } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -8,7 +8,13 @@ import PaymentConfirm from './PaymentConfirm'
 import PaymentHistory from './PaymentHistory'
 
 export default function UserBillingDashboard() {
-  const [activeTab, setActiveTab] = useState('bills')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const tabParam = searchParams.get('tab')
+  const activeTab = tabParam && ['bills', 'confirm', 'history'].includes(tabParam) ? tabParam : 'bills'
+
+  const handleTabChange = (id: string) => {
+    setSearchParams({ tab: id }, { replace: true })
+  }
 
   const tabs = [
     { id: 'bills', label: 'Tagihan Saya', icon: WalletCards },
@@ -26,7 +32,7 @@ export default function UserBillingDashboard() {
           return (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => handleTabChange(tab.id)}
               className={cn(
                 "flex items-center px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300",
                 isActive 

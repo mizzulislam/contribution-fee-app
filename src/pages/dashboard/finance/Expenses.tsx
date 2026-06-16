@@ -4,9 +4,30 @@ import { spreadsheetApi } from '@/lib/spreadsheet'
 import { Search, BadgeDollarSign, Plus, Loader2, X, Trash2 } from 'lucide-react'
 import Select from '@/components/ui/Select'
 import { TableLoader } from '@/components/ui/TableLoader'
+import { defaultEngine } from '@/lib/accounting'
+
+const EXPENSE_ACCOUNT_BY_CATEGORY: Record<string, string> = {
+  'Air & Galon': '5106',
+  Listrik: '5101',
+  Kebersihan: '5102',
+  Perbaikan: '5103',
+  Lainnya: '5105',
+}
+
+const CASH_ACCOUNT_NUMBER = '1102'
+
+interface Expense {
+  id: number | string
+  title: string
+  category: string
+  amount: number
+  date: string
+  note?: string
+  created_at?: string
+}
 
 export default function Expenses() {
-  const [expenses, setExpenses] = useState<any[]>([])
+  const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -20,13 +41,9 @@ export default function Expenses() {
     note: ''
   })
 
-  useEffect(() => {
-    fetchExpenses()
-  }, [])
-
-  const fetchExpenses = async () => {
+  async function fetchExpenses() {
     setLoading(true)
-    const { data, error } = await spreadsheetApi.get('Expenses')
+    const { data } = await spreadsheetApi.get('Expenses')
     
     if (data && Array.isArray(data)) {
       setExpenses(data)
@@ -35,6 +52,10 @@ export default function Expenses() {
     }
     setLoading(false)
   }
+
+  useEffect(() => {
+    fetchExpenses()
+  }, [])
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -50,9 +71,34 @@ export default function Expenses() {
     
     const res = await spreadsheetApi.post('Expenses', payload)
     if (res.success) {
+      const debitAccountNumber = EXPENSE_ACCOUNT_BY_CATEGORY[formData.category] || EXPENSE_ACCOUNT_BY_CATEGORY.Lainnya
+      const debits = [{ accountNumber: debitAccountNumber, amount: Number(formData.amount) }]
+      const credits = [{ accountNumber: CASH_ACCOUNT_NUMBER, amount: Number(formData.amount) }]
+      const description = `${formData.title}${formData.note ? ` - ${formData.note}` : ''}`
+      const journalId = `EXP-${newId}`
+
+      defaultEngine.recordTransaction(formData.date, debits, credits, description)
+
+      const journalRes = await spreadsheetApi.post('JournalEntries', {
+        id: journalId,
+        date: formData.date,
+        description,
+        debits: JSON.stringify(debits),
+        credits: JSON.stringify(credits),
+        source: 'Expenses',
+        source_id: newId,
+        created_at: new Date().toISOString(),
+      })
+
+      if (!journalRes.success) {
+        console.error('Gagal membuat jurnal otomatis untuk pengeluaran:', journalRes.error)
+      }
+
       setExpenses([payload, ...expenses])
     } else {
-      setExpenses([payload, ...expenses]) // fallback local
+      alert('Gagal menyimpan pengeluaran ke sumber data.')
+      setIsSaving(false)
+      return
     }
     
     setIsModalOpen(false)
@@ -68,8 +114,15 @@ export default function Expenses() {
 
   const handleDelete = async (id: number | string) => {
     if (!confirm('Hapus pengeluaran ini?')) return
-    setExpenses(expenses.filter(e => e.id !== id))
-    await spreadsheetApi.del('Expenses', id)
+    const [expenseRes, journalRes] = await Promise.all([
+      spreadsheetApi.del('Expenses', id),
+      spreadsheetApi.del('JournalEntries', `EXP-${id}`)
+    ])
+    if (expenseRes.success && journalRes.success) {
+      setExpenses(expenses.filter(e => e.id !== id))
+    } else {
+      alert('Gagal menghapus pengeluaran dari sumber data.')
+    }
   }
 
   const formatCurrency = (amount: number) => {
@@ -163,8 +216,14 @@ export default function Expenses() {
       </div>
 
       {isModalOpen && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm animate-in fade-in duration-200"
+          onMouseDown={() => setIsModalOpen(false)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
             <div className="flex justify-between items-center p-6 border-b border-border">
               <h2 className="text-xl font-bold text-gray-900">Tambah Pengeluaran</h2>
               <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-200">

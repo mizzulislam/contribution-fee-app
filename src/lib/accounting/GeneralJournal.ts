@@ -13,17 +13,21 @@ export class GeneralJournal {
    * Records a new transaction into the General Journal.
    * Validates the transaction using DoubleEntryEngine before recording.
    */
-  public journalize(date: string, debits: JournalEntryLine[], credits: JournalEntryLine[], description: string): JournalEntry {
+  public journalize(date: string, debits: JournalEntryLine[], credits: JournalEntryLine[], description: string, existingId?: string): JournalEntry {
     // 1. Validate
     this.engine.validate(debits, credits)
 
-    // 2. Generate ID (simple UUID mock for this example)
-    // Generate a concise ID like JE-69727 (last 5 digits of timestamp)
-    const timestampStr = Date.now().toString()
-    const shortId = timestampStr.slice(-5)
+    // 2. Generate ID or use existing
+    let id = existingId
+    if (!id) {
+      const timestampStr = Date.now().toString()
+      const randomPart = Math.floor(Math.random() * 1000).toString().padStart(3, '0')
+      const shortId = timestampStr.slice(-5)
+      id = `JE-${shortId}-${randomPart}`
+    }
     
     const entry: JournalEntry = {
-      id: `JE-${shortId}`,
+      id,
       date,
       debits,
       credits,
@@ -32,9 +36,6 @@ export class GeneralJournal {
 
     // 3. Record
     this.entries.push(entry)
-    
-    // In a real app, you would emit an event here to trigger GeneralLedger posting,
-    // or just rely on the Facade/Engine to coordinate.
     
     return entry
   }

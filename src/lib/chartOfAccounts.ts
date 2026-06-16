@@ -36,13 +36,23 @@ export const DEFAULT_CHART_OF_ACCOUNTS: Account[] = [
   { account_number: '5105', account_name: 'Beban Administrasi Bank', account_type: 'Beban', is_default: true, status: 'Aktif' },
 ]
 
-export const mergeAccounts = (customAccounts: any[]): Account[] => {
+interface SheetAccount {
+  id?: string | number
+  account_number?: string | number
+  account_name?: string
+  account_type?: AccountType
+  name?: string
+  type?: AccountType
+  status?: 'Aktif' | 'Nonaktif'
+}
+
+export const mergeAccounts = (customAccounts: SheetAccount[]): Account[] => {
   // Ubah data dari API/Google Sheets menjadi format yang sesuai
   const formattedCustoms = customAccounts.map(c => ({
     id: c.id,
     account_number: String(c.account_number),
-    account_name: c.account_name || c.name, // fallback for legacy data
-    account_type: c.account_type || c.type, // fallback
+    account_name: c.account_name || c.name || 'Akun Tanpa Nama', // fallback for legacy data
+    account_type: c.account_type || c.type || 'Beban', // fallback
     is_default: false,
     status: c.status || 'Aktif'
   }))

@@ -1,9 +1,28 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { BellRing, Send, Clock, Users, CheckCircle2 } from 'lucide-react'
+import { BellRing, Send, CheckCircle2 } from 'lucide-react'
 import { spreadsheetApi } from '@/lib/spreadsheet'
+import { isDateInPeriod, type PeriodFilter } from '@/lib/accounting/period'
 
-export default function Reminders() {
+interface UserRow {
+  status?: string
+  role?: string
+}
+
+interface BillRow {
+  status?: string
+  resident_name?: string
+  due_date?: string
+  created_at?: string
+}
+
+interface RemindersProps {
+  period?: PeriodFilter
+}
+
+const defaultPeriod: PeriodFilter = { preset: 'all' }
+
+export default function Reminders({ period = defaultPeriod }: RemindersProps) {
   const [loading, setLoading] = useState(false)
   const [loadingData, setLoadingData] = useState(true)
   const [success, setSuccess] = useState(false)
@@ -13,11 +32,7 @@ export default function Reminders() {
   const [sudahLunas, setSudahLunas] = useState(0)
   const [belumLunas, setBelumLunas] = useState(0)
 
-  useEffect(() => {
-    fetchData()
-  }, [])
-
-  const fetchData = async () => {
+  async function fetchData() {
     setLoadingData(true)
     try {
       const [usersRes, billsRes] = await Promise.all([
@@ -25,8 +40,8 @@ export default function Reminders() {
         spreadsheetApi.get('Bills')
       ])
 
-      let usersList: any[] = []
-      let billsList: any[] = []
+      let usersList: UserRow[] = []
+      let billsList: BillRow[] = []
 
       if (usersRes.data && Array.isArray(usersRes.data)) {
         usersList = usersRes.data.filter(u => (!u.status || u.status === 'Aktif') && String(u.role).includes('user'))
@@ -34,7 +49,7 @@ export default function Reminders() {
       }
 
       if (billsRes.data && Array.isArray(billsRes.data)) {
-        billsList = billsRes.data
+        billsList = billsRes.data.filter((bill: BillRow) => isDateInPeriod(bill.due_date || bill.created_at || '', period))
         const unpaidBills = billsList.filter(b => b.status === 'unpaid' || b.status === 'pending' || b.status === 'Belum Bayar')
         
         // Count unique users who have unpaid bills
@@ -48,6 +63,10 @@ export default function Reminders() {
       setLoadingData(false)
     }
   }
+
+  useEffect(() => {
+    fetchData()
+  }, [period])
 
   const handleSendReminders = () => {
     setLoading(true)
@@ -144,4 +163,3 @@ export default function Reminders() {
     </div>
   )
 }
-

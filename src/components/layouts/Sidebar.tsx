@@ -1,21 +1,20 @@
 import { useLocation } from "react-router-dom"
 import {
-  LayoutDashboard, Users, ReceiptText, WalletCards,
-  ArrowDownCircle, Droplets, CalendarCheck, LogOut, Bell,
-  Settings, ShieldCheck, Database, FileText, Activity, AlertTriangle, Shield,
-  BadgeDollarSign, SearchCheck, RefreshCw, FileLineChart, Store, BellRing, UserCircle, Sparkles, Megaphone
+  LayoutDashboard, Users, WalletCards,
+  ArrowDownCircle, Droplets, CalendarCheck, Bell,
+  Settings, ShieldCheck, Database, Activity,
+  RefreshCw, FileLineChart, Megaphone
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useSidebarStore } from "@/stores/sidebar-store"
 import { SidebarLogo } from "./SidebarLogo"
-import { SidebarToggle } from "./SidebarToggle"
 import { SidebarNavItem } from "./SidebarNavItem"
 import { SidebarProfile } from "./SidebarProfile"
 import { useAuth } from "@/hooks/useAuth"
 
 export function Sidebar() {
   const location = useLocation()
-  const { profile, activeRole, signOut } = useAuth()
+  const { activeRole } = useAuth()
   const { isCollapsed, isMobileOpen, toggleCollapsed, closeMobile } = useSidebarStore()
 
   // --- NAVIGATION MENUS PER ROLE ---
@@ -27,6 +26,7 @@ export function Sidebar() {
     { name: 'Audit Log', path: '/dashboard/audit', icon: Activity },
     { name: 'Notifikasi', path: '/dashboard/notifications-settings', icon: Bell },
     { name: 'Backup Data', path: '/dashboard/backup', icon: RefreshCw },
+    { name: 'System Settings', path: '/dashboard/settings', icon: Settings },
   ]
 
   const adminNav = [

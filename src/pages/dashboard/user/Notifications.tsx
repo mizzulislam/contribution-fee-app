@@ -1,19 +1,168 @@
-import { useState } from 'react'
-import { Bell, Check, Info, AlertTriangle } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { AlertTriangle, Bell, Check, Info, Loader2 } from 'lucide-react'
+import { useAuth } from '@/hooks/useAuth'
+import { spreadsheetApi } from '@/lib/spreadsheet'
+
+interface NotificationItem {
+  id: string
+  title: string
+  message: string
+  type: 'warning' | 'success' | 'info'
+  date: string
+  read: boolean
+}
+
+interface BillRow {
+  id: string | number
+  resident_email?: string
+  resident_name?: string
+  amount?: number
+  due_date?: string
+  status?: string
+  title?: string
+  description?: string
+}
+
+interface PaymentRow {
+  id: string | number
+  resident_email?: string
+  resident_name?: string
+  amount?: number
+  status?: string
+  title?: string
+  date_verified?: string
+  date_submitted?: string
+}
+
+interface ScheduleRow {
+  id: string | number
+  user_id?: string | number
+  user?: string
+  task?: string
+  date?: string
+  status?: string
+}
+
+function formatCurrency(amount?: number) {
+  return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(Number(amount) || 0)
+}
+
+function formatDate(date?: string) {
+  if (!date) return '-'
+  const parsed = new Date(date)
+  if (Number.isNaN(parsed.getTime())) return date
+  return parsed.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
+}
+
+function belongsToUser(row: { resident_email?: string; resident_name?: string }, email?: string, name?: string) {
+  return row.resident_email === email || row.resident_name === name
+}
 
 export default function Notifications() {
-  const [notifications, setNotifications] = useState([
-    { id: 1, title: 'Tagihan Baru', message: 'Tagihan Iuran Wajib bulan Juni 2026 telah terbit. Silakan lakukan pembayaran sebelum tanggal 10.', type: 'warning', date: 'Hari ini, 08:00', read: false },
-    { id: 2, title: 'Pembayaran Terverifikasi', message: 'Pembayaran Iuran Wajib bulan Mei 2026 telah diverifikasi oleh Bendahara.', type: 'success', date: 'Kemarin, 14:30', read: true },
-    { id: 3, title: 'Jadwal Piket', message: 'Jangan lupa jadwal piket angkat galon Anda besok!', type: 'info', date: '2 hari yang lalu', read: true }
-  ])
+  const { profile } = useAuth()
+  const [bills, setBills] = useState<BillRow[]>([])
+  const [payments, setPayments] = useState<PaymentRow[]>([])
+  const [schedules, setSchedules] = useState<ScheduleRow[]>([])
+  const [readIds, setReadIds] = useState<string[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const markAsRead = (id: number) => {
-    setNotifications(notifications.map(n => n.id === id ? { ...n, read: true } : n))
+  useEffect(() => {
+    if (!profile?.id) return
+    let isMounted = true
+    const currentProfile = profile
+
+    async function fetchNotifications() {
+      setLoading(true)
+      const [billRes, paymentRes, scheduleRes] = await Promise.all([
+        spreadsheetApi.get('Bills'),
+        spreadsheetApi.get('Payments'),
+        spreadsheetApi.get('Schedules'),
+      ])
+
+      if (!isMounted) return
+
+      setBills(Array.isArray(billRes.data) ? billRes.data.filter((bill: BillRow) => belongsToUser(bill, currentProfile.email, currentProfile.full_name)) : [])
+      setPayments(Array.isArray(paymentRes.data) ? paymentRes.data.filter((payment: PaymentRow) => belongsToUser(payment, currentProfile.email, currentProfile.full_name)) : [])
+      setSchedules(Array.isArray(scheduleRes.data) ? scheduleRes.data.filter((schedule: ScheduleRow) => {
+        const userIdentifier = currentProfile.nickname || currentProfile.full_name?.split(' ')[0] || ''
+        return String(schedule.user_id) === String(currentProfile.id) || Boolean(userIdentifier && schedule.user?.includes(userIdentifier))
+      }) : [])
+      setLoading(false)
+    }
+
+    fetchNotifications()
+    return () => {
+      isMounted = false
+    }
+  }, [profile?.email, profile?.full_name, profile?.id, profile?.nickname])
+
+  const notifications = useMemo<NotificationItem[]>(() => {
+    const items: NotificationItem[] = []
+
+    bills.forEach(bill => {
+      const status = String(bill.status || '').toLowerCase()
+      if (['unpaid', 'rejected', 'belum bayar'].includes(status)) {
+        const id = `bill-${bill.id}`
+        items.push({
+          id,
+          title: status === 'rejected' ? 'Pembayaran Ditolak' : 'Tagihan Belum Dibayar',
+          message: `${bill.title || bill.description || 'Tagihan kos'} sebesar ${formatCurrency(bill.amount)} jatuh tempo ${formatDate(bill.due_date)}.`,
+          type: 'warning',
+          date: formatDate(bill.due_date),
+          read: readIds.includes(id),
+        })
+      }
+    })
+
+    payments.forEach(payment => {
+      const status = String(payment.status || '').toLowerCase()
+      if (['paid', 'verified', 'lunas'].includes(status)) {
+        const id = `payment-${payment.id}`
+        items.push({
+          id,
+          title: 'Pembayaran Terverifikasi',
+          message: `${payment.title || 'Pembayaran'} sebesar ${formatCurrency(payment.amount)} sudah diverifikasi.`,
+          type: 'success',
+          date: formatDate(payment.date_verified || payment.date_submitted),
+          read: readIds.includes(id),
+        })
+      }
+      if (status === 'pending_verification' || status === 'menunggu verifikasi') {
+        const id = `payment-pending-${payment.id}`
+        items.push({
+          id,
+          title: 'Pembayaran Menunggu Verifikasi',
+          message: `${payment.title || 'Pembayaran'} sebesar ${formatCurrency(payment.amount)} sedang ditinjau bendahara.`,
+          type: 'info',
+          date: formatDate(payment.date_submitted),
+          read: readIds.includes(id),
+        })
+      }
+    })
+
+    schedules
+      .filter(schedule => String(schedule.status || '').toLowerCase() !== 'selesai')
+      .forEach(schedule => {
+        const id = `schedule-${schedule.id}`
+        items.push({
+          id,
+          title: 'Jadwal Piket Aktif',
+          message: `${schedule.task || 'Piket'} terjadwal pada ${formatDate(schedule.date)}.`,
+          type: 'info',
+          date: formatDate(schedule.date),
+          read: readIds.includes(id),
+        })
+      })
+
+    return items
+  }, [bills, payments, readIds, schedules])
+
+  const markAsRead = (id: string) => {
+    setReadIds(prev => prev.includes(id) ? prev : [...prev, id])
   }
 
   const markAllAsRead = () => {
-    setNotifications(notifications.map(n => ({ ...n, read: true })))
+    setReadIds(notifications.map(n => n.id))
   }
 
   const getIcon = (type: string) => {
@@ -41,26 +190,32 @@ export default function Notifications() {
             <Bell className="mr-3 text-primary w-8 h-8" />
             Notifikasi Pribadi
           </h1>
-          <p className="text-text-secondary mt-1">Pesan pengingat tagihan dan informasi dari bendahara.</p>
+          <p className="text-text-secondary mt-1">Dirangkum dari tagihan, pembayaran, dan jadwal piket akun Anda.</p>
         </div>
-        <button 
+        <button
           onClick={markAllAsRead}
           className="text-sm font-medium text-primary hover:text-primary-dark"
+          disabled={notifications.length === 0}
         >
           Tandai semua dibaca
         </button>
       </div>
 
       <div className="card-container overflow-hidden divide-y divide-gray-100">
-        {notifications.length === 0 ? (
+        {loading ? (
+          <div className="p-10 text-center text-emerald-700">
+            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-3" />
+            Memuat notifikasi...
+          </div>
+        ) : notifications.length === 0 ? (
           <div className="p-10 text-center text-gray-500">
             <Bell className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            Tidak ada notifikasi saat ini.
+            Tidak ada notifikasi aktif dari data sistem saat ini.
           </div>
         ) : (
           notifications.map((notif) => (
-            <div 
-              key={notif.id} 
+            <div
+              key={notif.id}
               className={`p-5 sm:p-6 transition-colors flex gap-4 ${getBgColor(notif.type, notif.read)} hover:bg-gray-50`}
             >
               <div className="mt-1">
@@ -77,7 +232,7 @@ export default function Notifications() {
                   {notif.message}
                 </p>
                 {!notif.read && (
-                  <button 
+                  <button
                     onClick={() => markAsRead(notif.id)}
                     className="text-xs font-medium text-primary hover:text-primary-dark flex items-center"
                   >
