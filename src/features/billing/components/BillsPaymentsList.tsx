@@ -463,12 +463,23 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
                   <span className="text-lg font-bold text-primary">{formatCurrency(selectedBill.amount)}</span>
                 </div>
               </div>
+              {debtInfo.hasDebt && (
+                <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl text-sm flex items-start gap-3">
+                  <Clock className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold text-blue-900">Kompensasi Utang Tersedia</p>
+                    <p className="text-blue-700 mt-0.5 text-xs leading-relaxed">
+                      Bendahara memiliki utang sebesar <span className="font-bold text-blue-900">{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(debtInfo.balance)}</span> ke {selectedBill.resident_name}.
+                    </p>
+                  </div>
+                </div>
+              )}
               <div className="flex justify-between items-center bg-white border border-gray-200 p-4 rounded-xl">
                 <span className="text-sm font-medium text-gray-700">Status Pembayaran</span>
                 {getStatusBadge(selectedBill.status)}
               </div>
               {selectedBill.status === 'unpaid' && (
-                <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-3 pt-2">
                   {debtInfo.hasDebt && (
                     <button 
                       type="button"
@@ -479,9 +490,9 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
                           setIsDetailModalOpen(false)
                         }
                       }}
-                      className="w-full btn-primary flex items-center justify-center bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+                      className="btn-primary flex items-center justify-center bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-sm py-2.5 px-4 font-semibold rounded-xl transition-all"
                     >
-                      <Check className="w-5 h-5 mr-2" /> Potong Utang Bendahara (Saldo: Rp {new Intl.NumberFormat('id-ID').format(debtInfo.balance)})
+                      <Check className="w-4 h-4 mr-2" /> Potong Utang
                     </button>
                   )}
                   <button 
@@ -493,9 +504,9 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
                       setToastMessage(success ? 'Tagihan berhasil ditandai Lunas!' : 'Disimpan lokal (Gagal terhubung ke Sheets)')
                       setTimeout(() => setToastMessage(''), 3000)
                     }}
-                    className="w-full btn-primary flex items-center justify-center bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50"
+                    className={`btn-primary flex items-center justify-center bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-sm py-2.5 px-4 font-semibold rounded-xl transition-all ${!debtInfo.hasDebt ? 'col-span-2' : ''}`}
                   >
-                    <Check className="w-5 h-5 mr-2" /> Tandai Lunas (Manual)
+                    <Check className="w-4 h-4 mr-2" /> {debtInfo.hasDebt ? 'Lunas Manual' : 'Tandai Lunas'}
                   </button>
                 </div>
               )}
