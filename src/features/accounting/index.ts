@@ -9,7 +9,6 @@ export * from './calculations/ClosingProcess'
 export * from './calculations/AccountingEngine'
 export * from './calculations/optimizedCycle'
 
-// Create a singleton instance for global use
-import { AccountingEngine } from './calculations/AccountingEngine'
-export const defaultEngine = new AccountingEngine()
+// Re-export the singleton instance from calculations to avoid duplicate instances
+export { defaultEngine } from './calculations/index'
 export * from './services/sync'

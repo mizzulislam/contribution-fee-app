@@ -59,6 +59,7 @@ async function runAccountingSync(): Promise<void> {
     'Beban': 'Expenses'
   }
 
+  defaultEngine.coa.clear()
   defaultEngine.reset()
   
   merged.forEach(acc => {
