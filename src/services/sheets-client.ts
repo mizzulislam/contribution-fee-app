@@ -63,7 +63,9 @@ export const spreadsheetApi = {
       const roleParam = userRole ? `&userRole=${encodeURIComponent(userRole)}` : ''
       const tokenParam = SOEMATRA_API_TOKEN ? `&token=${encodeURIComponent(SOEMATRA_API_TOKEN)}` : ''
       
-      const response = await fetch(`${SPREADSHEET_API_URL}?action=get&sheet=${sheetName}${tokenParam}${emailParam}${roleParam}`)
+      const response = await fetch(`${SPREADSHEET_API_URL}?action=get&sheet=${sheetName}${tokenParam}${emailParam}${roleParam}`, {
+        credentials: 'omit'
+      })
       if (!response.ok) throw new Error('Network response was not ok')
       const result = await response.json()
       if (result.status === 'error') throw new Error(result.message || 'Spreadsheet API mengembalikan error.')
@@ -88,7 +90,8 @@ export const spreadsheetApi = {
       const response = await fetch(SPREADSHEET_API_URL, {
         method: 'POST',
         headers: buildHeaders(),
-        body: JSON.stringify(withAuthContext({ action: 'post', sheet: sheetName, data }))
+        body: JSON.stringify(withAuthContext({ action: 'post', sheet: sheetName, data })),
+        credentials: 'omit'
       })
       
       const result = await response.json()
@@ -112,7 +115,8 @@ export const spreadsheetApi = {
       const response = await fetch(SPREADSHEET_API_URL, {
         method: 'POST', // GAS usually uses POST for all mutations
         headers: buildHeaders(),
-        body: JSON.stringify(withAuthContext({ action: 'put', sheet: sheetName, data }))
+        body: JSON.stringify(withAuthContext({ action: 'put', sheet: sheetName, data })),
+        credentials: 'omit'
       })
       const result = await response.json()
       if (result.status !== 'success') throw new Error(result.message)
@@ -134,7 +138,8 @@ export const spreadsheetApi = {
       const response = await fetch(SPREADSHEET_API_URL, {
         method: 'POST', 
         headers: buildHeaders(),
-        body: JSON.stringify(withAuthContext({ action: 'delete', sheet: sheetName, id }))
+        body: JSON.stringify(withAuthContext({ action: 'delete', sheet: sheetName, id })),
+        credentials: 'omit'
       })
       const result = await response.json()
       if (result.status !== 'success') throw new Error(result.message)
@@ -156,7 +161,8 @@ export const spreadsheetApi = {
       const response = await fetch(SPREADSHEET_API_URL, {
         method: 'POST', 
         headers: buildHeaders(),
-        body: JSON.stringify(withAuthContext({ action: 'restore', sheet: sheetName, data }))
+        body: JSON.stringify(withAuthContext({ action: 'restore', sheet: sheetName, data })),
+        credentials: 'omit'
       })
       const result = await response.json()
       if (result.status !== 'success') throw new Error(result.message)
