@@ -50,6 +50,7 @@ export default function JournalEntryForm({ onSuccess, editingEntry }: JournalEnt
     return editingEntry ? editingEntry.description : ''
   })
   const [error, setError] = useState('')
+  const [isSuccessOpen, setIsSuccessOpen] = useState(false)
 
   async function refreshData() {
     setIsSyncing(true)
@@ -358,14 +359,7 @@ export default function JournalEntryForm({ onSuccess, editingEntry }: JournalEnt
       // Re-synchronize local defaultEngine singleton so it is 100% updated with the spreadsheet
       await syncAccountingWithSheet()
 
-      // Reset form
-      setDebits([{ accountNumber: '', amount: '' }])
-      setCredits([{ accountNumber: '', amount: '' }])
-      setDescription('')
-      
-      if (onSuccess) {
-        onSuccess()
-      }
+      setIsSuccessOpen(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Gagal merekam transaksi')
     } finally {
@@ -381,6 +375,51 @@ export default function JournalEntryForm({ onSuccess, editingEntry }: JournalEnt
     label: `${acc.accountNumber} - ${acc.accountName}`,
     value: acc.accountNumber
   }))
+
+  if (isSuccessOpen) {
+    return (
+      <div className="bg-white p-8 sm:p-10 md:p-12 w-full flex flex-col items-center justify-center text-center animate-in fade-in duration-300 min-h-[450px]">
+        <div className="mb-6 inline-flex h-20 w-20 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100 shadow-sm animate-bounce">
+          <CheckCircle2 className="h-10 w-10" />
+        </div>
+        <h3 className="text-2xl font-bold text-gray-900 mb-2">Transaksi Berhasil Direkam!</h3>
+        <p className="text-gray-500 max-w-md mb-6 leading-relaxed text-sm">
+          Entri jurnal untuk transaksi <span className="font-semibold text-gray-800">"{description || 'Tanpa Deskripsi'}"</span> pada tanggal <span className="font-semibold text-gray-800">{new Date(date).toLocaleDateString('id-ID')}</span> telah dicatat secara aman ke sistem akuntansi.
+        </p>
+        <div className="w-full max-w-md bg-gray-50 border border-gray-100 rounded-2xl p-5 mb-8 text-left space-y-3 shadow-sm">
+          <div className="flex justify-between items-center text-sm border-b border-gray-200/60 pb-2.5">
+            <span className="text-gray-500 font-medium">Nominal Transaksi</span>
+            <span className="font-bold text-emerald-600 text-base">Rp {formatCurrency(totalDebitAmount)}</span>
+          </div>
+          <div className="flex justify-between items-center text-sm">
+            <span className="text-gray-500 font-medium">Klasifikasi Jurnal</span>
+            <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
+              journalClassification.tone === 'red'
+                ? 'bg-red-50 text-red-700 border-red-100'
+                : journalClassification.tone === 'emerald'
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                  : 'bg-slate-50 text-slate-700 border-slate-200'
+            }`}>
+              {journalClassification.label.replace('Terdeteksi sebagai ', '')}
+            </span>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            setIsSuccessOpen(false)
+            setDebits([{ accountNumber: '', amount: '' }])
+            setCredits([{ accountNumber: '', amount: '' }])
+            setDescription('')
+            if (onSuccess) onSuccess()
+          }}
+          className="btn-primary w-full max-w-md py-3 font-semibold text-base shadow-lg shadow-emerald-500/20 bg-emerald-600 hover:bg-emerald-700 hover:border-emerald-700 focus:outline-none"
+        >
+          Selesai
+        </button>
+      </div>
+    )
+  }
 
   return (
     <div className="bg-white p-6 sm:p-8 md:p-10 w-full">
