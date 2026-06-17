@@ -64,7 +64,7 @@ export default function SystemSettings() {
       setTimeout(() => setToastMessage(''), 3000)
     } catch (err) {
       console.error(err)
-      setToastMessage('Gagal menyimpan (Mode Mock)')
+      setToastMessage('Gagal menyimpan konfigurasi.')
       setTimeout(() => setToastMessage(''), 3000)
     } finally {
       setIsSaving(false)
@@ -72,7 +72,7 @@ export default function SystemSettings() {
   }
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center">
           <Settings className="mr-3 text-primary w-8 h-8" />

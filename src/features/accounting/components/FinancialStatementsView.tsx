@@ -97,6 +97,7 @@ export default function FinancialStatementsView({ period }: FinancialStatementsV
 
   const inc = statements.incomeStatement
   const bal = statements.balanceSheet
+  const cash = statements.cashFlowStatement
   const periodLabel = getPeriodLabel(period)
 
   // Modal Pemilik balance (excluding closing adjustments if not locked/closed)
@@ -158,9 +159,17 @@ export default function FinancialStatementsView({ period }: FinancialStatementsV
     rows.push(['Neraca', '  Laba Ditahan Akhir', formatAmountText(statements.retainedEarningsStatement.endingRetainedEarnings)])
     rows.push(['Neraca', 'Total Ekuitas', formatAmountText(bal.equity.totalEquity)])
     rows.push(['Neraca', 'TOTAL KEWAJIBAN & EKUITAS', formatAmountText(bal.totalLiabilitiesAndEquity)])
+
+    // Cash Flow Statement Export
+    rows.push(['Laporan Arus Kas', 'Kas Bersih dari Aktivitas Operasi', formatAmountText(cash.operatingActivities)])
+    rows.push(['Laporan Arus Kas', 'Kas Bersih dari Aktivitas Investasi', formatAmountText(cash.investingActivities)])
+    rows.push(['Laporan Arus Kas', 'Kas Bersih dari Aktivitas Pendanaan', formatAmountText(cash.financingActivities)])
+    rows.push(['Laporan Arus Kas', 'Kenaikan/Penurunan Bersih Kas', formatAmountText(cash.netCashFlow)])
+    rows.push(['Laporan Arus Kas', 'Saldo Kas Awal', formatAmountText(cash.beginningCashBalance)])
+    rows.push(['Laporan Arus Kas', 'Saldo Kas Akhir', formatAmountText(cash.endingCashBalance)])
     
     return rows
-  }, [classifiedAccounts, inc, statements, bal, modalPemilikBalance])
+  }, [classifiedAccounts, inc, statements, bal, cash, modalPemilikBalance])
 
   const incomeStatementCard = (
     <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col justify-between min-h-[560px] w-full">
@@ -399,6 +408,48 @@ export default function FinancialStatementsView({ period }: FinancialStatementsV
     </div>
   )
 
+  const cashFlowCard = (
+    <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col justify-between min-h-[560px] w-full">
+      <div>
+        <div className="border-b border-gray-100 pb-4 mb-5">
+          <span className="text-[10px] font-bold tracking-widest text-gray-500 uppercase">Pergerakan Kas</span>
+          <h2 className="text-xl font-bold text-gray-900 mt-0.5">Laporan Arus Kas</h2>
+          <p className="text-xs text-gray-500 mt-1">Ringkasan kas masuk dan keluar berdasarkan aktivitas</p>
+        </div>
+
+        <div className="space-y-3.5 text-xs">
+          <div className="flex justify-between items-center py-2 pl-1 border-b border-gray-100 hover:bg-gray-50/50">
+            <span className="text-gray-600 font-medium">Kas Bersih dari Aktivitas Operasi</span>
+            {formatCurrency(cash.operatingActivities, cash.operatingActivities < 0)}
+          </div>
+          <div className="flex justify-between items-center py-2 pl-1 border-b border-gray-100 hover:bg-gray-50/50">
+            <span className="text-gray-600 font-medium">Kas Bersih dari Aktivitas Investasi</span>
+            {formatCurrency(cash.investingActivities, cash.investingActivities < 0)}
+          </div>
+          <div className="flex justify-between items-center py-2 pl-1 border-b border-gray-100 hover:bg-gray-50/50">
+            <span className="text-gray-600 font-medium">Kas Bersih dari Aktivitas Pendanaan</span>
+            {formatCurrency(cash.financingActivities, cash.financingActivities < 0)}
+          </div>
+          <div className="flex justify-between items-center py-2.5 pl-1 border-t border-gray-200 text-gray-900 font-bold">
+            <span className="uppercase tracking-wide">Kenaikan/Penurunan Bersih Kas</span>
+            {formatCurrency(cash.netCashFlow, cash.netCashFlow < 0, 'text-xs font-bold text-gray-900')}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-6 space-y-2 border-t border-gray-200 pt-4 text-xs">
+        <div className="flex justify-between items-center py-1.5 pl-1">
+          <span className="font-medium text-gray-600">Saldo Kas Awal</span>
+          {formatCurrency(cash.beginningCashBalance, cash.beginningCashBalance < 0)}
+        </div>
+        <div className="flex justify-between items-center py-2.5 pl-1 border-t border-b-2 border-gray-200 text-gray-900">
+          <span className="font-bold uppercase tracking-wide">Saldo Kas Akhir</span>
+          {formatCurrency(cash.endingCashBalance, cash.endingCashBalance < 0, 'text-xs font-bold text-gray-900')}
+        </div>
+      </div>
+    </div>
+  )
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -407,7 +458,7 @@ export default function FinancialStatementsView({ period }: FinancialStatementsV
             <Scale className="mr-3 text-primary w-8 h-8" />
             Laporan Keuangan
           </h1>
-          <p className="text-text-secondary mt-1">Laporan Laba/Rugi, Perubahan Ekuitas, dan Neraca (Balance Sheet) standar IFRS.</p>
+          <p className="text-text-secondary mt-1">Laporan Laba/Rugi, Perubahan Ekuitas, Neraca, dan Arus Kas.</p>
         </div>
         <AccountingDownloadMenu
           fileName={`laporan-keuangan-${periodLabel.toLowerCase().replace(/[^a-z0-9]+/gi, '-').replace(/(^-|-$)/g, '') || 'semua-periode'}`}
@@ -429,7 +480,8 @@ export default function FinancialStatementsView({ period }: FinancialStatementsV
                   {[
                     { label: 'Laba Rugi', index: 0 },
                     { label: 'Perubahan Ekuitas', index: 1 },
-                    { label: 'Neraca', index: 2 }
+                    { label: 'Neraca', index: 2 },
+                    { label: 'Arus Kas', index: 3 }
                   ].map((tab) => (
                     <button
                       key={tab.index}
@@ -447,7 +499,7 @@ export default function FinancialStatementsView({ period }: FinancialStatementsV
               </div>
             ) : (
               <span className="text-sm font-semibold text-gray-600 pl-1">
-                Menampilkan Semua Laporan (3 Kolom)
+                Menampilkan Semua Laporan (4 Dokumen)
               </span>
             )}
           </div>
@@ -481,10 +533,11 @@ export default function FinancialStatementsView({ period }: FinancialStatementsV
 
         {/* Content area */}
         {layoutMode === 'grid' ? (
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 items-start">
+          <div className="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-4 gap-8 items-start">
             {incomeStatementCard}
             {retainedEarningsCard}
             {balanceSheetCard}
+            {cashFlowCard}
           </div>
         ) : (
           <div className="w-full">
@@ -493,6 +546,7 @@ export default function FinancialStatementsView({ period }: FinancialStatementsV
               {activeCardIndex === 0 && incomeStatementCard}
               {activeCardIndex === 1 && retainedEarningsCard}
               {activeCardIndex === 2 && balanceSheetCard}
+              {activeCardIndex === 3 && cashFlowCard}
             </div>
           </div>
         )}

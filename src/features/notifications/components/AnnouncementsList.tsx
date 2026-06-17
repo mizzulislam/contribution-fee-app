@@ -58,7 +58,7 @@ export default function Announcements() {
   }, [])
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto animate-in fade-in duration-300">
+    <div className="space-y-6 animate-in fade-in duration-300">
       <div>
         <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center">
           <div className="w-10 h-10 rounded-xl bg-primary-soft text-primary flex items-center justify-center mr-3 shadow-sm">

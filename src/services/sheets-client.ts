@@ -8,15 +8,14 @@ const SPREADSHEET_API_URL = import.meta.env.VITE_SPREADSHEET_API_URL || 'https:/
 const SOEMATRA_API_TOKEN = import.meta.env.VITE_SOEMATRA_API_TOKEN || ''
 
 function buildHeaders() {
-  const headers: Record<string, string> = {
+  return {
     'Content-Type': 'text/plain;charset=utf-8', // URL encoded for GAS bypass CORS
   }
+}
 
-  if (SOEMATRA_API_TOKEN) {
-    headers['X-Soematra-Token'] = SOEMATRA_API_TOKEN
-  }
-
-  return headers
+interface RequesterContext {
+  userEmail?: string
+  userRole?: string
 }
 
 function getRequesterContext() {
@@ -52,21 +51,22 @@ export const spreadsheetApi = {
    * Mengambil data dari sheet tertentu
    * @param sheetName Nama tab pada Google Sheets (contoh: 'Users', 'Contributions')
    */
-  async get(sheetName: string) {
+  async get(sheetName: string, requester?: RequesterContext) {
     if (SPREADSHEET_API_URL.includes('YOUR_SCRIPT_ID')) {
       return { data: null, error: new Error('Spreadsheet API belum dikonfigurasi; data real tidak tersedia.') }
     }
     try {
-      const { userEmail, userRole } = getRequesterContext()
+      const sessionContext = getRequesterContext()
+      const userEmail = requester?.userEmail ?? sessionContext.userEmail
+      const userRole = requester?.userRole ?? sessionContext.userRole
       const emailParam = userEmail ? `&userEmail=${encodeURIComponent(userEmail)}` : ''
       const roleParam = userRole ? `&userRole=${encodeURIComponent(userRole)}` : ''
       const tokenParam = SOEMATRA_API_TOKEN ? `&token=${encodeURIComponent(SOEMATRA_API_TOKEN)}` : ''
       
-      const response = await fetch(`${SPREADSHEET_API_URL}?action=get&sheet=${sheetName}${tokenParam}${emailParam}${roleParam}`, {
-        headers: SOEMATRA_API_TOKEN ? { 'X-Soematra-Token': SOEMATRA_API_TOKEN } : undefined,
-      })
+      const response = await fetch(`${SPREADSHEET_API_URL}?action=get&sheet=${sheetName}${tokenParam}${emailParam}${roleParam}`)
       if (!response.ok) throw new Error('Network response was not ok')
       const result = await response.json()
+      if (result.status === 'error') throw new Error(result.message || 'Spreadsheet API mengembalikan error.')
       const normalizedData = normalizeData(sheetName, result.data)
       return { data: normalizedData, error: null }
     } catch (error) {
@@ -169,6 +169,76 @@ export const spreadsheetApi = {
 }
 
 /**
+ * Melakukan parsing string objek bawaan Google Sheets (seperti "{name=Iuran, period_type=Bulanan}")
+ * menjadi objek Javascript standar secara rekursif.
+ */
+export function parseGoogleSheetsObject(str: string): any {
+  if (!str || typeof str !== 'string') return str
+  const trimmed = str.trim()
+  if (!trimmed.startsWith('{') || !trimmed.endsWith('}')) {
+    try {
+      return JSON.parse(trimmed)
+    } catch {
+      return str
+    }
+  }
+
+  try {
+    const parseObj = (s: string): any => {
+      const inner = s.substring(1, s.length - 1).trim()
+      const result: any = {}
+      let currentKey = ''
+      let currentValue = ''
+      let depth = 0
+      let inValue = false
+
+      for (let i = 0; i < inner.length; i++) {
+        const char = inner[i]
+        if (char === '{') {
+          depth++
+          currentValue += char
+        } else if (char === '}') {
+          depth--
+          currentValue += char
+        } else if (char === '=' && depth === 0) {
+          inValue = true
+        } else if (char === ',' && depth === 0) {
+          result[currentKey.trim()] = parseVal(currentValue.trim())
+          currentKey = ''
+          currentValue = ''
+          inValue = false
+        } else {
+          if (inValue) {
+            currentValue += char
+          } else {
+            currentKey += char
+          }
+        }
+      }
+      if (currentKey) {
+        result[currentKey.trim()] = parseVal(currentValue.trim())
+      }
+      return result
+    }
+
+    const parseVal = (v: string): any => {
+      if (v.startsWith('{') && v.endsWith('}')) {
+        return parseObj(v)
+      }
+      if (v === 'true') return true
+      if (v === 'false') return false
+      if (!isNaN(Number(v)) && v !== '') return Number(v)
+      return v
+    }
+
+    return parseObj(trimmed)
+  } catch (e) {
+    console.warn("Gagal parsing Google Sheets object:", str, e)
+    return str
+  }
+}
+
+/**
  * Normalisasi data mentah dari Google Sheets untuk mencegah crash di UI jika ada format yang tidak lengkap/null.
  */
 export function normalizeData(sheetName: string, data: unknown): Record<string, any>[] {
@@ -198,6 +268,16 @@ export function normalizeData(sheetName: string, data: unknown): Record<string, 
       normalized.resident_email = item.resident_email || ''
       normalized.resident_name = item.resident_name || ''
       normalized.room_number = item.room_number !== undefined ? String(item.room_number) : ''
+      if (item.contributions) {
+        normalized.contributions = parseGoogleSheetsObject(item.contributions)
+      }
+    } else if (sheetName === 'Contributions') {
+      normalized.amount = Number(item.amount) || 0
+      normalized.status = item.status || 'active'
+      normalized.due_date = item.due_date !== undefined ? String(item.due_date) : ''
+      if (item.contribution_types) {
+        normalized.contribution_types = parseGoogleSheetsObject(item.contribution_types)
+      }
     } else if (sheetName === 'Payments') {
       normalized.amount = Number(item.amount) || 0
       normalized.status = item.status || 'pending_verification'
@@ -242,6 +322,24 @@ export function normalizeData(sheetName: string, data: unknown): Record<string, 
     } else if (sheetName === 'GallonContainers') {
       normalized.capacity = Number(item.capacity) || 0.6
       normalized.type = item.type || 'Tumbler'
+    } else if (sheetName === 'AuditLogs') {
+      normalized.created_at = item.timestamp || item.created_at || new Date().toISOString()
+      normalized.user = `${item.userEmail || 'system'} (${item.userRole || 'system'})`
+      normalized.action = `${String(item.action || '').toUpperCase()} pada ${item.sheet || ''}`
+      
+      // Parse details if it is JSON
+      let detailText = item.details || '-'
+      if (typeof item.details === 'string' && item.details.trim().startsWith('{')) {
+        try {
+          const parsed = JSON.parse(item.details)
+          detailText = Object.entries(parsed)
+            .map(([k, v]) => `${k}: ${typeof v === 'object' ? JSON.stringify(v) : v}`)
+            .join(', ')
+        } catch {
+          // ignore
+        }
+      }
+      normalized.ip = detailText
     }
     
     return normalized

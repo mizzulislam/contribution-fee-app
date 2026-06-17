@@ -5,6 +5,13 @@ import { Search, SearchCheck, CheckCircle2, XCircle, Eye, X, FileText } from 'lu
 import { TableLoader } from '@/components/ui/TableLoader'
 import { isDateInPeriod, checkPeriodLock, type PeriodFilter } from '@/features/accounting/calculations/period'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
+import { mergeAccounts, type Account } from '@/features/accounting/data/chartOfAccounts'
+import {
+  findPaymentMethod,
+  formatPaymentMethodLabel,
+  getPaymentMethods,
+  type PaymentMethod,
+} from '@/features/payments/services/paymentMethods.service'
 
 interface PaymentVerification {
   id: number | string
@@ -24,6 +31,10 @@ interface PaymentVerification {
   proofDataUrl?: string
   bankTarget?: string
   bank_target?: string
+  bankTargetLabel?: string
+  bankTargetName?: string
+  bankTargetAccountName?: string
+  bankTargetAccountNumber?: string
 }
 
 interface VerificationProps {
@@ -34,6 +45,8 @@ const defaultPeriod: PeriodFilter = { preset: 'all' }
 
 export default function Verification({ period = defaultPeriod }: VerificationProps) {
   const [verifications, setVerifications] = useState<PaymentVerification[]>([])
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([])
+  const [cashAccounts, setCashAccounts] = useState<Account[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [toastMessage, setToastMessage] = useState('')
@@ -54,13 +67,26 @@ export default function Verification({ period = defaultPeriod }: VerificationPro
 
   async function fetchVerifications() {
     setLoading(true)
-    const { data } = await spreadsheetApi.get('Payments')
+    const [paymentRes, methodRows, masterRes] = await Promise.all([
+      spreadsheetApi.get('Payments'),
+      getPaymentMethods().catch(() => []),
+      spreadsheetApi.get('MasterData'),
+    ])
+    const { data } = paymentRes
     
     if (data && Array.isArray(data)) {
       setVerifications((data as PaymentVerification[]).filter((p: PaymentVerification) => p.status === 'Menunggu Verifikasi' || p.status === 'pending_verification'))
     } else {
       setVerifications([])
     }
+    setPaymentMethods(methodRows)
+    setCashAccounts(
+      mergeAccounts(Array.isArray(masterRes.data) ? masterRes.data : [])
+        .filter(account => {
+          const accountName = account.account_name.toLowerCase()
+          return account.status === 'Aktif' && account.account_type === 'Harta' && (/\bkas\b|bank|gopay|cash/.test(accountName))
+        })
+    )
     setLoading(false)
   }
 
@@ -84,6 +110,38 @@ export default function Verification({ period = defaultPeriod }: VerificationPro
     const matchesPeriod = isDateInPeriod(v.date_submitted || v.updated_at || '', period)
     return matchesSearch && matchesPeriod
   })
+
+  const getBankTargetLabel = (payment: PaymentVerification) => {
+    if (payment.bankTargetLabel) return payment.bankTargetLabel
+
+    const selectedMethod = findPaymentMethod(paymentMethods, String(payment.bankTarget || payment.bank_target || ''))
+    if (selectedMethod) return formatPaymentMethodLabel(selectedMethod)
+
+    if (payment.bankTargetName || payment.bankTargetAccountNumber) {
+      return `${payment.bankTargetName || 'Bank'} - ${payment.bankTargetAccountNumber || '-'} a.n ${payment.bankTargetAccountName || 'Bendahara Kos'}`
+    }
+
+    return String(payment.bankTarget || payment.bank_target || '-')
+  }
+
+  const resolveCashAccount = (payment: PaymentVerification) => {
+    const selectedMethod = findPaymentMethod(paymentMethods, String(payment.bankTarget || payment.bank_target || ''))
+    const bankName = String(selectedMethod?.bank_name || payment.bankTargetName || payment.bankTarget || payment.bank_target || '').toLowerCase()
+    const bankAccountNumber = String(selectedMethod?.account_number || payment.bankTargetAccountNumber || '').toLowerCase()
+
+    const matchedByBank = cashAccounts.find(account => {
+      const accountName = account.account_name.toLowerCase()
+      return Boolean(bankName && (accountName.includes(bankName) || bankName.includes(accountName)))
+    })
+    if (matchedByBank) return matchedByBank.account_number
+
+    const matchedByAccountNumber = cashAccounts.find(account => account.account_name.toLowerCase().includes(bankAccountNumber))
+    if (matchedByAccountNumber) return matchedByAccountNumber.account_number
+
+    return cashAccounts.find(account => account.account_name.toLowerCase().includes('bank'))?.account_number
+      || cashAccounts[0]?.account_number
+      || '1102'
+  }
 
   const confirmAction = (id: number | string, action: 'approve' | 'reject') => {
     const actName = action === 'approve' ? 'menyetujui' : 'menolak'
@@ -179,8 +237,7 @@ export default function Verification({ period = defaultPeriod }: VerificationPro
 
       // Step 3: Post Journal Entry if approved
       if (action === 'approve') {
-        const bank = String(item.bankTarget || item.bank_target || 'bca').toLowerCase()
-        const cashAccount = bank.includes('mandiri') ? '1103' : '1102' // Mandiri is 1103, BCA is 1102
+        const cashAccount = resolveCashAccount(item)
         
         const journalPayload = {
           id: journalId,
@@ -262,6 +319,7 @@ export default function Verification({ period = defaultPeriod }: VerificationPro
                 <th className="px-6 py-4">Penghuni</th>
                 <th className="px-6 py-4">Tagihan</th>
                 <th className="px-6 py-4 hidden md:table-cell">Tanggal Submit</th>
+                <th className="px-6 py-4 hidden lg:table-cell">Bank Tujuan</th>
                 <th className="px-6 py-4">Nominal</th>
                 <th className="px-6 py-4">Bukti TF</th>
                 <th className="px-6 py-4">Aksi</th>
@@ -269,10 +327,10 @@ export default function Verification({ period = defaultPeriod }: VerificationPro
             </thead>
             <tbody className="divide-y divide-gray-100">
               {loading ? (
-                <TableLoader colSpan={6} text="Memuat data pembayaran..." />
+                <TableLoader colSpan={7} text="Memuat data pembayaran..." />
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">Tidak ada antrean verifikasi saat ini.</td>
+                  <td colSpan={7} className="px-6 py-8 text-center text-gray-500">Tidak ada antrean verifikasi saat ini.</td>
                 </tr>
               ) : (
                 filtered.map((item) => (
@@ -283,6 +341,7 @@ export default function Verification({ period = defaultPeriod }: VerificationPro
                     </td>
                     <td className="px-6 py-4">{item.title}</td>
                     <td className="px-6 py-4 hidden md:table-cell">{item.date_submitted}</td>
+                    <td className="px-6 py-4 hidden max-w-[240px] text-xs text-gray-500 lg:table-cell">{getBankTargetLabel(item)}</td>
                     <td className="px-6 py-4 font-semibold text-gray-900">{formatCurrency(item.amount)}</td>
                     <td className="px-6 py-4">
                       {item.proofDataUrl || item.proofFileName || item.fileName ? (

@@ -80,11 +80,11 @@ export function WargaTable({
         <table className="w-full text-left text-sm">
           <thead className="bg-[#F3F4F6] border-b border-border text-gray-600 uppercase font-semibold text-xs">
             <tr>
-              <th className="px-6 py-4 whitespace-nowrap text-center">Nama Pengguna</th>
-              <th className="px-6 py-4 whitespace-nowrap text-center">Role</th>
+              <th className="px-6 py-4 whitespace-nowrap text-left">Nama Pengguna</th>
+              <th className="px-6 py-4 whitespace-nowrap text-left">Role</th>
               <th className="px-6 py-4 whitespace-nowrap text-center">Status</th>
-              <th className="px-6 py-4 whitespace-nowrap text-center">Kamar</th>
-              <th className="px-6 py-4 whitespace-nowrap text-center">Kontak</th>
+              <th className="px-6 py-4 whitespace-nowrap text-left">Kamar</th>
+              <th className="px-6 py-4 whitespace-nowrap text-left">Kontak</th>
               <th className="px-6 py-4 whitespace-nowrap text-center">Aksi</th>
             </tr>
           </thead>

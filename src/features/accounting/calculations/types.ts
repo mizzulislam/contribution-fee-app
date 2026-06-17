@@ -87,4 +87,12 @@ export interface FinancialStatements {
     }
     totalLiabilitiesAndEquity: number
   }
+  cashFlowStatement: {
+    operatingActivities: number
+    investingActivities: number
+    financingActivities: number
+    netCashFlow: number
+    beginningCashBalance: number
+    endingCashBalance: number
+  }
 }

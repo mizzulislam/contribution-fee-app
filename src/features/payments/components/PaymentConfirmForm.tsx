@@ -1,10 +1,17 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { UploadCloud, FileText, CheckCircle2, Loader2 } from 'lucide-react'
 import Select from '@/components/ui/Select'
 import { spreadsheetApi } from '@/services/sheets-client'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { generateSecureId } from '@/utils/id'
+import {
+  findPaymentMethod,
+  formatPaymentMethodLabel,
+  getPaymentMethods,
+  isPaymentMethodActive,
+  type PaymentMethod,
+} from '@/features/payments/services/paymentMethods.service'
 
 interface Bill {
   id: string | number
@@ -36,7 +43,9 @@ export default function PaymentConfirm() {
   const [note, setNote] = useState('')
   const [file, setFile] = useState<File | null>(null)
   const [bills, setBills] = useState<Bill[]>([])
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([])
   const [isLoadingBills, setIsLoadingBills] = useState(true)
+  const [isLoadingPaymentMethods, setIsLoadingPaymentMethods] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
   const [submitError, setSubmitError] = useState('')
@@ -45,7 +54,7 @@ export default function PaymentConfirm() {
     return bill.contributions?.title || bill.title || bill.description || 'Tagihan Kos'
   }
 
-  async function fetchBills() {
+  const fetchBills = useCallback(async () => {
     setIsLoadingBills(true)
     const { data } = await spreadsheetApi.get('Bills')
 
@@ -57,7 +66,7 @@ export default function PaymentConfirm() {
       })
 
       setBills(residentBills)
-      const selectedBillId = searchParams.get('billId') || billId
+      const selectedBillId = searchParams.get('billId') || ''
       const selectedBill = residentBills.find((bill: Bill) => String(bill.id) === String(selectedBillId))
       if (selectedBill) {
         setBillId(String(selectedBill.id))
@@ -68,13 +77,29 @@ export default function PaymentConfirm() {
     }
 
     setIsLoadingBills(false)
-  }
+  }, [profile?.email, profile?.full_name, searchParams])
+
+  const fetchPaymentMethods = useCallback(async () => {
+    setIsLoadingPaymentMethods(true)
+    try {
+      const methods = await getPaymentMethods()
+      const activeMethods = methods.filter(isPaymentMethodActive)
+      setPaymentMethods(activeMethods)
+      setBankTarget(current => current || (activeMethods.length === 1 ? activeMethods[0].id : ''))
+    } catch (err) {
+      console.error('Gagal memuat metode pembayaran:', err)
+      setPaymentMethods([])
+    } finally {
+      setIsLoadingPaymentMethods(false)
+    }
+  }, [])
 
   useEffect(() => {
     if (profile?.id) {
       fetchBills()
+      fetchPaymentMethods()
     }
-  }, [profile?.id])
+  }, [fetchBills, fetchPaymentMethods, profile?.id])
 
   // Synchronize state when the URL parameter 'billId' changes
   useEffect(() => {
@@ -94,10 +119,31 @@ export default function PaymentConfirm() {
     if (selectedBill) setAmount(String(selectedBill.amount || ''))
   }
 
+  const handleFileChange = (selectedFile?: File) => {
+    if (!selectedFile) {
+      setFile(null)
+      return
+    }
+
+    if (selectedFile.size > 5 * 1024 * 1024) {
+      setSubmitError('Ukuran bukti transfer maksimal 5MB.')
+      setFile(null)
+      return
+    }
+
+    setSubmitError('')
+    setFile(selectedFile)
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const selectedBill = bills.find(bill => String(bill.id) === String(billId))
     if (!selectedBill) return
+    const selectedPaymentMethod = findPaymentMethod(paymentMethods, bankTarget)
+    if (!selectedPaymentMethod) {
+      setSubmitError('Pilih bank tujuan yang tersedia dari data metode pembayaran admin.')
+      return
+    }
 
     setIsSubmitting(true)
     setSubmitError('')
@@ -113,7 +159,12 @@ export default function PaymentConfirm() {
       const payload = {
         id: generateSecureId('PAY'),
         billId,
-        bankTarget,
+        bankTarget: selectedPaymentMethod.id,
+        bank_target: selectedPaymentMethod.id,
+        bankTargetLabel: formatPaymentMethodLabel(selectedPaymentMethod),
+        bankTargetName: selectedPaymentMethod.bank_name,
+        bankTargetAccountName: selectedPaymentMethod.account_name,
+        bankTargetAccountNumber: selectedPaymentMethod.account_number,
         amount: Number(amount),
         date,
         date_submitted: date,
@@ -153,7 +204,7 @@ export default function PaymentConfirm() {
 
   if (isSuccess) {
     return (
-      <div className="space-y-6 max-w-2xl mx-auto mt-10">
+      <div className="space-y-6 mt-10">
         <div className="card-container p-10 text-center flex flex-col items-center">
           <div className="w-20 h-20 bg-success/10 rounded-full flex items-center justify-center mb-6">
             <CheckCircle2 className="w-10 h-10 text-success" />
@@ -175,7 +226,7 @@ export default function PaymentConfirm() {
   }
 
   return (
-    <div className="space-y-6 max-w-3xl mx-auto">
+    <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center">
           <UploadCloud className="mr-3 text-primary w-8 h-8" />
@@ -239,12 +290,17 @@ export default function PaymentConfirm() {
                 placeholder="-- Pilih Bank Tujuan --"
                 value={bankTarget}
                 onChange={setBankTarget}
-                options={[
-                  { label: 'BCA - 1234567890 a.n Bendahara Kos', value: 'bca' },
-                  { label: 'Mandiri - 0987654321 a.n Bendahara Kos', value: 'mandiri' },
-                  { label: 'BNI - 1122334455 a.n Bendahara Kos', value: 'bni' }
-                ]}
+                options={paymentMethods.map(method => ({
+                  label: formatPaymentMethodLabel(method),
+                  value: method.id,
+                }))}
               />
+              {isLoadingPaymentMethods && (
+                <p className="mt-2 text-xs text-text-muted">Memuat rekening tujuan dari data admin...</p>
+              )}
+              {!isLoadingPaymentMethods && paymentMethods.length === 0 && (
+                <p className="mt-2 text-xs text-red-600">Belum ada rekening tujuan aktif dari admin.</p>
+              )}
             </div>
           </div>
 
@@ -262,7 +318,7 @@ export default function PaymentConfirm() {
                       type="file" 
                       className="sr-only"
                       accept="image/*,.pdf"
-                      onChange={(e) => setFile(e.target.files?.[0] || null)}
+                      onChange={(e) => handleFileChange(e.target.files?.[0])}
                       required
                     />
                   </label>
@@ -293,7 +349,7 @@ export default function PaymentConfirm() {
             <button 
               type="submit" 
               className="btn-primary w-full sm:w-auto min-w-[200px] flex items-center justify-center"
-              disabled={isSubmitting}
+              disabled={isSubmitting || isLoadingBills || isLoadingPaymentMethods || paymentMethods.length === 0}
             >
               {isSubmitting ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : null}
               {isSubmitting ? 'Mengirim...' : 'Kirim Konfirmasi'}

@@ -13,7 +13,7 @@ export class GeneralJournal {
    * Records a new transaction into the General Journal.
    * Validates the transaction using DoubleEntryEngine before recording.
    */
-  public journalize(date: string, debits: JournalEntryLine[], credits: JournalEntryLine[], description: string, existingId?: string): JournalEntry {
+  public journalize(date: string, debits: JournalEntryLine[], credits: JournalEntryLine[], description: string, existingId?: string, source?: string, sourceId?: string): JournalEntry {
     // 1. Validate
     this.engine.validate(debits, credits)
 
@@ -31,7 +31,9 @@ export class GeneralJournal {
       date,
       debits,
       credits,
-      description
+      description,
+      source,
+      source_id: sourceId
     }
 
     // 3. Record

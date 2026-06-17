@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { normalizeData } from './sheets-client'
+import { normalizeData, parseGoogleSheetsObject } from './sheets-client'
 
 describe('Spreadsheet normalizeData utility', () => {
   it('should return an empty array if input data is null, undefined, or not an array', () => {
@@ -193,4 +193,50 @@ describe('Spreadsheet normalizeData utility', () => {
     expect(normalized[1].capacity).toBe(0.6)
     expect(normalized[1].type).toBe('Tumbler')
   })
+
+  it('should normalize Contributions and parse contribution_types', () => {
+    const rawData = [
+      { id: 'C-1', amount: '28000', status: 'active', due_date: 13, contribution_types: '{name=Iuran Wajib, period_type=Bulanan}' }
+    ]
+    const normalized = normalizeData('Contributions', rawData)
+
+    expect(normalized[0].amount).toBe(28000)
+    expect(normalized[0].status).toBe('active')
+    expect(normalized[0].due_date).toBe('13')
+    expect(normalized[0].contribution_types).toEqual({
+      name: 'Iuran Wajib',
+      period_type: 'Bulanan'
+    })
+  })
 })
+
+describe('Spreadsheet parseGoogleSheetsObject utility', () => {
+  it('should return raw value if not formatted with braces', () => {
+    expect(parseGoogleSheetsObject('simple string')).toBe('simple string')
+    expect(parseGoogleSheetsObject(null as any)).toBeNull()
+  })
+
+  it('should parse shallow object keys and values', () => {
+    const raw = '{name=Iuran Wajib, period_type=Bulanan, amount=28000, active=true}'
+    const parsed = parseGoogleSheetsObject(raw)
+    expect(parsed).toEqual({
+      name: 'Iuran Wajib',
+      period_type: 'Bulanan',
+      amount: 28000,
+      active: true
+    })
+  })
+
+  it('should parse nested Google Sheets objects recursively', () => {
+    const raw = '{contribution_types={name=Kustom, val=12.5}, title=Iuran Galon}'
+    const parsed = parseGoogleSheetsObject(raw)
+    expect(parsed).toEqual({
+      contribution_types: {
+        name: 'Kustom',
+        val: 12.5
+      },
+      title: 'Iuran Galon'
+    })
+  })
+})
+

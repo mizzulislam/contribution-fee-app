@@ -11,7 +11,7 @@
  * 7. Salin URL Web App yang dihasilkan dan masukkan ke VITE_SPREADSHEET_API_URL di .env.local Anda.
  */
 
-const SOEMATRA_API_TOKEN = "isi-token-yang-sama-dengan-env";
+const SOEMATRA_API_TOKEN = "68915c3f5d7f58e04284b1d517fcd46bed42070218bcdac9f85e25f0e8975035";
 
 // ==========================================
 // 1. OTORISASI & KEAMANAN TOKEN
@@ -28,15 +28,15 @@ function verifyToken(e, body) {
 // ==========================================
 const RBAC_RULES = {
   "super admin": {
-    read: ["Users", "Bills", "Payments", "Expenses", "JournalEntries", "MasterData", "Gallons", "GallonContainers", "Schedules", "Settings", "NotificationSettings", "AuditLogs"],
-    write: ["Users", "Bills", "Payments", "Expenses", "JournalEntries", "MasterData", "Gallons", "GallonContainers", "Schedules", "Settings", "NotificationSettings", "AuditLogs"]
+    read: ["Users", "Bills", "Payments", "Expenses", "JournalEntries", "MasterData", "Gallons", "GallonContainers", "Schedules", "Settings", "NotificationSettings", "AuditLogs", "PaymentMethods", "Announcements", "Contributions", "Notifications", "Bailouts"],
+    write: ["Users", "Bills", "Payments", "Expenses", "JournalEntries", "MasterData", "Gallons", "GallonContainers", "Schedules", "Settings", "NotificationSettings", "AuditLogs", "PaymentMethods", "Announcements", "Contributions", "Notifications", "Bailouts"]
   },
   "admin": {
-    read: ["Users", "Bills", "Payments", "Expenses", "JournalEntries", "MasterData", "Gallons", "GallonContainers", "Schedules", "Settings", "NotificationSettings", "AuditLogs"],
-    write: ["Users", "Bills", "Payments", "Expenses", "JournalEntries", "MasterData", "Gallons", "GallonContainers", "Schedules"] // Settings & AuditLogs read-only
+    read: ["Users", "Bills", "Payments", "Expenses", "JournalEntries", "MasterData", "Gallons", "GallonContainers", "Schedules", "Settings", "NotificationSettings", "AuditLogs", "PaymentMethods", "Announcements", "Contributions", "Notifications", "Bailouts"],
+    write: ["Users", "Bills", "Payments", "Expenses", "JournalEntries", "MasterData", "Gallons", "GallonContainers", "Schedules", "PaymentMethods", "Announcements", "Contributions", "Notifications", "Bailouts"] // Settings & AuditLogs read-only
   },
   "user": {
-    read: ["Users", "Bills", "Payments", "Schedules", "Gallons", "GallonContainers", "MasterData"], // Akses terbatas
+    read: ["Users", "Bills", "Payments", "Schedules", "Gallons", "GallonContainers", "MasterData", "JournalEntries", "PaymentMethods", "Announcements", "Contributions"], // Akses terbatas + jurnal tersanitasi untuk transparansi kas
     write: ["Payments", "Users", "Schedules", "Gallons"] // Hanya untuk konfirmasi bayar, update profil sendiri, piket, & input botol
   }
 };
@@ -60,24 +60,76 @@ function checkPermission(role, sheet, action) {
 // ==========================================
 // 3. ROW-LEVEL SECURITY (Isolasi Data Warga)
 // ==========================================
+function getUserFullName(userEmail) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName("Users");
+    if (!sheet) return "";
+    
+    const values = sheet.getDataRange().getValues();
+    if (values.length <= 1) return "";
+    
+    const headers = values[0];
+    const emailIdx = headers.indexOf("email");
+    const nameIdx = headers.indexOf("full_name");
+    
+    if (emailIdx === -1 || nameIdx === -1) return "";
+    
+    const cleanEmail = userEmail.toLowerCase().trim();
+    for (let i = 1; i < values.length; i++) {
+      if (String(values[i][emailIdx]).toLowerCase().trim() === cleanEmail) {
+        return String(values[i][nameIdx]).trim();
+      }
+    }
+  } catch (err) {
+    console.error("Gagal mendapatkan nama lengkap user:", err.message);
+  }
+  return "";
+}
+
 function filterRowByRLS(sheetName, row, userEmail) {
   if (!userEmail) return false;
-  const cleanEmail = userEmail.toLowerCase();
+  const cleanEmail = userEmail.toLowerCase().trim();
+  
+  // Ambil nama lengkap user untuk pencocokan nama
+  const userFullName = getUserFullName(userEmail);
+  const cleanFullName = userFullName.toLowerCase().trim();
   
   // Warga hanya boleh membaca tagihan/pembayaran miliknya sendiri
   if (sheetName === "Bills") {
-    return String(row.resident_email).toLowerCase() === cleanEmail;
+    const hasEmailMatch = row.resident_email && String(row.resident_email).toLowerCase().trim() === cleanEmail;
+    const hasNameMatch = row.resident_name && String(row.resident_name).toLowerCase().trim() === cleanFullName;
+    return !!(hasEmailMatch || hasNameMatch);
   }
   if (sheetName === "Payments") {
-    return String(row.resident_email).toLowerCase() === cleanEmail;
+    const hasEmailMatch = row.resident_email && String(row.resident_email).toLowerCase().trim() === cleanEmail;
+    const hasNameMatch = row.resident_name && String(row.resident_name).toLowerCase().trim() === cleanFullName;
+    return !!(hasEmailMatch || hasNameMatch);
   }
   if (sheetName === "Users") {
     // Warga hanya boleh melihat profil dirinya sendiri
-    return String(row.email).toLowerCase() === cleanEmail;
+    return String(row.email).toLowerCase().trim() === cleanEmail;
   }
   
   // Sheet publik bersama (Gallons, Schedules, MasterData) boleh diakses semua
   return true;
+}
+
+function sanitizeRowForRole(sheetName, row, userRole) {
+  if (String(userRole || "").toLowerCase() !== "user") return row;
+
+  if (sheetName === "JournalEntries") {
+    return {
+      id: row.id || "",
+      date: row.date || "",
+      description: row.description || "Transaksi kas kos",
+      debits: row.debits || "[]",
+      credits: row.credits || "[]",
+      source: row.source || ""
+    };
+  }
+
+  return row;
 }
 
 // ==========================================
@@ -183,7 +235,7 @@ function doGet(e) {
         // Terapkan Row-Level Security (RLS) untuk role user
         if (userRole.toLowerCase() === "user") {
           if (filterRowByRLS(sheetName, row, userEmail)) {
-            data.push(row);
+            data.push(sanitizeRowForRole(sheetName, row, userRole));
           }
         } else {
           data.push(row);

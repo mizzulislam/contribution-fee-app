@@ -97,7 +97,7 @@ export function buildPeriodAccountingEngine(period: PeriodFilter) {
   filterJournalEntriesByPeriod(defaultEngine.journal.getEntries(), period)
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
     .forEach(entry => {
-      engine.recordTransaction(entry.date, entry.debits, entry.credits, entry.description, entry.id)
+      engine.recordTransaction(entry.date, entry.debits, entry.credits, entry.description, entry.id, entry.source, entry.source_id)
     })
 
   return engine

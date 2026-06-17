@@ -408,6 +408,11 @@ export function generateFinancialStatements(
   const totalLiabilities = currentLiabilities + longTermLiabilities
   const totalEquity = commonStock + endingRetainedEarnings
   const totalLiabilitiesAndEquity = totalLiabilities + totalEquity
+  const cashAccounts = items.filter(item => {
+    const accountName = item.accountName.toLowerCase()
+    return item.accountType === 'Assets' && (/\bkas\b|bank|gopay|cash/.test(accountName))
+  })
+  const endingCashBalance = cashAccounts.reduce((sum, item) => sum + item.debit - item.credit, 0)
 
   return {
     incomeStatement: {
@@ -438,6 +443,14 @@ export function generateFinancialStatements(
         totalEquity
       },
       totalLiabilitiesAndEquity
+    },
+    cashFlowStatement: {
+      operatingActivities: netIncome,
+      investingActivities: 0,
+      financingActivities: endingCashBalance - netIncome,
+      netCashFlow: endingCashBalance,
+      beginningCashBalance: 0,
+      endingCashBalance
     }
   }
 }

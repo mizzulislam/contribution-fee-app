@@ -20,7 +20,7 @@ export function CategoryTable({ categories, loading, onEdit, onDelete }: Categor
               <th className="px-6 py-4">No. Akun</th>
               <th className="px-6 py-4">Nama Akun</th>
               <th className="px-6 py-4">Status</th>
-              <th className="px-6 py-4 text-right">Aksi</th>
+              <th className="px-6 py-4 text-center">Aksi</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">

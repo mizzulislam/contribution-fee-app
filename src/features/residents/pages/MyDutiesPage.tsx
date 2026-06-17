@@ -16,50 +16,52 @@ export default function MyDuties() {
   const [loading, setLoading] = useState(true)
   const [isConfirming, setIsConfirming] = useState(false)
 
-  const fetchData = async () => {
-    setLoading(true)
-    try {
-      const [schedRes, billRes, contribRes, announcementRes] = await Promise.all([
-        spreadsheetApi.get('Schedules'),
-        spreadsheetApi.get('Bills'),
-        spreadsheetApi.get('Contributions'),
-        spreadsheetApi.get('Announcements')
-      ])
-      
-      if (schedRes.data && Array.isArray(schedRes.data)) {
-        const userIdentifier = profile?.nickname || profile?.full_name?.split(' ')[0]
-        const mySchedules = schedRes.data.filter((s: any) => 
-          s.user_id === profile?.id || 
-          (s.user && s.user.includes(userIdentifier))
-        )
-        setSchedules(mySchedules)
-      }
-      
-      if (billRes.data && Array.isArray(billRes.data)) {
-        const myBills = billRes.data.filter((b: any) => 
-          b.resident_email === profile?.email || 
-          b.resident_name === profile?.full_name
-        )
-        setBills(myBills)
-      }
-
-      if (contribRes.data && Array.isArray(contribRes.data)) {
-        // Only active catalogs
-        setContributions(contribRes.data.filter((c: any) => c.status !== 'inactive' && c.status !== 'Archived'))
-      }
-
-      if (announcementRes.data && Array.isArray(announcementRes.data)) {
-        setAnnouncements(announcementRes.data.filter((a: any) => String(a.status || 'active').toLowerCase() !== 'inactive'))
-      } else {
-        setAnnouncements([])
-      }
-    } catch (e) {
-      console.error(e)
-    }
-    setLoading(false)
-  }
-
   useEffect(() => {
+    if (!profile?.id) return
+
+    const fetchData = async () => {
+      setLoading(true)
+      try {
+        const [schedRes, billRes, contribRes, announcementRes] = await Promise.all([
+          spreadsheetApi.get('Schedules'),
+          spreadsheetApi.get('Bills'),
+          spreadsheetApi.get('Contributions'),
+          spreadsheetApi.get('Announcements')
+        ])
+        
+        if (schedRes.data && Array.isArray(schedRes.data)) {
+          const userIdentifier = profile?.nickname || profile?.full_name?.split(' ')[0]
+          const mySchedules = schedRes.data.filter((s: any) => 
+            s.user_id === profile?.id || 
+            (s.user && s.user.includes(userIdentifier))
+          )
+          setSchedules(mySchedules)
+        }
+        
+        if (billRes.data && Array.isArray(billRes.data)) {
+          const myBills = billRes.data.filter((b: any) => 
+            b.resident_email === profile?.email || 
+            b.resident_name === profile?.full_name
+          )
+          setBills(myBills)
+        }
+
+        if (contribRes.data && Array.isArray(contribRes.data)) {
+          // Only active catalogs
+          setContributions(contribRes.data.filter((c: any) => c.status !== 'inactive' && c.status !== 'Archived'))
+        }
+
+        if (announcementRes.data && Array.isArray(announcementRes.data)) {
+          setAnnouncements(announcementRes.data.filter((a: any) => String(a.status || 'active').toLowerCase() !== 'inactive'))
+        } else {
+          setAnnouncements([])
+        }
+      } catch (e) {
+        console.error(e)
+      }
+      setLoading(false)
+    }
+
     if (profile?.id) {
       fetchData()
     }
@@ -176,7 +178,7 @@ export default function MyDuties() {
   const completedDuties = schedules.filter(s => s.status === 'Selesai')
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto animate-in fade-in duration-300">
+    <div className="space-y-6 animate-in fade-in duration-300">
       <div>
         <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center">
           <CalendarIcon className="mr-3 text-primary w-8 h-8" />

@@ -167,7 +167,7 @@ export default function ProfileSettings() {
   }
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="space-y-6">
       <div className="relative">
         <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center">
           <User className="mr-3 text-primary w-8 h-8" />

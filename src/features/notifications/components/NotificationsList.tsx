@@ -60,6 +60,10 @@ function belongsToUser(row: { resident_email?: string; resident_name?: string },
 
 export default function Notifications() {
   const { profile } = useAuth()
+  const profileId = profile?.id
+  const profileEmail = profile?.email
+  const profileName = profile?.full_name
+  const profileNickname = profile?.nickname
   const [bills, setBills] = useState<BillRow[]>([])
   const [payments, setPayments] = useState<PaymentRow[]>([])
   const [schedules, setSchedules] = useState<ScheduleRow[]>([])
@@ -67,9 +71,8 @@ export default function Notifications() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!profile?.id) return
+    if (!profileId) return
     let isMounted = true
-    const currentProfile = profile
 
     async function fetchNotifications() {
       setLoading(true)
@@ -81,11 +84,11 @@ export default function Notifications() {
 
       if (!isMounted) return
 
-      setBills(Array.isArray(billRes.data) ? (billRes.data as BillRow[]).filter((bill: BillRow) => belongsToUser(bill, currentProfile.email, currentProfile.full_name)) : [])
-      setPayments(Array.isArray(paymentRes.data) ? (paymentRes.data as PaymentRow[]).filter((payment: PaymentRow) => belongsToUser(payment, currentProfile.email, currentProfile.full_name)) : [])
+      setBills(Array.isArray(billRes.data) ? (billRes.data as BillRow[]).filter((bill: BillRow) => belongsToUser(bill, profileEmail, profileName)) : [])
+      setPayments(Array.isArray(paymentRes.data) ? (paymentRes.data as PaymentRow[]).filter((payment: PaymentRow) => belongsToUser(payment, profileEmail, profileName)) : [])
       setSchedules(Array.isArray(scheduleRes.data) ? (scheduleRes.data as ScheduleRow[]).filter((schedule: ScheduleRow) => {
-        const userIdentifier = currentProfile.nickname || currentProfile.full_name?.split(' ')[0] || ''
-        return String(schedule.user_id) === String(currentProfile.id) || Boolean(userIdentifier && schedule.user?.includes(userIdentifier))
+        const userIdentifier = profileNickname || profileName?.split(' ')[0] || ''
+        return String(schedule.user_id) === String(profileId) || Boolean(userIdentifier && schedule.user?.includes(userIdentifier))
       }) : [])
       setLoading(false)
     }
@@ -94,7 +97,7 @@ export default function Notifications() {
     return () => {
       isMounted = false
     }
-  }, [profile?.email, profile?.full_name, profile?.id, profile?.nickname])
+  }, [profileEmail, profileId, profileName, profileNickname])
 
   const notifications = useMemo<NotificationItem[]>(() => {
     const items: NotificationItem[] = []
@@ -183,7 +186,7 @@ export default function Notifications() {
   }
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center">

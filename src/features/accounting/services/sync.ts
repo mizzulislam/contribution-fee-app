@@ -9,6 +9,8 @@ interface JournalEntryRow {
   description?: string
   debits?: string | JournalEntryLine[]
   credits?: string | JournalEntryLine[]
+  source?: string | number
+  source_id?: string | number
 }
 
 let syncQueue: Promise<void> = Promise.resolve()
@@ -44,7 +46,9 @@ function getEntryFingerprint(entry: JournalEntryRow, debits: JournalEntryLine[],
 }
 
 async function runAccountingSync(): Promise<void> {
-  const { data: coaData } = await spreadsheetApi.get('MasterData')
+  const { data: coaData, error: coaError } = await spreadsheetApi.get('MasterData')
+  if (coaError) throw coaError
+
   const merged = mergeAccounts(coaData && Array.isArray(coaData) ? coaData : [])
   
   const typeMap: Record<string, 'Assets' | 'Liabilities' | 'Equity' | 'Revenues' | 'Expenses'> = {
@@ -65,7 +69,9 @@ async function runAccountingSync(): Promise<void> {
     }
   })
 
-  const { data: journalData } = await spreadsheetApi.get('JournalEntries')
+  const { data: journalData, error: journalError } = await spreadsheetApi.get('JournalEntries')
+  if (journalError) throw journalError
+
   if (journalData && Array.isArray(journalData)) {
     // Sort oldest to newest initially when recording so the ledger balances build up correctly in chronological order
     const sorted = [...journalData].sort((a: JournalEntryRow, b: JournalEntryRow) => new Date(a.date || '').getTime() - new Date(b.date || '').getTime())
@@ -89,7 +95,9 @@ async function runAccountingSync(): Promise<void> {
             debits,
             credits,
             je.description || 'Tanpa Deskripsi',
-            je.id ? String(je.id) : undefined
+            je.id ? String(je.id) : undefined,
+            je.source ? String(je.source) : undefined,
+            je.source_id ? String(je.source_id) : undefined
           )
         }
       } catch {

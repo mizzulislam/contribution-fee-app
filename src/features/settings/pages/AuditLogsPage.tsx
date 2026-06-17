@@ -73,10 +73,10 @@ export default function AuditLogs() {
           <table className="w-full text-left text-sm text-gray-600">
             <thead className="bg-[#F3F4F6] text-gray-700 text-xs uppercase font-semibold border-b border-border">
               <tr>
-                <th className="px-6 py-4">Waktu</th>
-                <th className="px-6 py-4">Pengguna</th>
-                <th className="px-6 py-4">Aksi</th>
-                <th className="px-6 py-4 text-right hidden md:table-cell">Alamat IP</th>
+                <th className="px-6 py-4 text-left">Waktu</th>
+                <th className="px-6 py-4 text-left">Pengguna</th>
+                <th className="px-6 py-4 text-left">Aksi</th>
+                <th className="px-6 py-4 text-left hidden md:table-cell">Rincian / Detail</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -89,10 +89,10 @@ export default function AuditLogs() {
               ) : (
                 filteredLogs.map((log) => (
                   <tr key={log.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 text-text-muted">{new Date(log.created_at).toLocaleString('id-ID')}</td>
-                    <td className="px-6 py-4 font-medium text-gray-900">{log.user}</td>
-                    <td className="px-6 py-4">{log.action}</td>
-                    <td className="px-6 py-4 text-center text-xs font-mono text-gray-500 hidden md:table-cell">{log.ip || '-'}</td>
+                    <td className="px-6 py-4 text-text-muted whitespace-nowrap">{new Date(log.created_at).toLocaleString('id-ID')}</td>
+                    <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">{log.user}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{log.action}</td>
+                    <td className="px-6 py-4 text-left text-xs font-mono text-gray-500 hidden md:table-cell break-all">{log.ip || '-'}</td>
                   </tr>
                 ))
               )}

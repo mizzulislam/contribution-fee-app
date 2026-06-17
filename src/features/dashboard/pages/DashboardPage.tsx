@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useCallback, useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { spreadsheetApi } from '@/services/sheets-client'
@@ -6,18 +6,13 @@ import { WalletCards, CalendarCheck, Droplets, ArrowRight, Building2, Users, Act
 import { Link } from 'react-router-dom'
 import { QuickActions } from '@/features/dashboard/components/QuickActions'
 import { FinancialChart } from '@/features/dashboard/components/FinancialChart'
-import { Landmark, Wallet, ArrowUpRight } from 'lucide-react'
+import { Landmark, ArrowUpRight } from 'lucide-react'
 import { defaultEngine, syncAccountingWithSheet } from '@/features/accounting'
-import { mergeAccounts } from '@/features/accounting/data/chartOfAccounts'
 import type { FinancialStatements } from '@/features/accounting'
 import { UserActivityChart } from '@/features/dashboard/components/UserActivityChart'
 import JournalEntryModal from '@/features/accounting/components/JournalEntryModal'
-import { GALLON_CAPACITY, calculateGallonStock, formatGallonQuantity } from '@/features/gallon-tracker/utils/gallonStock'
-
-interface JournalLine {
-  accountNumber: string
-  amount: number
-}
+import { calculateGallonStock, formatGallonQuantity } from '@/features/gallon-tracker/utils/gallonStock'
+import { getResidentCashSnapshot } from '@/features/reports/services/residentCash.service'
 
 type DashboardCardTone = 'emerald' | 'blue' | 'orange' | 'rose' | 'amber' | 'purple'
 
@@ -175,7 +170,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [accountingLoading, setAccountingLoading] = useState(true)
 
-  async function fetchDashboardData() {
+  const fetchDashboardData = useCallback(async () => {
     setLoading(true)
     try {
       const fetchUsers = async () => {
@@ -226,6 +221,14 @@ export default function Dashboard() {
         if (activeRole !== 'admin' && activeRole !== 'super admin' && activeRole !== 'user') return
 
         setAccountingLoading(true)
+
+        if (activeRole === 'user') {
+          const summary = await getResidentCashSnapshot()
+          setCashBalance(summary.balance)
+          setStatements(defaultEngine.getFinancialStatements())
+          setAccountingLoading(false)
+          return
+        }
 
         const currentStatements = defaultEngine.getFinancialStatements()
         setStatements(currentStatements)
@@ -315,11 +318,11 @@ export default function Dashboard() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [activeRole, profile])
 
   useEffect(() => {
     if (profile) fetchDashboardData()
-  }, [profile, activeRole])
+  }, [fetchDashboardData, profile])
 
   useEffect(() => {
     if (!profile || !activeRole) return

@@ -30,25 +30,25 @@ export default function ResidentBillsList() {
   const [bills, setBills] = useState<ResidentBill[]>([])
   const [loading, setLoading] = useState(true)
 
-  async function fetchBills() {
-    setLoading(true)
-    const { data } = await spreadsheetApi.get('Bills')
-    
-    if (data && Array.isArray(data)) {
-      // Filter tagihan milik user yang sedang login
-      setBills((data as ResidentBill[]).filter((b: ResidentBill) => b.resident_email === profile?.email || b.resident_name === profile?.full_name))
-    } else {
-      // Jika terjadi error koneksi, kosongkan tampilan agar tidak menampilkan data non-sumber.
-      setBills([])
-    }
-    setLoading(false)
-  }
-
   useEffect(() => {
-    if (profile?.id) {
-      fetchBills()
+    if (!profile?.id) return
+
+    async function fetchBills() {
+      setLoading(true)
+      const { data } = await spreadsheetApi.get('Bills')
+      
+      if (data && Array.isArray(data)) {
+        // Filter tagihan milik user yang sedang login
+        setBills((data as ResidentBill[]).filter((b: ResidentBill) => b.resident_email === profile?.email || b.resident_name === profile?.full_name))
+      } else {
+        // Jika terjadi error koneksi, kosongkan tampilan agar tidak menampilkan data non-sumber.
+        setBills([])
+      }
+      setLoading(false)
     }
-  }, [profile?.id])
+
+    void fetchBills()
+  }, [profile?.email, profile?.full_name, profile?.id])
 
   const handlePayNow = (billId: number | string) => {
     navigate(`/dashboard/billing-user?tab=confirm&billId=${encodeURIComponent(String(billId))}`)
@@ -95,11 +95,11 @@ export default function ResidentBillsList() {
           <table className="w-full text-left text-sm">
             <thead className="bg-[#F3F4F6] border-b border-border text-gray-600">
               <tr>
-                <th className="px-3 sm:px-6 py-3 font-semibold whitespace-nowrap">Keterangan</th>
-                <th className="px-3 sm:px-6 py-3 font-semibold whitespace-nowrap">Jatuh Tempo</th>
-                <th className="px-3 sm:px-6 py-3 font-semibold whitespace-nowrap">Nominal</th>
-                <th className="px-3 sm:px-6 py-3 font-semibold whitespace-nowrap">Status</th>
-                <th className="px-3 sm:px-6 py-3 font-semibold whitespace-nowrap text-right">Aksi</th>
+                <th className="px-3 sm:px-6 py-3 font-semibold whitespace-nowrap text-left">Keterangan</th>
+                <th className="px-3 sm:px-6 py-3 font-semibold whitespace-nowrap text-left">Jatuh Tempo</th>
+                <th className="px-3 sm:px-6 py-3 font-semibold whitespace-nowrap text-left">Nominal</th>
+                <th className="px-3 sm:px-6 py-3 font-semibold whitespace-nowrap text-left">Status</th>
+                <th className="px-3 sm:px-6 py-3 font-semibold whitespace-nowrap text-center">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border text-gray-700 bg-white">

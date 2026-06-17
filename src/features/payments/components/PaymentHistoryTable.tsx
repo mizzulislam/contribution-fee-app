@@ -92,7 +92,7 @@ export default function PaymentHistory() {
                 <th className="px-6 py-4">Tanggal Lunas</th>
                 <th className="px-6 py-4">Nominal</th>
                 <th className="px-6 py-4 text-center">Status</th>
-                <th className="px-6 py-4 text-right">Aksi</th>
+                <th className="px-6 py-4 text-center">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">

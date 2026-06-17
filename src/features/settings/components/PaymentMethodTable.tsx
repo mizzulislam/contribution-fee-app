@@ -27,7 +27,7 @@ export function PaymentMethodTable({ paymentMethods, loading, onEdit, onDelete }
               <th className="px-6 py-4">Atas Nama</th>
               <th className="px-6 py-4">No. Rekening</th>
               <th className="px-6 py-4">Status</th>
-              <th className="px-6 py-4 text-right">Aksi</th>
+              <th className="px-6 py-4 text-center">Aksi</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">

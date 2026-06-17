@@ -20,7 +20,11 @@ export default function Login() {
     
     try {
       // 1. Fetch data dari sheet Users
-      const { data, error: apiError } = await spreadsheetApi.get('Users')
+      const loginEmail = email.trim().toLowerCase()
+      const { data, error: apiError } = await spreadsheetApi.get('Users', {
+        userEmail: loginEmail,
+        userRole: 'user',
+      })
       
       if (apiError || !data || !Array.isArray(data)) {
         throw new Error('Gagal memuat data pengguna. Silakan periksa koneksi internet atau Google Sheets API.')
@@ -30,7 +34,7 @@ export default function Login() {
       const inputHash = await sha256(password)
       
       // Cari pengguna berdasarkan email
-      const user = data.find((u: any) => String(u.email).toLowerCase() === email.toLowerCase())
+      const user = data.find((u: any) => String(u.email).toLowerCase() === loginEmail)
       
       if (!user) {
         throw new Error('Email atau password salah.')

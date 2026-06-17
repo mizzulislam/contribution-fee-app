@@ -25,15 +25,15 @@ export class AccountingEngine {
     this.ledger = new GeneralLedger(this.coa)
     
     this.trialBalance = new TrialBalance(this.ledger, this.journal)
-    this.statements = new FinancialStatementsGenerator(this.ledger)
+    this.statements = new FinancialStatementsGenerator(this.ledger, this.journal)
     this.closing = new ClosingProcess(this.ledger, this.journal)
   }
 
   /**
    * Facade method: Record a transaction and immediately post it to ledger
    */
-  public recordTransaction(date: string, debits: JournalEntryLine[], credits: JournalEntryLine[], description: string, existingId?: string): JournalEntry {
-    const entry = this.journal.journalize(date, debits, credits, description, existingId)
+  public recordTransaction(date: string, debits: JournalEntryLine[], credits: JournalEntryLine[], description: string, existingId?: string, source?: string, sourceId?: string): JournalEntry {
+    const entry = this.journal.journalize(date, debits, credits, description, existingId, source, sourceId)
     this.ledger.postEntry(entry)
     return entry
   }

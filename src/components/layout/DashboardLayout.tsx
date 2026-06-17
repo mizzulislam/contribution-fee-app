@@ -138,7 +138,7 @@ export default function DashboardLayout() {
             <p className="text-gray-600 font-medium animate-pulse">Mengganti Mode Operasi...</p>
           </div>
 
-          <div className="max-w-7xl mx-auto">
+          <div className="w-full">
             <Outlet />
           </div>
         </main>
