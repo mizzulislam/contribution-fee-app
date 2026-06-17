@@ -1,71 +1,53 @@
 # Soematra Kost
 
-Aplikasi manajemen kos/iuran warga berbasis React, Vite, TypeScript, Tailwind CSS, dan Google Sheets melalui Google Apps Script Web App.
+Aplikasi manajemen operasional dan keuangan kos/iuran warga berbasis React, Vite, TypeScript, Tailwind CSS, dan Google Sheets melalui Google Apps Script Web App.
 
-## Menjalankan Lokal
+---
 
-```bash
-npm install
-npm run dev
-```
+## 🚀 Quick Start (Menjalankan Lokal)
 
-Build produksi:
+1. **Instal Dependensi:**
+   ```bash
+   npm install
+   ```
+2. **Jalankan Mode Pengembangan:**
+   ```bash
+   npm run dev
+   ```
+3. **Build Bundel Produksi:**
+   ```bash
+   npm run build
+   ```
 
-```bash
-npm run build
-```
+---
 
-## Environment
+## ⚙️ Variabel Lingkungan (.env.local)
 
-Buat `.env.local`:
-
+Buat file `.env.local` di root proyek:
 ```env
 VITE_SPREADSHEET_API_URL=https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec
-VITE_SOEMATRA_API_TOKEN=isi-token-yang-sama-dengan-apps-script
-VITE_SESSION_SIGNATURE_SECRET=isi-string-random-untuk-signature-session-lokal
+VITE_SOEMATRA_API_TOKEN=sandi-token-yang-sama-dengan-apps-script
+VITE_SESSION_SIGNATURE_SECRET=string-random-untuk-signature-session-lokal
 ```
 
-`VITE_SOEMATRA_API_TOKEN` akan dikirim sebagai header `X-Soematra-Token` dan juga payload/query fallback. Validasi yang benar tetap harus dipasang di Google Apps Script.
+---
 
-## Deployment Google Apps Script
+## 📖 Indeks Dokumentasi Proyek
 
-1. Buat Google Sheets baru sebagai database.
-2. Buat tab dengan nama persis sesuai daftar di bawah.
-3. Buka `Extensions > Apps Script`.
-4. Implementasikan handler `doGet(e)` dan `doPost(e)` untuk action `get`, `post`, `put`, `delete`, dan `restore`.
-5. Tambahkan validasi token sebelum memproses request:
+Seluruh dokumentasi teknis dan panduan operasional sistem kos telah dikonsolidasikan ke dalam folder `docs/`:
 
-```js
-const SOEMATRA_API_TOKEN = 'isi-token-yang-sama-dengan-env';
+* 📂 **[STRUCTURE_REFACTOR_PLAN.md](file:///d:/Soematra%20Kost/docs/STRUCTURE_REFACTOR_PLAN.md)** - Rencana penyusunan folder proyek.
+* 📄 **[01-PROJECT-OVERVIEW.md](file:///d:/Soematra%20Kost/docs/01-PROJECT-OVERVIEW.md)** - Latar belakang kos dan fitur utama sistem.
+* 📄 **[02-ARCHITECTURE.md](file:///d:/Soematra%20Kost/docs/02-ARCHITECTURE.md)** - Desain arsitektur React SPA, Zustand, dan aliran data.
+* 📄 **[03-ROLES-AND-PERMISSIONS.md](file:///d:/Soematra%20Kost/docs/03-ROLES-AND-PERMISSIONS.md)** - Matriks otorisasi peran (RBAC) & keamanan server (RLS).
+* 📄 **[04-UI-UX-GUIDELINES.md](file:///d:/Soematra%20Kost/docs/04-UI-UX-GUIDELINES.md)** - Palet warna, komponen, dan pedoman animasi sidebar.
+* 📄 **[05-DATA-AND-INTEGRATION.md](file:///d:/Soematra%20Kost/docs/05-DATA-AND-INTEGRATION.md)** - Skema kolom Google Sheets dan format komunikasi API.
+* 📄 **[06-ACCOUNTING-CYCLE.md](file:///d:/Soematra%20Kost/docs/06-ACCOUNTING-CYCLE.md)** - Kebijakan pencatatan akuntansi ganda IFRS, penyesuaian, dan tutup buku.
+* 📄 **[07-DEPLOYMENT-AND-ENV.md](file:///d:/Soematra%20Kost/docs/07-DEPLOYMENT-AND-ENV.md)** - Panduan penerapan backend Apps Script & hosting frontend.
+* 📄 **[08-AUDIT-AND-ROADMAP.md](file:///d:/Soematra%20Kost/docs/08-AUDIT-AND-ROADMAP.md)** - Riwayat laporan audit keuangan dan rencana pengembangan mendatang.
 
-function assertAuthorized(e, body) {
-  const headerToken = e?.parameter?.token || body?.token;
-  if (headerToken !== SOEMATRA_API_TOKEN) {
-    throw new Error('Unauthorized request');
-  }
-}
-```
+---
 
-6. Deploy sebagai Web App dengan akses sesuai kebutuhan operasional.
-7. Salin URL `/exec` ke `VITE_SPREADSHEET_API_URL`.
+## 🔒 Catatan Keamanan
 
-## Struktur Tab Google Sheets
-
-Minimal tab yang digunakan aplikasi:
-
-- `Users`: `id`, `full_name`, `email`, `password`, `role`, `room_number`, `status`
-- `Bills`: `id`, `resident_name`, `resident_email`, `room_number`, `title`, `amount`, `due_date`, `status`, `created_at`, `updated_at`
-- `Payments`: `id`, `billId`, `resident_name`, `resident_email`, `room_number`, `title`, `amount`, `date`, `date_submitted`, `bankTarget`, `fileName`, `note`, `status`, `date_verified`, `created_at`, `updated_at`
-- `Expenses`: `id`, `title`, `category`, `amount`, `date`, `note`, `created_at`
-- `JournalEntries`: `id`, `date`, `description`, `debits`, `credits`, `source`, `source_id`, `created_at`
-- `MasterData`: `id`, `account_number`, `account_name`, `account_type`, `status`
-- `Gallons`: `id`, `date`, `type`, `quantity`, `note`, `userName`, `containerName`, `containerType`, `containerCapacity`, `photoUrl`, `created_at`
-- `GallonContainers`: `id`, `name`, `capacity`, `type`, `photoUrl`, `createdBy`
-- `Schedules`: `id`, `date`, `resident_name`, `status`, `note`
-- `Settings`, `NotificationSettings`, `Bailouts`
-
-Kolom harus memakai nama yang sama dengan key di atas karena frontend membaca dan menulis objek berdasarkan header sheet.
-
-## Catatan Keamanan
-
-Session frontend diberi signature lokal untuk mencegah edit `localStorage` kasual, tetapi ini bukan pengganti autentikasi server. Untuk produksi, validasi role/session harus dilakukan di backend atau Google Apps Script sebelum mutasi data diterima.
+Sesi pengguna dienkripsi dengan signature lokal di sisi client untuk mencegah manipulasi peran secara kasual, namun penegakan keamanan aktual (Row-Level Security) tetap divalidasi di backend Google Apps Script sebelum data dituliskan ke Spreadsheet.
