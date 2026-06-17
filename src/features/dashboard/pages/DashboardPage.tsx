@@ -137,7 +137,13 @@ function DashboardMetricCard({
           <p className="break-words text-3xl font-black tracking-tight text-gray-950 sm:text-4xl">
             {value}
           </p>
-          {note && <p className="mt-2 text-sm font-medium text-text-secondary">{note}</p>}
+          {note ? (
+            <p className="mt-2 text-sm font-medium text-text-secondary">{note}</p>
+          ) : (
+            <p className="mt-2 text-sm font-medium text-transparent select-none" aria-hidden="true">
+              &nbsp;
+            </p>
+          )}
           <div className={`mt-8 border-t ${toneClass.divider} pt-5`}>
             <Link to={actionTo} className={`inline-flex items-center text-sm font-bold text-gray-900 ${toneClass.action}`}>
               {actionLabel} <ArrowRight className="ml-1 h-4 w-4" />
@@ -358,7 +364,7 @@ export default function Dashboard() {
 
   // Render Dashboard Khusus Super Admin
   const renderSuperAdminDashboard = () => (
-    <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+    <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
       <DashboardMetricCard
         actionLabel="Kelola Pengguna"
         actionTo="/dashboard/warga"
@@ -404,7 +410,7 @@ export default function Dashboard() {
         value={loading ? '...' : `${pendingPaymentCount} Pembayaran`}
       />
 
-      <div className="md:col-span-2 xl:col-span-4">
+      <div className="md:col-span-2">
         <FinancialChart />
       </div>
     </div>
