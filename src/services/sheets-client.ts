@@ -7,6 +7,23 @@ import type { User, Bill, Payment, Expense, JournalEntry, MasterData, Gallon, Ga
 const SPREADSHEET_API_URL = import.meta.env.VITE_SPREADSHEET_API_URL || 'https://script.google.com/macros/s/AKfycbwYOUR_SCRIPT_ID/exec'
 const SOEMATRA_API_TOKEN = import.meta.env.VITE_SOEMATRA_API_TOKEN || ''
 
+if (typeof window !== 'undefined') {
+  if (!import.meta.env.VITE_SOEMATRA_API_TOKEN) {
+    console.warn('⚠️ SOEMATRA WARNING: VITE_SOEMATRA_API_TOKEN is not defined in environment variables! Requests will fail authorization.')
+  } else if (import.meta.env.VITE_SOEMATRA_API_TOKEN.trim() !== import.meta.env.VITE_SOEMATRA_API_TOKEN) {
+    console.warn('⚠️ SOEMATRA WARNING: VITE_SOEMATRA_API_TOKEN has leading or trailing whitespace. This may cause authentication to fail.')
+  } else if (
+    (import.meta.env.VITE_SOEMATRA_API_TOKEN.startsWith('"') && import.meta.env.VITE_SOEMATRA_API_TOKEN.endsWith('"')) ||
+    (import.meta.env.VITE_SOEMATRA_API_TOKEN.startsWith("'") && import.meta.env.VITE_SOEMATRA_API_TOKEN.endsWith("'"))
+  ) {
+    console.warn('⚠️ SOEMATRA WARNING: VITE_SOEMATRA_API_TOKEN has surrounding quotes! Please configure it without quotes in Vercel settings.')
+  }
+
+  if (!import.meta.env.VITE_SPREADSHEET_API_URL || import.meta.env.VITE_SPREADSHEET_API_URL.includes('YOUR_SCRIPT_ID')) {
+    console.warn('⚠️ SOEMATRA WARNING: VITE_SPREADSHEET_API_URL is missing or using fallback value.')
+  }
+}
+
 function buildHeaders() {
   return {
     'Content-Type': 'text/plain;charset=utf-8', // URL encoded for GAS bypass CORS
