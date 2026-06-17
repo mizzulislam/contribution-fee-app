@@ -5,6 +5,7 @@ import { checkPeriodLock, toInputDate, isDateInPeriod, type PeriodFilter } from 
 import { syncBillsWithAccountingEntries } from '@/features/accounting/services/billingAccountingSync'
 import { generateSecureId } from '@/utils/id'
 import type { Bill, User, Payment } from '@/types/database'
+import { defaultEngine, syncAccountingWithSheet } from '@/features/accounting'
 
 interface AlertDialogState {
   isOpen: boolean
@@ -703,6 +704,102 @@ export function useBillsManager(period: PeriodFilter = { preset: 'all' }) {
     setIsAddModalOpen(true)
   }
 
+  const handleDebtCompensation = async (bill: Bill, debtAccountNumber: string) => {
+    setIsSubmitting(true)
+    const originalBills = [...bills]
+
+    // Local update
+    setBills(bills.map(b => b.id === bill.id ? { ...b, status: 'paid' } : b))
+
+    const isLocked = await checkPeriodLock(new Date().toISOString().split('T')[0])
+    if (isLocked) {
+      setBills(originalBills)
+      setAlertDialog({
+        isOpen: true,
+        title: 'Periode Terkunci',
+        message: 'Gagal memproses kompensasi utang: Periode akuntansi saat ini sudah ditutup (Locked).',
+        variant: 'danger',
+        showCancel: false,
+        confirmLabel: 'Mengerti'
+      })
+      setIsSubmitting(false)
+      return
+    }
+
+    let step1Success = false
+    const paymentId = generateSecureId('PAY')
+    const journalId = generateSecureId('JE')
+
+    try {
+      // 1. Update bill status in sheet
+      const resBill = await billingService.updateBill({ ...bill, status: 'paid' })
+      if (!resBill.success) throw new Error(resBill.error?.message || 'Gagal memperbarui status tagihan.')
+      step1Success = true
+
+      // 2. Create Payment record in sheet
+      const newPayment = {
+        id: paymentId,
+        resident_name: bill.resident_name,
+        resident_email: bill.resident_email,
+        room_number: bill.room_number,
+        amount: bill.amount,
+        date: new Date().toISOString().split('T')[0],
+        date_submitted: new Date().toISOString(),
+        status: 'verified',
+        billId: String(bill.id)
+      }
+      const resPay = await billingService.createPayment(newPayment)
+      if (!resPay.success) throw new Error(resPay.error?.message || 'Gagal membuat riwayat pembayaran.')
+
+      // 3. Create Journal Entry in sheet
+      let titleVal = 'Iuran'
+      try {
+        const parsed = JSON.parse(bill.contributions || '{}')
+        titleVal = parsed.title || 'Iuran'
+      } catch {
+        titleVal = bill.title || 'Iuran'
+      }
+
+      const journalPayload = {
+        id: journalId,
+        date: new Date().toISOString().split('T')[0],
+        description: `Kompensasi Utang-Piutang: Pelunasan ${titleVal} - ${bill.resident_name} via potongan Utang Bendahara`,
+        debits: JSON.stringify([{ accountNumber: debtAccountNumber, amount: Number(bill.amount) }]),
+        credits: JSON.stringify([{ accountNumber: '1104', amount: Number(bill.amount) }]),
+        source: 'payment_verification',
+        source_id: paymentId,
+        created_at: new Date().toISOString()
+      }
+
+      const resJournal = await spreadsheetApi.post('JournalEntries', journalPayload)
+      if (!resJournal.success) throw new Error((resJournal.error as any)?.message || 'Gagal mencatat jurnal kompensasi utang.')
+
+      await syncAccountingWithSheet()
+      await fetchBills()
+      showToast('Kompensasi utang berhasil dilakukan dan jurnal dicatat!')
+    } catch (err: any) {
+      console.error(err)
+      setBills(originalBills)
+      
+      // Rollback if needed
+      if (step1Success) {
+        await billingService.updateBill(bill)
+        await billingService.deletePayment(paymentId)
+      }
+
+      setAlertDialog({
+        isOpen: true,
+        title: 'Gagal Memproses Kompensasi',
+        message: `Gagal memproses kompensasi utang: ${err.message || err}. Perubahan dibatalkan.`,
+        variant: 'danger',
+        showCancel: false,
+        confirmLabel: 'Mengerti'
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   // Filter bills based on search query and period filter
   const filteredBills = bills.filter(bill => {
     const query = search.toLowerCase()
@@ -765,6 +862,7 @@ export function useBillsManager(period: PeriodFilter = { preset: 'all' }) {
     handleBulkLunas,
     handleCreateInvoice,
     handleEditClick,
-    buildDefaultDueDate
+    buildDefaultDueDate,
+    handleDebtCompensation
   }
 }

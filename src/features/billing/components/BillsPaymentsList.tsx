@@ -6,6 +6,7 @@ import { type PeriodFilter } from '@/features/accounting/calculations/period'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import { useBillsManager } from '@/features/billing/hooks/useBillsManager'
 import { spreadsheetApi } from '@/services/sheets-client'
+import { defaultEngine } from '@/features/accounting'
 
 interface BillsPaymentsProps {
   period?: PeriodFilter
@@ -51,8 +52,37 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
     handleBulkLunas: handleBulkPaid,
     handleCreateInvoice,
     handleEditClick: handleEdit,
-    buildDefaultDueDate
+    buildDefaultDueDate,
+    handleDebtCompensation
   } = useBillsManager(period)
+
+  const getDebtInfo = () => {
+    if (!selectedBill) return { hasDebt: false, account: null, balance: 0 }
+    const user = users.find(u => u.full_name === selectedBill.resident_name)
+    const searchTerms = [
+      user?.nickname,
+      user?.full_name?.split(' ')[0],
+      selectedBill.resident_name.split(' ')[0]
+    ].filter(Boolean)
+
+    const accounts = defaultEngine.coa.getAllAccounts()
+    const debtAccount = accounts.find(acc => {
+      const isLiability = acc.accountType === 'Liabilities'
+      const nameLower = acc.accountName.toLowerCase()
+      return isLiability && searchTerms.some(term => nameLower.includes(term!.toLowerCase()))
+    })
+
+    if (!debtAccount) return { hasDebt: false, account: null, balance: 0 }
+
+    const balance = defaultEngine.ledger.getLedger(debtAccount.accountNumber)?.currentBalance || 0
+    return {
+      hasDebt: balance > 0,
+      account: debtAccount,
+      balance
+    }
+  }
+
+  const debtInfo = getDebtInfo()
 
   const formatCurrency = (amount: number) => {
     return (
@@ -438,18 +468,36 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
                 {getStatusBadge(selectedBill.status)}
               </div>
               {selectedBill.status === 'unpaid' && (
-                <button 
-                  onClick={async () => {
-                    const { success } = await spreadsheetApi.put('Bills', { id: selectedBill.id, status: 'paid' })
-                    setBills(bills.map(b => b.id === selectedBill.id ? {...b, status: 'paid'} : b))
-                    setIsDetailModalOpen(false)
-                    setToastMessage(success ? 'Tagihan berhasil ditandai Lunas!' : 'Disimpan lokal (Gagal terhubung ke Sheets)')
-                    setTimeout(() => setToastMessage(''), 3000)
-                  }}
-                  className="w-full btn-primary flex items-center justify-center bg-emerald-600 hover:bg-emerald-700"
-                >
-                  <Check className="w-5 h-5 mr-2" /> Tandai Lunas (Manual)
-                </button>
+                <div className="space-y-2">
+                  {debtInfo.hasDebt && (
+                    <button 
+                      type="button"
+                      disabled={isSubmitting}
+                      onClick={async () => {
+                        if (debtInfo.account) {
+                          await handleDebtCompensation(selectedBill, debtInfo.account.accountNumber)
+                          setIsDetailModalOpen(false)
+                        }
+                      }}
+                      className="w-full btn-primary flex items-center justify-center bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      <Check className="w-5 h-5 mr-2" /> Potong Utang Bendahara (Saldo: Rp {new Intl.NumberFormat('id-ID').format(debtInfo.balance)})
+                    </button>
+                  )}
+                  <button 
+                    disabled={isSubmitting}
+                    onClick={async () => {
+                      const { success } = await spreadsheetApi.put('Bills', { id: selectedBill.id, status: 'paid' })
+                      setBills(bills.map(b => b.id === selectedBill.id ? {...b, status: 'paid'} : b))
+                      setIsDetailModalOpen(false)
+                      setToastMessage(success ? 'Tagihan berhasil ditandai Lunas!' : 'Disimpan lokal (Gagal terhubung ke Sheets)')
+                      setTimeout(() => setToastMessage(''), 3000)
+                    }}
+                    className="w-full btn-primary flex items-center justify-center bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50"
+                  >
+                    <Check className="w-5 h-5 mr-2" /> Tandai Lunas (Manual)
+                  </button>
+                </div>
               )}
             </div>
           </div>
