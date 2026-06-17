@@ -26,7 +26,7 @@ export default function PaymentHistory() {
     const { data } = await spreadsheetApi.get('Payments')
     
     if (data && Array.isArray(data)) {
-      setHistory(data.filter((p: PaymentRecord) => {
+      setHistory((data as PaymentRecord[]).filter((p: PaymentRecord) => {
         const isPaid = ['verified', 'paid', 'Lunas'].includes(p.status)
         const belongsToUser = p.resident_email === profile?.email || p.resident_name === profile?.full_name
         return isPaid && belongsToUser
@@ -83,12 +83,12 @@ export default function PaymentHistory() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto w-full rounded-b-[20px] border-t border-border scrollbar-thin scrollbar-thumb-gray-200">
           <table className="w-full text-left text-sm text-gray-600">
             <thead className="bg-[#F3F4F6] text-gray-700 text-xs uppercase font-semibold border-b border-border">
               <tr>
                 <th className="px-6 py-4">Keterangan</th>
-                <th className="px-6 py-4">Periode</th>
+                <th className="px-6 py-4 hidden md:table-cell">Periode</th>
                 <th className="px-6 py-4">Tanggal Lunas</th>
                 <th className="px-6 py-4">Nominal</th>
                 <th className="px-6 py-4 text-center">Status</th>
@@ -106,7 +106,7 @@ export default function PaymentHistory() {
                 filtered.map((item) => (
                   <tr key={item.id} className="hover:bg-primary-soft/30 transition-colors">
                     <td className="px-6 py-4 font-medium text-gray-900">{item.title}</td>
-                    <td className="px-6 py-4">{item.month}</td>
+                    <td className="px-6 py-4 hidden md:table-cell">{item.month}</td>
                     <td className="px-6 py-4">{item.date_verified ? new Date(item.date_verified).toLocaleDateString('id-ID') : '-'}</td>
                     <td className="px-6 py-4 font-semibold text-gray-900">{formatCurrency(item.amount)}</td>
                     <td className="px-6 py-4 text-center">

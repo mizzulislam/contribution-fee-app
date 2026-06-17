@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { spreadsheetApi } from '@/lib/spreadsheet'
-import { Search, SearchCheck, CheckCircle2, XCircle, Eye, X, AlertTriangle, FileText } from 'lucide-react'
+import { Search, SearchCheck, CheckCircle2, XCircle, Eye, X, FileText } from 'lucide-react'
 import { TableLoader } from '@/components/ui/TableLoader'
-import { isDateInPeriod, type PeriodFilter } from '@/lib/accounting/period'
+import { isDateInPeriod, checkPeriodLock, type PeriodFilter } from '@/lib/accounting/period'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
 
 interface PaymentVerification {
   id: number | string
@@ -21,6 +22,8 @@ interface PaymentVerification {
   proofFileName?: string
   proofMimeType?: string
   proofDataUrl?: string
+  bankTarget?: string
+  bank_target?: string
 }
 
 interface VerificationProps {
@@ -35,14 +38,26 @@ export default function Verification({ period = defaultPeriod }: VerificationPro
   const [search, setSearch] = useState('')
   const [toastMessage, setToastMessage] = useState('')
   const [previewPayment, setPreviewPayment] = useState<PaymentVerification | null>(null)
-  const [alertDialog, setAlertDialog] = useState({ isOpen: false, title: '', message: '', isConfirm: false, onConfirm: () => {} })
+  const [alertDialog, setAlertDialog] = useState<{
+    isOpen: boolean
+    title: string
+    message: string
+    isConfirm: boolean
+    onConfirm: () => void
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    isConfirm: false,
+    onConfirm: () => {}
+  })
 
   async function fetchVerifications() {
     setLoading(true)
     const { data } = await spreadsheetApi.get('Payments')
     
     if (data && Array.isArray(data)) {
-      setVerifications(data.filter((p: PaymentVerification) => p.status === 'Menunggu Verifikasi' || p.status === 'pending_verification'))
+      setVerifications((data as PaymentVerification[]).filter((p: PaymentVerification) => p.status === 'Menunggu Verifikasi' || p.status === 'pending_verification'))
     } else {
       setVerifications([])
     }
@@ -85,8 +100,26 @@ export default function Verification({ period = defaultPeriod }: VerificationPro
     const item = verifications.find(v => v.id === id)
     if (!item) return
     
+    // Check period lock before approving
+    if (action === 'approve') {
+      const isLocked = await checkPeriodLock(new Date().toISOString().split('T')[0])
+      if (isLocked) {
+        setAlertDialog({
+          isOpen: true,
+          title: 'Periode Terkunci',
+          message: 'Gagal menyetujui pembayaran: Periode akuntansi bulan ini sudah ditutup (Locked).',
+          isConfirm: false,
+          onConfirm: () => setAlertDialog(prev => ({ ...prev, isOpen: false }))
+        })
+        return
+      }
+    }
+
     const newStatus = action === 'approve' ? 'paid' : 'rejected'
     const billStatus = action === 'approve' ? 'paid' : 'rejected'
+    
+    // Backup for rollback
+    const backupVerifications = [...verifications]
     setVerifications(verifications.filter(v => v.id !== id)) // Optimistic update
     
     const payload = {
@@ -98,18 +131,23 @@ export default function Verification({ period = defaultPeriod }: VerificationPro
 
     const targetBillId = item.billId || item.bill_id
     let billPayload: any = null
+    let originalBill: any = null
 
     if (targetBillId) {
-      const { data: billsData } = await spreadsheetApi.get('Bills')
-      if (Array.isArray(billsData)) {
-        const foundBill = billsData.find(b => String(b.id) === String(targetBillId))
-        if (foundBill) {
-          billPayload = {
-            ...foundBill,
-            status: billStatus,
-            updated_at: new Date().toISOString()
+      try {
+        const { data: billsData } = await spreadsheetApi.get('Bills')
+        if (Array.isArray(billsData)) {
+          originalBill = billsData.find(b => String(b.id) === String(targetBillId))
+          if (originalBill) {
+            billPayload = {
+              ...originalBill,
+              status: billStatus,
+              updated_at: new Date().toISOString()
+            }
           }
         }
+      } catch (e) {
+        console.warn("Gagal fetch data Bill untuk backup:", e)
       }
     }
 
@@ -121,16 +159,74 @@ export default function Verification({ period = defaultPeriod }: VerificationPro
       }
     }
     
-    await Promise.all([
-      spreadsheetApi.put('Payments', payload),
-      billPayload
-        ? spreadsheetApi.put('Bills', billPayload)
-        : Promise.resolve({ success: true, error: null }),
-    ])
-    
-    setAlertDialog(prev => ({...prev, isOpen: false}))
-    setToastMessage(`Pembayaran berhasil di-${action === 'approve' ? 'setujui' : 'tolak'}.`)
-    setTimeout(() => setToastMessage(''), 3000)
+    let step1Success = false
+    let step2Success = false
+    let step3Success = false
+    const journalId = `PAY-${item.id}`
+
+    try {
+      // Step 1: Update Payment
+      const res1 = await spreadsheetApi.put('Payments', payload)
+      if (!res1.success) throw new Error((res1.error as any)?.message || 'Gagal memperbarui status pembayaran di Sheets.')
+      step1Success = true
+
+      // Step 2: Update Bill
+      if (billPayload) {
+        const res2 = await spreadsheetApi.put('Bills', billPayload)
+        if (!res2.success) throw new Error((res2.error as any)?.message || 'Gagal memperbarui status tagihan di Sheets.')
+        step2Success = true
+      }
+
+      // Step 3: Post Journal Entry if approved
+      if (action === 'approve') {
+        const bank = String(item.bankTarget || item.bank_target || 'bca').toLowerCase()
+        const cashAccount = bank.includes('mandiri') ? '1103' : '1102' // Mandiri is 1103, BCA is 1102
+        
+        const journalPayload = {
+          id: journalId,
+          date: new Date().toISOString().split('T')[0],
+          description: `Penerimaan Pembayaran Sewa - ${item.resident_name || ''} (${item.title || ''})`,
+          debits: JSON.stringify([{ accountNumber: cashAccount, amount: Number(item.amount) }]),
+          credits: JSON.stringify([{ accountNumber: '1104', amount: Number(item.amount) }]),
+          source: 'payment_verification',
+          source_id: String(item.id),
+          created_at: new Date().toISOString()
+        }
+
+        const res3 = await spreadsheetApi.post('JournalEntries', journalPayload)
+        if (!res3.success) throw new Error((res3.error as any)?.message || 'Gagal memposting jurnal penerimaan kas di Sheets.')
+        step3Success = true
+      }
+
+      setAlertDialog(prev => ({ ...prev, isOpen: false }))
+      setToastMessage(`Pembayaran berhasil di-${action === 'approve' ? 'setujui' : 'tolak'}.`)
+      setTimeout(() => setToastMessage(''), 3000)
+    } catch (err: any) {
+      console.error('Error during handleAction Transaction:', err)
+      
+      // Rollback UI
+      setVerifications(backupVerifications)
+
+      // Rollback Sheets in reverse order
+      if (step2Success && originalBill) {
+        await spreadsheetApi.put('Bills', originalBill)
+      }
+      if (step1Success) {
+        await spreadsheetApi.put('Payments', {
+          ...item,
+          status: 'pending_verification',
+          updated_at: new Date().toISOString()
+        })
+      }
+
+      setAlertDialog({
+        isOpen: true,
+        title: 'Transaksi Gagal',
+        message: `Transaksi gagal: ${err.message || err}. Seluruh perubahan telah dibatalkan (rolled back).`,
+        isConfirm: false,
+        onConfirm: () => setAlertDialog(prev => ({ ...prev, isOpen: false }))
+      })
+    }
   }
 
   return (
@@ -159,13 +255,13 @@ export default function Verification({ period = defaultPeriod }: VerificationPro
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto w-full rounded-b-[20px] border-t border-border scrollbar-thin scrollbar-thumb-gray-200">
           <table className="w-full text-left text-sm text-gray-600">
             <thead className="bg-gray-50/80 text-gray-700 text-xs uppercase font-semibold border-b border-border">
               <tr>
                 <th className="px-6 py-4">Penghuni</th>
                 <th className="px-6 py-4">Tagihan</th>
-                <th className="px-6 py-4">Tanggal Submit</th>
+                <th className="px-6 py-4 hidden md:table-cell">Tanggal Submit</th>
                 <th className="px-6 py-4">Nominal</th>
                 <th className="px-6 py-4">Bukti TF</th>
                 <th className="px-6 py-4">Aksi</th>
@@ -186,7 +282,7 @@ export default function Verification({ period = defaultPeriod }: VerificationPro
                       <div className="text-xs text-text-muted">Kamar {item.room_number}</div>
                     </td>
                     <td className="px-6 py-4">{item.title}</td>
-                    <td className="px-6 py-4">{item.date_submitted}</td>
+                    <td className="px-6 py-4 hidden md:table-cell">{item.date_submitted}</td>
                     <td className="px-6 py-4 font-semibold text-gray-900">{formatCurrency(item.amount)}</td>
                     <td className="px-6 py-4">
                       {item.proofDataUrl || item.proofFileName || item.fileName ? (
@@ -268,47 +364,17 @@ export default function Verification({ period = defaultPeriod }: VerificationPro
         document.body
       )}
 
-      {/* Alert Dialog */}
-      {alertDialog.isOpen && createPortal(
-        <div
-          className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm transition-opacity"
-          onMouseDown={() => setAlertDialog(prev => ({...prev, isOpen: false}))}
-        >
-          <div
-            className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden transform transition-all p-6 text-center"
-            onMouseDown={(event) => event.stopPropagation()}
-          >
-            <div className={`mx-auto w-14 h-14 flex items-center justify-center rounded-full mb-5 ${alertDialog.title.includes('Tolak') ? 'bg-red-100 text-red-600' : 'bg-primary-100 text-primary-600'}`}>
-              <AlertTriangle className="w-7 h-7" />
-            </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-3">{alertDialog.title}</h3>
-            <p className="text-sm text-gray-600 mb-8 whitespace-pre-line text-left leading-relaxed">
-              {alertDialog.message}
-            </p>
-            <div className="flex gap-3 justify-center">
-              {alertDialog.isConfirm && (
-                <button 
-                  onClick={() => setAlertDialog(prev => ({...prev, isOpen: false}))}
-                  className="btn-secondary flex-1 py-2.5 font-medium"
-                >
-                  Batal
-                </button>
-              )}
-              <button 
-                onClick={alertDialog.onConfirm}
-                className={`flex-1 py-2.5 px-4 rounded-lg font-medium text-white transition-colors shadow-md ${
-                  alertDialog.title.includes('Tolak') 
-                    ? 'bg-red-600 hover:bg-red-700 shadow-red-500/20' 
-                    : 'bg-primary hover:bg-primary-dark shadow-primary/20'
-                }`}
-              >
-                Konfirmasi
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
+      <ConfirmDialog
+        isOpen={alertDialog.isOpen}
+        title={alertDialog.title}
+        message={alertDialog.message}
+        variant={alertDialog.isConfirm ? (alertDialog.title.includes('Tolak') ? 'danger' : 'info') : (alertDialog.title.includes('Gagal') || alertDialog.title.includes('Terkunci') ? 'danger' : 'success')}
+        showCancel={alertDialog.isConfirm}
+        confirmLabel={alertDialog.isConfirm ? (alertDialog.title.includes('Tolak') ? 'Ya, Tolak' : 'Ya, Setujui') : 'Mengerti'}
+        cancelLabel="Batal"
+        onClose={() => setAlertDialog(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={alertDialog.onConfirm}
+      />
     </div>
   )
 }

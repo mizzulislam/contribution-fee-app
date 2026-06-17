@@ -42,7 +42,7 @@ export default function Announcements() {
       const { data } = await spreadsheetApi.get('Announcements')
       if (!isMounted) return
 
-      const rows = Array.isArray(data) ? data : []
+      const rows = (Array.isArray(data) ? data : []) as AnnouncementRow[]
       setAnnouncements(
         rows
           .filter((item: AnnouncementRow) => String(item.status || 'active').toLowerCase() !== 'inactive')

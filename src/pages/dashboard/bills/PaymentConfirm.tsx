@@ -4,6 +4,7 @@ import { UploadCloud, FileText, CheckCircle2, Loader2 } from 'lucide-react'
 import Select from '@/components/ui/Select'
 import { spreadsheetApi } from '@/lib/spreadsheet'
 import { useAuth } from '@/hooks/useAuth'
+import { generateSecureId } from '@/utils/id'
 
 interface Bill {
   id: string | number
@@ -49,7 +50,7 @@ export default function PaymentConfirm() {
     const { data } = await spreadsheetApi.get('Bills')
 
     if (Array.isArray(data)) {
-      const residentBills = data.filter((bill: Bill) => {
+      const residentBills = (data as Bill[]).filter((bill: Bill) => {
         const belongsToUser = bill.resident_email === profile?.email || bill.resident_name === profile?.full_name
         const canBePaid = bill.status === 'unpaid' || bill.status === 'rejected'
         return belongsToUser && canBePaid
@@ -110,7 +111,7 @@ export default function PaymentConfirm() {
       }) : ''
 
       const payload = {
-        id: Date.now(),
+        id: generateSecureId('PAY'),
         billId,
         bankTarget,
         amount: Number(amount),

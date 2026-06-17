@@ -4,7 +4,10 @@ import { spreadsheetApi } from '@/lib/spreadsheet'
 import { Search, BadgeDollarSign, Plus, Loader2, X, Trash2 } from 'lucide-react'
 import Select from '@/components/ui/Select'
 import { TableLoader } from '@/components/ui/TableLoader'
+import { generateSecureId } from '@/utils/id'
 import { defaultEngine } from '@/lib/accounting'
+import { checkPeriodLock } from '@/lib/accounting/period'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
 
 const EXPENSE_ACCOUNT_BY_CATEGORY: Record<string, string> = {
   'Air & Galon': '5106',
@@ -32,6 +35,22 @@ export default function Expenses() {
   const [search, setSearch] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [alertDialog, setAlertDialog] = useState<{
+    isOpen: boolean
+    title: string
+    message: string
+    variant: 'danger' | 'info' | 'success'
+    showCancel?: boolean
+    confirmLabel?: string
+    onConfirm?: () => void
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    variant: 'info',
+    showCancel: false,
+    confirmLabel: 'Mengerti'
+  })
   
   const [formData, setFormData] = useState({
     title: '',
@@ -46,7 +65,7 @@ export default function Expenses() {
     const { data } = await spreadsheetApi.get('Expenses')
     
     if (data && Array.isArray(data)) {
-      setExpenses(data)
+      setExpenses(data as Expense[])
     } else {
       setExpenses([])
     }
@@ -61,7 +80,22 @@ export default function Expenses() {
     e.preventDefault()
     setIsSaving(true)
     
-    const newId = Date.now()
+    // Check Period Lock
+    const isLocked = await checkPeriodLock(formData.date)
+    if (isLocked) {
+      setAlertDialog({
+        isOpen: true,
+        title: 'Periode Terkunci',
+        message: 'Gagal menyimpan pengeluaran: Periode akuntansi pada tanggal tersebut sudah ditutup (Locked).',
+        variant: 'danger',
+        showCancel: false,
+        confirmLabel: 'Mengerti'
+      })
+      setIsSaving(false)
+      return
+    }
+
+    const newId = generateSecureId('EXP')
     const payload = { 
       id: newId, 
       ...formData, 
@@ -69,17 +103,21 @@ export default function Expenses() {
       created_at: new Date().toISOString() 
     }
     
-    const res = await spreadsheetApi.post('Expenses', payload)
-    if (res.success) {
+    let step1Success = false
+    try {
+      // Step 1: Post Expense
+      const res = await spreadsheetApi.post('Expenses', payload)
+      if (!res.success) throw new Error((res.error as any)?.message || 'Gagal menyimpan pengeluaran ke Sheets.')
+      step1Success = true
+
+      // Step 2: Post Journal
       const debitAccountNumber = EXPENSE_ACCOUNT_BY_CATEGORY[formData.category] || EXPENSE_ACCOUNT_BY_CATEGORY.Lainnya
       const debits = [{ accountNumber: debitAccountNumber, amount: Number(formData.amount) }]
       const credits = [{ accountNumber: CASH_ACCOUNT_NUMBER, amount: Number(formData.amount) }]
       const description = `${formData.title}${formData.note ? ` - ${formData.note}` : ''}`
       const journalId = `EXP-${newId}`
 
-      defaultEngine.recordTransaction(formData.date, debits, credits, description)
-
-      const journalRes = await spreadsheetApi.post('JournalEntries', {
+      const journalPayload = {
         id: journalId,
         date: formData.date,
         description,
@@ -88,40 +126,114 @@ export default function Expenses() {
         source: 'Expenses',
         source_id: newId,
         created_at: new Date().toISOString(),
-      })
-
-      if (!journalRes.success) {
-        console.error('Gagal membuat jurnal otomatis untuk pengeluaran:', journalRes.error)
       }
 
+      const journalRes = await spreadsheetApi.post('JournalEntries', journalPayload)
+      if (!journalRes.success) {
+        throw new Error((journalRes.error as any)?.message || 'Gagal memposting jurnal otomatis untuk pengeluaran ke Sheets.')
+      }
+
+      // Re-record locally
+      defaultEngine.recordTransaction(formData.date, debits, credits, description)
+
       setExpenses([payload, ...expenses])
-    } else {
-      alert('Gagal menyimpan pengeluaran ke sumber data.')
+      setIsModalOpen(false)
+      setFormData({
+        title: '',
+        category: 'Air & Galon',
+        amount: '',
+        date: new Date().toISOString().split('T')[0],
+        note: ''
+      })
+    } catch (err: any) {
+      console.error(err)
+      // Rollback
+      if (step1Success) {
+        await spreadsheetApi.del('Expenses', newId)
+      }
+      setAlertDialog({
+        isOpen: true,
+        title: 'Transaksi Gagal',
+        message: `Transaksi gagal: ${err.message || err}. Perubahan telah dibatalkan.`,
+        variant: 'danger',
+        showCancel: false,
+        confirmLabel: 'Mengerti'
+      })
+    } finally {
       setIsSaving(false)
-      return
     }
-    
-    setIsModalOpen(false)
-    setIsSaving(false)
-    setFormData({
-      title: '',
-      category: 'Air & Galon',
-      amount: '',
-      date: new Date().toISOString().split('T')[0],
-      note: ''
+  }
+
+  const handleDeleteClick = (id: number | string) => {
+    setAlertDialog({
+      isOpen: true,
+      title: 'Hapus Pengeluaran',
+      message: 'Apakah Anda yakin ingin menghapus pengeluaran ini?',
+      variant: 'danger',
+      showCancel: true,
+      confirmLabel: 'Ya, Hapus',
+      onConfirm: () => {
+        setAlertDialog(prev => ({ ...prev, isOpen: false }))
+        executeDelete(id)
+      }
     })
   }
 
-  const handleDelete = async (id: number | string) => {
-    if (!confirm('Hapus pengeluaran ini?')) return
-    const [expenseRes, journalRes] = await Promise.all([
-      spreadsheetApi.del('Expenses', id),
-      spreadsheetApi.del('JournalEntries', `EXP-${id}`)
-    ])
-    if (expenseRes.success && journalRes.success) {
+  const executeDelete = async (id: number | string) => {
+    const targetExpense = expenses.find(e => e.id === id)
+    if (!targetExpense) return
+
+    // Find journal entry to check date and verify if locked
+    let journalDate = new Date().toISOString().split('T')[0]
+    try {
+      const { data: journals } = await spreadsheetApi.get('JournalEntries')
+      const matchedJournal = Array.isArray(journals) && journals.find(j => String(j.id) === `EXP-${id}`)
+      if (matchedJournal) {
+        journalDate = matchedJournal.date
+      }
+    } catch (e) {
+      console.warn("Gagal mengambil data jurnal untuk check lock:", e)
+    }
+
+    const isLocked = await checkPeriodLock(journalDate)
+    if (isLocked) {
+      setAlertDialog({
+        isOpen: true,
+        title: 'Periode Terkunci',
+        message: 'Gagal menghapus pengeluaran: Transaksi ini berada di periode yang sudah ditutup (Locked).',
+        variant: 'danger',
+        showCancel: false,
+        confirmLabel: 'Mengerti'
+      })
+      return
+    }
+
+    let step1Success = false
+    try {
+      // Step 1: Delete expense
+      const expenseRes = await spreadsheetApi.del('Expenses', id)
+      if (!expenseRes.success) throw new Error((expenseRes.error as any)?.message || 'Gagal menghapus pengeluaran di Sheets.')
+      step1Success = true
+
+      // Step 2: Delete journal
+      const journalRes = await spreadsheetApi.del('JournalEntries', `EXP-${id}`)
+      if (!journalRes.success) throw new Error((journalRes.error as any)?.message || 'Gagal menghapus jurnal pengeluaran di Sheets.')
+
       setExpenses(expenses.filter(e => e.id !== id))
-    } else {
-      alert('Gagal menghapus pengeluaran dari sumber data.')
+    } catch (err: any) {
+      console.error(err)
+      // Rollback
+      if (step1Success && targetExpense) {
+        await spreadsheetApi.post('Expenses', targetExpense)
+      }
+      setAlertDialog({
+        isOpen: true,
+        title: 'Gagal Menghapus',
+        message: `Gagal menghapus pengeluaran: ${err.message || err}. Perubahan telah dibatalkan.`,
+        variant: 'danger',
+        showCancel: false,
+        confirmLabel: 'Mengerti'
+      })
     }
   }
 
@@ -169,14 +281,14 @@ export default function Expenses() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto w-full rounded-b-[20px] border-t border-border scrollbar-thin scrollbar-thumb-gray-200">
           <table className="w-full text-left text-sm text-gray-600">
             <thead className="bg-gray-50/80 text-gray-700 text-xs uppercase font-semibold border-b border-border">
               <tr>
                 <th className="px-6 py-4">Tanggal</th>
                 <th className="px-6 py-4">Judul Pengeluaran</th>
                 <th className="px-6 py-4">Kategori</th>
-                <th className="px-6 py-4">Catatan</th>
+                <th className="px-6 py-4 hidden md:table-cell">Catatan</th>
                 <th className="px-6 py-4 text-right">Nominal</th>
                 <th className="px-6 py-4 text-center">Aksi</th>
               </tr>
@@ -198,12 +310,12 @@ export default function Expenses() {
                         {item.category}
                       </span>
                     </td>
-                    <td className="px-6 py-4">{item.note || '-'}</td>
+                    <td className="px-6 py-4 hidden md:table-cell">{item.note || '-'}</td>
                     <td className="px-6 py-4 font-semibold text-danger text-center">
                       - {formatCurrency(item.amount)}
                     </td>
                     <td className="px-6 py-4 text-center">
-                      <button onClick={() => handleDelete(item.id)} className="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded">
+                      <button onClick={() => handleDeleteClick(item.id)} className="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </td>
@@ -304,6 +416,17 @@ export default function Expenses() {
         </div>,
         document.body
       )}
+
+      <ConfirmDialog
+        isOpen={alertDialog.isOpen}
+        title={alertDialog.title}
+        message={alertDialog.message}
+        variant={alertDialog.variant}
+        showCancel={alertDialog.showCancel}
+        confirmLabel={alertDialog.confirmLabel}
+        onClose={() => setAlertDialog(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={alertDialog.onConfirm}
+      />
     </div>
   )
 }

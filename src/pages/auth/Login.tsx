@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import type { Role } from '@/hooks/useAuth'
 import { spreadsheetApi } from '@/lib/spreadsheet'
+import { sha256 } from '@/utils/crypto'
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -18,31 +19,59 @@ export default function Login() {
     setError(null)
     
     try {
-      // 1. Coba fetch dari Spreadsheet API (Tab: Users)
+      // 1. Fetch data dari sheet Users
       const { data, error: apiError } = await spreadsheetApi.get('Users')
       
-      let userFound = false
-
-      if (!apiError && data && Array.isArray(data) && data.length > 0) {
-        // Cari user yang cocok
-        const user = data.find((u: any) => u.email === email && u.password === password)
-        if (user) {
-          setProfile({
-            id: user.id || Math.random().toString(),
-            email: user.email,
-            full_name: user.full_name || user.email.split('@')[0],
-            role: (user.role as Role) || 'user',
-            room_number: user.room_number || undefined
-          })
-          userFound = true
-        }
+      if (apiError || !data || !Array.isArray(data)) {
+        throw new Error('Gagal memuat data pengguna. Silakan periksa koneksi internet atau Google Sheets API.')
       }
 
-      if (userFound) {
+      // Hitung hash dari input password pengguna
+      const inputHash = await sha256(password)
+      
+      // Cari pengguna berdasarkan email
+      const user = data.find((u: any) => String(u.email).toLowerCase() === email.toLowerCase())
+      
+      if (!user) {
+        throw new Error('Email atau password salah.')
+      }
+
+      let isAuthenticated = false
+      let needsMigration = false
+
+      // Cek apakah password tersimpan cocok (apakah hash SHA-256 atau plaintext untuk migrasi)
+      if (user.password === inputHash) {
+        isAuthenticated = true
+      } else if (user.password === password) {
+        // Cocok dengan plaintext, tandai perlu migrasi ke hash
+        isAuthenticated = true
+        needsMigration = true
+      }
+
+      if (isAuthenticated) {
+        // Jika perlu migrasi, simpan password versi hash kembali ke spreadsheet
+        if (needsMigration) {
+          const updatedUser = {
+            ...user,
+            password: inputHash,
+            updated_at: new Date().toISOString()
+          }
+          await spreadsheetApi.put('Users', updatedUser)
+        }
+
+        // Set local profile sesi
+        setProfile({
+          id: user.id || Math.random().toString(),
+          email: user.email,
+          full_name: user.full_name || user.email.split('@')[0],
+          role: (user.role as Role) || 'user',
+          room_number: user.room_number || undefined
+        })
+
         sessionStorage.setItem('soematra_show_welcome_modal', '1')
         navigate('/dashboard')
       } else {
-        throw new Error('Email atau password salah. (Atau koneksi Spreadsheet belum terhubung)')
+        throw new Error('Email atau password salah.')
       }
 
     } catch (err: any) {

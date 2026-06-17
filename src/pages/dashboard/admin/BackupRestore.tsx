@@ -1,11 +1,28 @@
 import { useState } from 'react'
 import { DatabaseBackup, Download, Upload, Clock, Loader2 } from 'lucide-react'
 import { spreadsheetApi } from '@/lib/spreadsheet'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
 
 export default function BackupRestore() {
   const [loading, setLoading] = useState(false)
   const [restoring, setRestoring] = useState(false)
   const [restoreProgress, setRestoreProgress] = useState('')
+  const [alertDialog, setAlertDialog] = useState<{
+    isOpen: boolean
+    title: string
+    message: string
+    variant: 'danger' | 'info' | 'success'
+    showCancel?: boolean
+    confirmLabel?: string
+    onConfirm?: () => void
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    variant: 'info',
+    showCancel: false,
+    confirmLabel: 'Mengerti'
+  })
 
   const handleBackup = async () => {
     try {
@@ -20,7 +37,7 @@ export default function BackupRestore() {
       
       const backupData: Record<string, any> = {}
       
-      // Fetch concurrently to save time, or sequentially to avoid rate limit. 
+      // Fetch sequentially to avoid rate limit. 
       // Sequentially is safer for simple Apps Script deployments.
       for (const table of tablesToBackup) {
         try {
@@ -54,21 +71,20 @@ export default function BackupRestore() {
       
     } catch (error) {
       console.error("Backup failed", error)
-      alert("Terjadi kesalahan saat membuat backup.")
+      setAlertDialog({
+        isOpen: true,
+        title: 'Backup Gagal',
+        message: 'Terjadi kesalahan saat membuat backup.',
+        variant: 'danger',
+        showCancel: false,
+        confirmLabel: 'Mengerti'
+      })
     } finally {
       setLoading(false)
     }
   }
 
-  const handleRestore = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    if (!confirm('PERINGATAN: Proses ini akan menghapus semua data saat ini dan menggantinya dengan data dari file backup. Apakah Anda yakin ingin melanjutkan?')) {
-      e.target.value = ''
-      return
-    }
-
+  const executeRestore = (file: File, inputEl: HTMLInputElement) => {
     const reader = new FileReader()
     reader.onload = async (event) => {
       try {
@@ -93,18 +109,54 @@ export default function BackupRestore() {
           }
         }
 
-        alert('Proses restore data selesai! Halaman akan dimuat ulang.')
-        window.location.reload()
+        setAlertDialog({
+          isOpen: true,
+          title: 'Restore Berhasil',
+          message: 'Proses restore data selesai! Halaman akan dimuat ulang.',
+          variant: 'success',
+          showCancel: false,
+          confirmLabel: 'OK',
+          onConfirm: () => {
+            window.location.reload()
+          }
+        })
       } catch (error: any) {
         console.error("Restore failed", error)
-        alert("Gagal melakukan restore: " + (error.message || 'File rusak atau tidak valid.'))
+        setAlertDialog({
+          isOpen: true,
+          title: 'Restore Gagal',
+          message: "Gagal melakukan restore: " + (error.message || 'File rusak atau tidak valid.'),
+          variant: 'danger',
+          showCancel: false,
+          confirmLabel: 'Mengerti'
+        })
       } finally {
         setRestoring(false)
         setRestoreProgress('')
-        e.target.value = ''
+        inputEl.value = ''
       }
     }
     reader.readAsText(file)
+  }
+
+  const handleRestore = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const inputEl = e.target
+
+    setAlertDialog({
+      isOpen: true,
+      title: 'Peringatan Restore',
+      message: 'PERINGATAN: Proses ini akan menghapus semua data saat ini dan menggantinya dengan data dari file backup. Apakah Anda yakin ingin melanjutkan?',
+      variant: 'danger',
+      showCancel: true,
+      confirmLabel: 'Ya, Lanjutkan',
+      onConfirm: () => {
+        setAlertDialog(prev => ({ ...prev, isOpen: false }))
+        executeRestore(file, inputEl)
+      }
+    })
   }
 
   return (
@@ -172,6 +224,17 @@ export default function BackupRestore() {
           </label>
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={alertDialog.isOpen}
+        title={alertDialog.title}
+        message={alertDialog.message}
+        variant={alertDialog.variant}
+        showCancel={alertDialog.showCancel}
+        confirmLabel={alertDialog.confirmLabel}
+        onClose={() => setAlertDialog(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={alertDialog.onConfirm}
+      />
     </div>
   )
 }

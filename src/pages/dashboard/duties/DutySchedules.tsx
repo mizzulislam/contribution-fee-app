@@ -4,6 +4,7 @@ import { CheckSquare, Loader2, X, Settings, CheckCircle2, Users, RefreshCw, List
 import { spreadsheetApi } from '@/lib/spreadsheet'
 import Select from '@/components/ui/Select'
 import { useAuth } from '@/hooks/useAuth'
+import { generateSecureId } from '@/utils/id'
 
 export default function DutySchedules() {
   const { activeRole } = useAuth()
@@ -72,7 +73,13 @@ export default function DutySchedules() {
     e.preventDefault()
     
     if (includedUsers.length === 0) {
-      alert("Pilih minimal 1 warga untuk piket!")
+      setAlertDialog({
+        isOpen: true,
+        title: 'Petugas Kosong',
+        message: 'Pilih minimal 1 warga untuk piket!',
+        isConfirm: false,
+        onConfirm: () => {}
+      })
       return
     }
 
@@ -120,7 +127,7 @@ export default function DutySchedules() {
         }
         
         newSchedules.push({
-          id: Date.now() + Math.random(),
+          id: generateSecureId('DS'),
           date: `Antrean Ke-${currentTurn}`,
           user: assignedUsers.join(' & '),
           user_id: 'Grup', 

@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
+import ErrorBoundary from '@/components/shared/ErrorBoundary'
 
 import AuthLayout from '@/components/layouts/AuthLayout'
 import DashboardLayout from '@/components/layouts/DashboardLayout'
@@ -53,60 +54,62 @@ export default function App() {
   }
 
   return (
-    <BrowserRouter>
-      <Routes>
-        {/* Public Routes */}
-        <Route element={<AuthLayout />}>
-          <Route path="/login" element={<Login />} />
-        </Route>
-        
-        {/* Protected Dashboard Routes */}
-        <Route element={<DashboardLayout />}>
-          {/* Default Dashboard (Logic per role diatur di dalam komponen Dashboard) */}
-          <Route path="/dashboard" element={<Dashboard />} />
-
-          {/* SUPER ADMIN ROUTES */}
-          <Route element={<ProtectedRoute allowedRoles={['super admin']} />}>
-            <Route path="/dashboard/warga" element={<ManajemenWarga />} />
-            <Route path="/dashboard/roles" element={<RolesPermissions />} />
-            <Route path="/dashboard/master" element={<MasterData />} />
-            <Route path="/dashboard/audit" element={<AuditLogs />} />
-            <Route path="/dashboard/notifications-settings" element={<NotificationSettings />} />
-            <Route path="/dashboard/backup" element={<BackupRestore />} />
-            <Route path="/dashboard/settings" element={<SystemSettings />} />
+    <ErrorBoundary>
+      <BrowserRouter>
+        <Routes>
+          {/* Public Routes */}
+          <Route element={<AuthLayout />}>
+            <Route path="/login" element={<Login />} />
           </Route>
-
-          {/* ADMIN / BENDAHARA ROUTES */}
-          <Route element={<ProtectedRoute allowedRoles={['super admin', 'admin']} />}>
-            <Route path="/dashboard/billing" element={<BillingDashboard />} />
-            <Route path="/dashboard/finance" element={<FinanceDashboard />} />
-            <Route path="/dashboard/gallons-management" element={<GallonsDashboard />} />
-            <Route path="/dashboard/duties" element={<DutySchedules />} />
+          
+          {/* Protected Dashboard Routes */}
+          <Route element={<DashboardLayout />}>
+            {/* Default Dashboard (Logic per role diatur di dalam komponen Dashboard) */}
+            <Route path="/dashboard" element={<Dashboard />} />
+  
+            {/* SUPER ADMIN ROUTES */}
+            <Route element={<ProtectedRoute allowedRoles={['super admin']} />}>
+              <Route path="/dashboard/warga" element={<ManajemenWarga />} />
+              <Route path="/dashboard/roles" element={<RolesPermissions />} />
+              <Route path="/dashboard/master" element={<MasterData />} />
+              <Route path="/dashboard/audit" element={<AuditLogs />} />
+              <Route path="/dashboard/notifications-settings" element={<NotificationSettings />} />
+              <Route path="/dashboard/backup" element={<BackupRestore />} />
+              <Route path="/dashboard/settings" element={<SystemSettings />} />
+            </Route>
+  
+            {/* ADMIN / BENDAHARA ROUTES */}
+            <Route element={<ProtectedRoute allowedRoles={['super admin', 'admin']} />}>
+              <Route path="/dashboard/billing" element={<BillingDashboard />} />
+              <Route path="/dashboard/finance" element={<FinanceDashboard />} />
+              <Route path="/dashboard/gallons-management" element={<GallonsDashboard />} />
+              <Route path="/dashboard/duties" element={<DutySchedules />} />
+            </Route>
+  
+            {/* USER / PENGHUNI ROUTES */}
+            <Route element={<ProtectedRoute allowedRoles={['super admin', 'admin', 'user']} />}>
+              <Route path="/dashboard/billing-user" element={<UserBillingDashboard />} />
+              <Route path="/dashboard/information" element={<UserInformationDashboard />} />
+              <Route path="/dashboard/profile" element={<ProfileSettings />} />
+              <Route path="/dashboard/cash-reports" element={<CashReports />} />
+              <Route path="/dashboard/gallons-info" element={<GallonsInfo />} />
+              <Route path="/dashboard/duties-mine" element={<MyDuties />} />
+  
+              {/* Legacy Routes Redirect */}
+              <Route path="/dashboard/bills" element={<Navigate to="/dashboard/billing-user" replace />} />
+              <Route path="/dashboard/payment-confirm" element={<Navigate to="/dashboard/billing-user?tab=confirm" replace />} />
+              <Route path="/dashboard/payment-history" element={<Navigate to="/dashboard/billing-user?tab=history" replace />} />
+              <Route path="/dashboard/duties-confirm" element={<Navigate to="/dashboard/duties-mine" replace />} />
+              <Route path="/dashboard/notifications" element={<Navigate to="/dashboard/information" replace />} />
+              <Route path="/dashboard/announcements" element={<Navigate to="/dashboard/information" replace />} />
+            </Route>
+  
           </Route>
-
-          {/* USER / PENGHUNI ROUTES */}
-          <Route element={<ProtectedRoute allowedRoles={['super admin', 'admin', 'user']} />}>
-            <Route path="/dashboard/billing-user" element={<UserBillingDashboard />} />
-            <Route path="/dashboard/information" element={<UserInformationDashboard />} />
-            <Route path="/dashboard/profile" element={<ProfileSettings />} />
-            <Route path="/dashboard/cash-reports" element={<CashReports />} />
-            <Route path="/dashboard/gallons-info" element={<GallonsInfo />} />
-            <Route path="/dashboard/duties-mine" element={<MyDuties />} />
-
-            {/* Legacy Routes Redirect */}
-            <Route path="/dashboard/bills" element={<Navigate to="/dashboard/billing-user" replace />} />
-            <Route path="/dashboard/payment-confirm" element={<Navigate to="/dashboard/billing-user?tab=confirm" replace />} />
-            <Route path="/dashboard/payment-history" element={<Navigate to="/dashboard/billing-user?tab=history" replace />} />
-            <Route path="/dashboard/duties-confirm" element={<Navigate to="/dashboard/duties-mine" replace />} />
-            <Route path="/dashboard/notifications" element={<Navigate to="/dashboard/information" replace />} />
-            <Route path="/dashboard/announcements" element={<Navigate to="/dashboard/information" replace />} />
-          </Route>
-
-        </Route>
-
-        {/* Fallback */}
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
-      </Routes>
-    </BrowserRouter>
+  
+          {/* Fallback */}
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </ErrorBoundary>
   )
 }

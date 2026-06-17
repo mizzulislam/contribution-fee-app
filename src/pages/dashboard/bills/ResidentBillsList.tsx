@@ -36,7 +36,7 @@ export default function ResidentBillsList() {
     
     if (data && Array.isArray(data)) {
       // Filter tagihan milik user yang sedang login
-      setBills(data.filter((b: ResidentBill) => b.resident_email === profile?.email || b.resident_name === profile?.full_name))
+      setBills((data as ResidentBill[]).filter((b: ResidentBill) => b.resident_email === profile?.email || b.resident_name === profile?.full_name))
     } else {
       // Jika terjadi error koneksi, kosongkan tampilan agar tidak menampilkan data non-sumber.
       setBills([])
@@ -91,7 +91,7 @@ export default function ResidentBillsList() {
       </div>
 
       <div className="card-container p-0 overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto w-full scrollbar-thin scrollbar-thumb-gray-200">
           <table className="w-full text-left text-sm">
             <thead className="bg-[#F3F4F6] border-b border-border text-gray-600">
               <tr>

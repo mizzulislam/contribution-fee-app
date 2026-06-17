@@ -4,6 +4,7 @@ import { spreadsheetApi } from '@/lib/spreadsheet'
 import { Plus, Users, AlertTriangle, Info } from 'lucide-react'
 import { WargaTable } from '@/components/admin/warga/WargaTable'
 import { WargaFormModal, type WargaFormData } from '@/components/admin/warga/WargaFormModal'
+import { generateSecureId } from '@/utils/id'
 
 interface WargaUser extends WargaFormData {
   id: number | string
@@ -62,7 +63,7 @@ export default function ManajemenWarga() {
     const { data } = await spreadsheetApi.get('Users')
     
     if (data && Array.isArray(data)) {
-      setUsers(data)
+      setUsers(data as WargaUser[])
     } else {
       setUsers([])
     }
@@ -101,7 +102,7 @@ export default function ManajemenWarga() {
       }
     } else {
       // Mode Tambah
-      const generatedId = globalThis.crypto?.randomUUID?.() || String(Date.now())
+      const generatedId = generateSecureId('USR')
       const newUser = { id: generatedId, ...formData }
       const { success } = await spreadsheetApi.post('Users', newUser)
       

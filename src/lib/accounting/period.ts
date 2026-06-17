@@ -1,6 +1,7 @@
 import { AccountingEngine } from './AccountingEngine'
 import { defaultEngine } from './index'
 import type { JournalEntry } from './types'
+import { spreadsheetApi } from '@/lib/spreadsheet'
 
 export type PeriodPreset = 'all' | 'this_month' | 'last_month' | 'this_year' | 'custom'
 
@@ -101,3 +102,39 @@ export function buildPeriodAccountingEngine(period: PeriodFilter) {
 
   return engine
 }
+
+export async function checkPeriodLock(dateStr: string): Promise<boolean> {
+  if (!dateStr) return false
+  try {
+    const { data } = await spreadsheetApi.get('JournalEntries')
+    if (!data || !Array.isArray(data)) return false
+
+    const txDate = new Date(dateStr)
+    if (Number.isNaN(txDate.getTime())) return false
+    const txYear = txDate.getFullYear()
+    const txMonth = txDate.getMonth()
+
+    return data.some((entry: any) => {
+      const id = String(entry.id || '').toLowerCase()
+      const description = String(entry.description || '').toLowerCase()
+      const source = String(entry.source || entry.type || '').toLowerCase()
+
+      const isClosing = id.startsWith('cl') || 
+                        source.includes('closing') || 
+                        source.includes('penutup') || 
+                        description.includes('closing') || 
+                        description.includes('jurnal penutup') || 
+                        description.includes('tutup buku')
+
+      if (!isClosing) return false
+
+      const entryDate = new Date(entry.date)
+      if (Number.isNaN(entryDate.getTime())) return false
+      return entryDate.getFullYear() === txYear && entryDate.getMonth() === txMonth
+    })
+  } catch (err) {
+    console.error("Gagal memeriksa lock periode:", err)
+    return false
+  }
+}
+

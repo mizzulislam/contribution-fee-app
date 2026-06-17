@@ -3,6 +3,7 @@ import { Database, Plus, Trash2, CreditCard } from 'lucide-react'
 import { createPortal } from 'react-dom'
 import { spreadsheetApi } from '@/lib/spreadsheet'
 import { mergeAccounts, type Account } from '@/lib/chartOfAccounts'
+import { generateSecureId } from '@/utils/id'
 
 import { CategoryTable } from '@/components/admin/master/CategoryTable'
 import { PaymentMethodTable, type PaymentMethod } from '@/components/admin/master/PaymentMethodTable'
@@ -50,7 +51,7 @@ export default function MasterData() {
       setIsPaymentLoading(true)
       const { data } = await spreadsheetApi.get('PaymentMethods')
       if (data && Array.isArray(data) && data.length > 0) {
-        setPaymentMethods(data)
+        setPaymentMethods(data as PaymentMethod[])
       } else {
         setPaymentMethods([
           { id: 1, bank_name: 'BCA', account_name: 'Soematra Kost', account_number: '1234567890', status: 'Aktif' }
@@ -164,7 +165,7 @@ export default function MasterData() {
     setIsLoading(true)
     
     const payload = { 
-      id: editingPaymentId || Date.now(), 
+      id: editingPaymentId || generateSecureId('PM'), 
       ...paymentFormData, 
       updated_at: new Date().toISOString() 
     }

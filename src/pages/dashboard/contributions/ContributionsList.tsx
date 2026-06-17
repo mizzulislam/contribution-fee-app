@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { spreadsheetApi } from '@/lib/spreadsheet'
 import { TableLoader } from '@/components/ui/TableLoader'
+import { generateSecureId } from '@/utils/id'
 import { Plus, Search, FileText, X, Save, CheckCircle2, Pencil, Trash2, RotateCcw, Droplets, History, Users, Package, Wallet, UserCheck, TrendingUp, Info } from 'lucide-react'
 import Select from '@/components/ui/Select'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
 
 export default function ContributionsList() {
   const [contributions, setContributions] = useState<any[]>([])
@@ -22,6 +24,13 @@ export default function ContributionsList() {
     isEstimasiManual: false, manualEstimasiGalon: 10 as number | string, useAutoCalc: false
   })
   const [editingId, setEditingId] = useState<number | string | null>(null)
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean
+    idToDelete: number | string | null
+  }>({
+    isOpen: false,
+    idToDelete: null
+  })
 
     const isGalon = newContribution.title.toLowerCase().includes('galon')
   const isListrik = newContribution.title.toLowerCase().includes('listrik')
@@ -187,7 +196,7 @@ export default function ContributionsList() {
     }
 
     const added = {
-      id: Date.now(),
+      id: generateSecureId('CON'),
       title: newContribution.title,
       contribution_types: { name: newContribution.category, period_type: newContribution.period_type },
       period_month: new Date(newContribution.due_date).getMonth() + 1 || 1,
@@ -225,8 +234,18 @@ export default function ContributionsList() {
     setTimeout(() => setToastMessage(''), 3000)
   }
 
-  const handleDelete = async (id: number | string) => {
-    if (!window.confirm('Apakah Anda yakin ingin menghapus iuran ini? Tindakan ini tidak dapat dibatalkan.')) return
+  const handleDeleteClick = (id: number | string) => {
+    setConfirmDialog({
+      isOpen: true,
+      idToDelete: id
+    })
+  }
+
+  const handleConfirmDelete = async () => {
+    const id = confirmDialog.idToDelete
+    if (id === null) return
+    setConfirmDialog({ isOpen: false, idToDelete: null })
+    
     const { success } = await spreadsheetApi.del('Contributions', id)
     if (success) {
       setContributions(contributions.filter(c => c.id !== id))
@@ -293,15 +312,15 @@ export default function ContributionsList() {
           </div>
         </div>
         
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto w-full rounded-b-[20px] border-t border-border scrollbar-thin scrollbar-thumb-gray-200">
           <table className="w-full text-left text-sm">
             <thead className="bg-[#F3F4F6] border-b border-border text-gray-600">
               <tr>
                 <th className="px-6 py-3 font-semibold whitespace-nowrap">Judul</th>
                 <th className="px-6 py-3 font-semibold whitespace-nowrap">Kategori</th>
-                <th className="px-6 py-3 font-semibold whitespace-nowrap text-center">Siklus</th>
+                <th className="px-6 py-3 font-semibold whitespace-nowrap text-center hidden md:table-cell">Siklus</th>
                 <th className="px-6 py-3 font-semibold whitespace-nowrap">Nominal</th>
-                <th className="px-6 py-3 font-semibold whitespace-nowrap text-center">Jatuh Tempo</th>
+                <th className="px-6 py-3 font-semibold whitespace-nowrap text-center hidden md:table-cell">Jatuh Tempo</th>
                 <th className="px-6 py-3 font-semibold whitespace-nowrap text-center">Status</th>
                 <th className="px-6 py-3 font-semibold whitespace-nowrap text-right">Aksi</th>
               </tr>
@@ -321,9 +340,9 @@ export default function ContributionsList() {
                   <tr key={c.id} className="hover:bg-[#ECFDF5] transition-colors">
                     <td className="px-6 py-4 font-medium text-gray-900">{c.title}</td>
                     <td className="px-6 py-4">{c.category || (getCategoryData(c.contribution_types).name)}</td>
-                    <td className="px-6 py-4 text-blue-600 bg-blue-50/30 text-xs font-medium rounded-md w-max inline-block mt-3">{getCategoryData(c.contribution_types).period_type}</td>
+                    <td className="px-6 py-4 text-blue-600 bg-blue-50/30 text-xs font-medium rounded-md w-max hidden md:table-cell mt-3">{getCategoryData(c.contribution_types).period_type}</td>
                     <td className="px-6 py-4 font-medium text-gray-900">{formatCurrency(c.amount)}</td>
-                    <td className="px-6 py-4">{formatDueDate(c.due_date, getCategoryData(c.contribution_types).period_type)}</td>
+                    <td className="px-6 py-4 hidden md:table-cell">{formatDueDate(c.due_date, getCategoryData(c.contribution_types).period_type)}</td>
                     <td className="px-6 py-4 text-center">
                       <span className={`badge ${c.status === 'active' ? 'badge-success' : 'bg-gray-100 text-gray-700'}`}>
                         {c.status}
@@ -346,7 +365,7 @@ export default function ContributionsList() {
                           <Pencil className="w-4 h-4" />
                         </button>
                         <button 
-                          onClick={() => handleDelete(c.id)}
+                          onClick={() => handleDeleteClick(c.id)}
                           className="p-1.5 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-200"
                           title="Hapus"
                         >
@@ -702,6 +721,17 @@ export default function ContributionsList() {
         </div>,
         document.body
       )}
+
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title="Konfirmasi Hapus"
+        message="Apakah Anda yakin ingin menghapus iuran ini? Tindakan ini tidak dapat dibatalkan."
+        confirmLabel="Ya, Hapus"
+        cancelLabel="Batal"
+        variant="danger"
+        onClose={() => setConfirmDialog({ isOpen: false, idToDelete: null })}
+        onConfirm={handleConfirmDelete}
+      />
     </div>
   )
 }

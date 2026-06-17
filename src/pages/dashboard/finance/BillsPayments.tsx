@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { spreadsheetApi } from '@/lib/spreadsheet'
 import { CheckCircle2, Clock, XCircle, FileText, Search, Bell, Plus, X, Save, Check, Pencil, Trash2, Edit } from 'lucide-react'
 import { TableLoader } from '@/components/ui/TableLoader'
 import Select from '@/components/ui/Select'
-import { isDateInPeriod, toInputDate, type PeriodFilter } from '@/lib/accounting/period'
-import { syncBillsWithAccountingEntries } from '@/lib/billingAccountingSync'
+import { type PeriodFilter } from '@/lib/accounting/period'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
+import { useBillsManager } from '@/hooks/useBillsManager'
+import { spreadsheetApi } from '@/lib/spreadsheet'
 
 interface BillsPaymentsProps {
   period?: PeriodFilter
@@ -14,99 +14,45 @@ interface BillsPaymentsProps {
 const defaultPeriod: PeriodFilter = { preset: 'all' }
 
 export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsProps) {
-  const [bills, setBills] = useState<any[]>([])
-  const [users, setUsers] = useState<any[]>([])
-  const [templates, setTemplates] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-  const [isLoadingForm, setIsLoadingForm] = useState(false)
-  const [search, setSearch] = useState('')
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false)
-  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
-  const [selectedBill, setSelectedBill] = useState<any>(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [toastMessage, setToastMessage] = useState('')
-  const [newBill, setNewBill] = useState({ resident_name: '', title: '', due_date: '', amount: 0 })
-  const [billingDueDay, setBillingDueDay] = useState(12)
-  const [editingBillId, setEditingBillId] = useState<number | string | null>(null)
-  const [isEditMode, setIsEditMode] = useState(false)
-  const [selectedBillIds, setSelectedBillIds] = useState<(string | number)[]>([])
-  const [isBulkActioning, setIsBulkActioning] = useState(false)
-
-  useEffect(() => {
-    fetchBills()
-  }, [])
-
-  const clampDueDay = (day: number, baseDate = new Date()) => {
-    const lastDay = new Date(baseDate.getFullYear(), baseDate.getMonth() + 1, 0).getDate()
-    return Math.min(Math.max(day || 1, 1), lastDay)
-  }
-
-  const buildDefaultDueDate = (day = billingDueDay, baseDate = new Date()) => {
-    return toInputDate(new Date(baseDate.getFullYear(), baseDate.getMonth(), clampDueDay(day, baseDate)))
-  }
-
-  const fetchBills = async () => {
-    setLoading(true)
-    const [billsRes, usersRes, settingsRes, journalRes] = await Promise.all([
-      spreadsheetApi.get('Bills'),
-      spreadsheetApi.get('Users'),
-      spreadsheetApi.get('Settings'),
-      spreadsheetApi.get('JournalEntries')
-    ])
-
-    const userRows = usersRes.data && Array.isArray(usersRes.data) ? usersRes.data : []
-    
-    if (billsRes.data && Array.isArray(billsRes.data)) {
-      const { bills: syncedBills, syncedCount } = await syncBillsWithAccountingEntries({
-        bills: billsRes.data,
-        journalEntries: journalRes.data && Array.isArray(journalRes.data) ? journalRes.data : [],
-        users: userRows,
-        persist: true,
-      })
-      setBills(syncedBills)
-      if (syncedCount > 0) {
-        setToastMessage(`${syncedCount} status tagihan tersinkron dari jurnal akuntansi.`)
-        setTimeout(() => setToastMessage(''), 3000)
-      }
-    } else {
-      setBills([])
-    }
-
-    setUsers(userRows)
-
-    if (settingsRes.data && Array.isArray(settingsRes.data) && settingsRes.data[0]) {
-      const configuredDay = Number(settingsRes.data[0].defaultBillingDueDay || settingsRes.data[0].billingDueDay)
-      if (Number.isFinite(configuredDay) && configuredDay >= 1) {
-        const normalizedDay = Math.min(Math.max(configuredDay, 1), 31)
-        setBillingDueDay(normalizedDay)
-        setNewBill(prev => prev.due_date ? prev : { ...prev, due_date: buildDefaultDueDate(normalizedDay) })
-      }
-    } else {
-      setNewBill(prev => prev.due_date ? prev : { ...prev, due_date: buildDefaultDueDate(12) })
-    }
-
-    setLoading(false)
-  }
-
-  useEffect(() => {
-    if (isAddModalOpen && templates.length === 0) {
-      fetchFormData()
-    }
-  }, [isAddModalOpen])
-
-  const fetchFormData = async () => {
-    setIsLoadingForm(true)
-    try {
-      const templatesRes = await spreadsheetApi.get('Contributions')
-      if (templatesRes.data && Array.isArray(templatesRes.data)) {
-        setTemplates(templatesRes.data.filter((t: any) => t.status === 'active'))
-      }
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setIsLoadingForm(false)
-    }
-  }
+  const {
+    bills,
+    setBills,
+    filteredBills,
+    users,
+    templates,
+    loading,
+    isLoadingForm,
+    search,
+    setSearch,
+    isAddModalOpen,
+    setIsAddModalOpen,
+    isDetailModalOpen,
+    setIsDetailModalOpen,
+    selectedBill,
+    setSelectedBill,
+    isSubmitting,
+    toastMessage,
+    setToastMessage,
+    newBill,
+    setNewBill,
+    editingBillId,
+    isEditMode,
+    setIsEditMode,
+    selectedBillIds,
+    setSelectedBillIds,
+    isBulkActioning,
+    alertDialog,
+    setAlertDialog,
+    openAddModal,
+    closeAddModal: closeFormModal,
+    handleSelectTemplate,
+    handleDelete,
+    handleBulkDelete,
+    handleBulkLunas: handleBulkPaid,
+    handleCreateInvoice,
+    handleEditClick: handleEdit,
+    buildDefaultDueDate
+  } = useBillsManager(period)
 
   const formatCurrency = (amount: number) => {
     return (
@@ -115,82 +61,6 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
         <span>{new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(amount)}</span>
       </div>
     )
-  }
-
-  const handleDelete = async (id: number | string) => {
-    if (!window.confirm('Apakah Anda yakin ingin menghapus tagihan ini? Tindakan ini tidak dapat dibatalkan.')) return
-    
-    const { success } = await spreadsheetApi.del('Bills', id)
-    if (success) {
-      setBills(bills.filter(b => b.id !== id))
-      setSelectedBillIds(selectedBillIds.filter(selectedId => selectedId !== id))
-      setToastMessage('Tagihan berhasil dihapus.')
-      setTimeout(() => setToastMessage(''), 3000)
-    } else {
-      setToastMessage('Gagal menghapus tagihan. Terjadi kesalahan koneksi.')
-      setTimeout(() => setToastMessage(''), 3000)
-    }
-  }
-
-  const handleBulkDelete = async () => {
-    if (!window.confirm(`Apakah Anda yakin ingin menghapus ${selectedBillIds.length} tagihan terpilih?`)) return
-    setIsBulkActioning(true)
-    let successCount = 0
-    for (const id of selectedBillIds) {
-      const { success } = await spreadsheetApi.del('Bills', id)
-      if (success) successCount++
-    }
-    if (successCount > 0) {
-      setBills(bills.filter(b => !selectedBillIds.includes(b.id)))
-      setToastMessage(`${successCount} tagihan berhasil dihapus.`)
-      setSelectedBillIds([])
-      setIsEditMode(false)
-    } else {
-      setToastMessage('Gagal menghapus tagihan.')
-    }
-    setTimeout(() => setToastMessage(''), 3000)
-    setIsBulkActioning(false)
-  }
-
-  const handleBulkPaid = async () => {
-    if (!window.confirm(`Tandai ${selectedBillIds.length} tagihan terpilih sebagai lunas?`)) return
-    setIsBulkActioning(true)
-    let successCount = 0
-    for (const id of selectedBillIds) {
-      const { success } = await spreadsheetApi.put('Bills', { id, status: 'paid' })
-      if (success) successCount++
-    }
-    if (successCount > 0) {
-      setBills(bills.map(b => selectedBillIds.includes(b.id) ? { ...b, status: 'paid' } : b))
-      setToastMessage(`${successCount} tagihan ditandai lunas.`)
-      setSelectedBillIds([])
-    } else {
-      setToastMessage('Gagal memperbarui status.')
-    }
-    setTimeout(() => setToastMessage(''), 3000)
-    setIsBulkActioning(false)
-  }
-
-  const handleEdit = (bill: any) => {
-    setEditingBillId(bill.id)
-    let formattedDate = ''
-    try {
-      if (bill.due_date) formattedDate = new Date(bill.due_date).toISOString().split('T')[0]
-    } catch(e) {}
-    
-    setNewBill({
-      resident_name: bill.resident_name,
-      title: getContributionData(bill.contributions).title || '',
-      due_date: formattedDate,
-      amount: bill.amount
-    })
-    setIsAddModalOpen(true)
-  }
-
-  const closeFormModal = () => {
-    setIsAddModalOpen(false)
-    setEditingBillId(null)
-    setNewBill({ resident_name: '', title: '', due_date: buildDefaultDueDate(), amount: 0 })
   }
 
   const getStatusBadge = (status: string) => {
@@ -224,15 +94,6 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
     }
     return contrib || {}
   }
-
-  const filteredBills = bills.filter(b => {
-    const matchesSearch =
-      b.resident_name?.toLowerCase().includes(search.toLowerCase()) ||
-      getContributionData(b.contributions).title?.toLowerCase().includes(search.toLowerCase())
-
-    const matchesPeriod = isDateInPeriod(b.due_date || b.created_at || '', period)
-    return matchesSearch && matchesPeriod
-  })
 
   return (
     <div className="space-y-6">
@@ -301,7 +162,7 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
           )}
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto w-full rounded-xl border border-gray-100 shadow-sm scrollbar-thin scrollbar-thumb-gray-200">
           <table className="w-full text-left text-sm">
             <thead className="bg-[#F3F4F6] border-b border-border text-gray-600">
               <tr>
@@ -317,7 +178,7 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
                 )}
                 <th className="px-6 py-3 font-semibold whitespace-nowrap text-center">Penghuni</th>
                 <th className="px-6 py-3 font-semibold whitespace-nowrap text-center">Keterangan</th>
-                <th className="px-6 py-3 font-semibold whitespace-nowrap text-center">Jatuh Tempo</th>
+                <th className="px-6 py-3 font-semibold whitespace-nowrap text-center hidden md:table-cell">Jatuh Tempo</th>
                 <th className="px-6 py-3 font-semibold whitespace-nowrap text-center">Nominal</th>
                 <th className="px-6 py-3 font-semibold whitespace-nowrap text-center">Status</th>
                 <th className="px-6 py-3 font-semibold whitespace-nowrap text-center">Aksi</th>
@@ -355,7 +216,7 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
                       <div className="font-medium text-gray-900">{getContributionData(bill.contributions).title}</div>
                       <div className="text-xs text-text-secondary mt-0.5">{getContributionData(bill.contributions).contribution_types?.name}</div>
                     </td>
-                    <td className="px-6 py-4 text-center text-text-secondary">{new Date(bill.due_date).toLocaleDateString('id-ID')}</td>
+                    <td className="px-6 py-4 text-center text-text-secondary hidden md:table-cell">{new Date(bill.due_date).toLocaleDateString('id-ID')}</td>
                     <td className="px-6 py-4 font-semibold">{formatCurrency(bill.amount)}</td>
                     <td className="px-6 py-4 text-center">{getStatusBadge(bill.status)}</td>
                     <td className="px-6 py-4">
@@ -430,79 +291,7 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <form onSubmit={async (e) => {
-              e.preventDefault()
-              setIsSubmitting(true)
-
-              if (editingBillId) {
-                const selectedUser = users.find(u => u.id.toString() === newBill.resident_name || u.full_name === newBill.resident_name)
-                const updatedBill = {
-                  ...bills.find(b => b.id === editingBillId),
-                  resident_name: selectedUser ? selectedUser.full_name : newBill.resident_name,
-                  room_number: selectedUser ? (selectedUser.room_number || 'N/A') : 'N/A',
-                  contributions: JSON.stringify({ title: newBill.title, contribution_types: { name: 'Kustom' } }),
-                  due_date: newBill.due_date,
-                  amount: newBill.amount,
-                }
-                
-                const { success } = await spreadsheetApi.put('Bills', updatedBill)
-                if (success) {
-                  setBills(bills.map(b => b.id === editingBillId ? updatedBill : b))
-                  setToastMessage('Tagihan berhasil diperbarui!')
-                } else {
-                  setToastMessage('Disimpan lokal (Gagal terhubung ke Sheets)')
-                }
-                setTimeout(() => setToastMessage(''), 3000)
-                setIsSubmitting(false)
-                closeFormModal()
-                return
-              }
-
-              let billsToAdd: any[] = []
-              
-              if (newBill.resident_name === 'ALL') {
-                const activeUsers = users.filter(u => (!u.status || u.status === 'Aktif') && String(u.role).includes('user'))
-                billsToAdd = activeUsers.map((user, idx) => ({
-                  id: Date.now() + idx,
-                  resident_name: user.full_name,
-                  room_number: user.room_number || 'N/A',
-                  contributions: JSON.stringify({ title: newBill.title, contribution_types: { name: 'Kustom' } }),
-                  due_date: newBill.due_date,
-                  amount: newBill.amount,
-                  status: 'unpaid'
-                }))
-              } else {
-                const selectedUser = users.find(u => u.id.toString() === newBill.resident_name || u.full_name === newBill.resident_name)
-                billsToAdd = [{
-                  id: Date.now(),
-                  resident_name: selectedUser ? selectedUser.full_name : newBill.resident_name,
-                  room_number: selectedUser ? (selectedUser.room_number || 'N/A') : 'N/A',
-                  contributions: JSON.stringify({ title: newBill.title, contribution_types: { name: 'Kustom' } }),
-                  due_date: newBill.due_date,
-                  amount: newBill.amount,
-                  status: 'unpaid'
-                }]
-              }
-              
-              let successCount = 0
-              for (const bill of billsToAdd) {
-                const { success } = await spreadsheetApi.post('Bills', bill)
-                if (success) successCount++
-              }
-              
-              setBills([...billsToAdd, ...bills])
-              setIsSubmitting(false)
-              setIsAddModalOpen(false)
-              
-              if (billsToAdd.length > 1) {
-                setToastMessage(successCount > 0 ? `${successCount} tagihan massal berhasil dibuat!` : 'Disimpan lokal (Gagal terhubung ke Sheets)')
-              } else {
-                setToastMessage(successCount > 0 ? 'Tagihan berhasil dibuat!' : 'Disimpan lokal (Gagal terhubung ke Sheets)')
-              }
-              setTimeout(() => setToastMessage(''), 3000)
-              
-              setNewBill({ resident_name: '', title: '', due_date: buildDefaultDueDate(), amount: 0 })
-            }} className="p-6 space-y-4">
+            <form onSubmit={handleCreateInvoice} className="p-6 space-y-4">
               {isLoadingForm ? (
                 <div className="py-8 text-center text-gray-500 text-sm animate-pulse">Memuat form data...</div>
               ) : (
@@ -633,7 +422,7 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-500">Tagihan</span>
-                  <span className="font-medium text-gray-900">{selectedBill.contributions?.title}</span>
+                  <span className="font-medium text-gray-900">{getContributionData(selectedBill.contributions).title}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-500">Jatuh Tempo</span>
@@ -667,6 +456,17 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
         </div>,
         document.body
       )}
+
+      <ConfirmDialog
+        isOpen={alertDialog.isOpen}
+        title={alertDialog.title}
+        message={alertDialog.message}
+        variant={alertDialog.variant}
+        showCancel={alertDialog.showCancel}
+        confirmLabel={alertDialog.confirmLabel}
+        onClose={() => setAlertDialog(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={alertDialog.onConfirm}
+      />
     </div>
   )
 }

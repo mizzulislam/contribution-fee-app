@@ -81,9 +81,9 @@ export default function Notifications() {
 
       if (!isMounted) return
 
-      setBills(Array.isArray(billRes.data) ? billRes.data.filter((bill: BillRow) => belongsToUser(bill, currentProfile.email, currentProfile.full_name)) : [])
-      setPayments(Array.isArray(paymentRes.data) ? paymentRes.data.filter((payment: PaymentRow) => belongsToUser(payment, currentProfile.email, currentProfile.full_name)) : [])
-      setSchedules(Array.isArray(scheduleRes.data) ? scheduleRes.data.filter((schedule: ScheduleRow) => {
+      setBills(Array.isArray(billRes.data) ? (billRes.data as BillRow[]).filter((bill: BillRow) => belongsToUser(bill, currentProfile.email, currentProfile.full_name)) : [])
+      setPayments(Array.isArray(paymentRes.data) ? (paymentRes.data as PaymentRow[]).filter((payment: PaymentRow) => belongsToUser(payment, currentProfile.email, currentProfile.full_name)) : [])
+      setSchedules(Array.isArray(scheduleRes.data) ? (scheduleRes.data as ScheduleRow[]).filter((schedule: ScheduleRow) => {
         const userIdentifier = currentProfile.nickname || currentProfile.full_name?.split(' ')[0] || ''
         return String(schedule.user_id) === String(currentProfile.id) || Boolean(userIdentifier && schedule.user?.includes(userIdentifier))
       }) : [])

@@ -2,11 +2,12 @@ import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Store, Phone, MapPin, Plus, X, CreditCard } from 'lucide-react'
 import Select from '@/components/ui/Select'
+import { generateSecureId } from '@/utils/id'
 
 export default function Vendors() {
   const [vendors, setVendors] = useState([
-    { id: 1, name: 'Toko Tirta Jaya', phone: '0812-3456-7890', address: 'Jl. Merdeka No. 45', price: 18000, status: 'Utama', accountNumber: 'BCA 1234567890' },
-    { id: 2, name: 'Agen Galon Barokah', phone: '0856-7890-1234', address: 'Jl. Pahlawan No. 12', price: 19000, status: 'Cadangan', accountNumber: '' }
+    { id: 'VND-1', name: 'Toko Tirta Jaya', phone: '0812-3456-7890', address: 'Jl. Merdeka No. 45', price: 18000, status: 'Utama', accountNumber: 'BCA 1234567890' },
+    { id: 'VND-2', name: 'Agen Galon Barokah', phone: '0856-7890-1234', address: 'Jl. Pahlawan No. 12', price: 19000, status: 'Cadangan', accountNumber: '' }
   ])
 
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -24,7 +25,7 @@ export default function Vendors() {
     if (!formData.name) return
     
     const newKios = {
-      id: Date.now(),
+      id: generateSecureId('VND'),
       name: formData.name,
       phone: formData.phone,
       address: formData.address,

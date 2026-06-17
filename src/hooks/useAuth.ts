@@ -24,7 +24,27 @@ interface AuthState {
 
 const SESSION_KEY = 'soematra_session'
 const ACTIVE_ROLE_KEY = 'soematra_active_role'
-const SESSION_SIGNATURE_SECRET = import.meta.env.VITE_SESSION_SIGNATURE_SECRET || 'soematra-dev-session-signature'
+
+/**
+ * Mendapatkan kunci tanda tangan sesi.
+ * Prioritas:
+ * 1. Env variable VITE_SESSION_SIGNATURE_SECRET (jika dikonfigurasi).
+ * 2. Dynamic key per browser tab session (disimpan di sessionStorage) jika env kosong.
+ */
+function getSessionSecret(): string {
+  const envSecret = import.meta.env.VITE_SESSION_SIGNATURE_SECRET
+  if (envSecret && envSecret !== 'isi-string-random-untuk-signature-session-lokal') {
+    return envSecret
+  }
+
+  // Gunakan dynamic key acak yang disimpan di sessionStorage (unik per tab dan bertahan saat refresh)
+  let sessionSecret = sessionStorage.getItem('soematra_session_secret')
+  if (!sessionSecret) {
+    sessionSecret = globalThis.crypto?.randomUUID?.() || Math.random().toString(36).substring(2) + Date.now().toString(36)
+    sessionStorage.setItem('soematra_session_secret', sessionSecret)
+  }
+  return sessionSecret
+}
 
 function createSessionSignature(profile: UserProfile) {
   const payload = JSON.stringify({
@@ -37,7 +57,8 @@ function createSessionSignature(profile: UserProfile) {
   })
 
   let hash = 2166136261
-  const input = `${payload}.${SESSION_SIGNATURE_SECRET}`
+  const secret = getSessionSecret()
+  const input = `${payload}.${secret}`
   for (let i = 0; i < input.length; i += 1) {
     hash ^= input.charCodeAt(i)
     hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24)
@@ -54,11 +75,15 @@ function encodeSession(profile: UserProfile) {
 }
 
 function decodeSession(session: string): UserProfile | null {
-  const parsed = JSON.parse(session)
-  if (!parsed?.profile || typeof parsed.signature !== 'string') return null
+  try {
+    const parsed = JSON.parse(session)
+    if (!parsed?.profile || typeof parsed.signature !== 'string') return null
 
-  const expected = createSessionSignature(parsed.profile)
-  return parsed.signature === expected ? parsed.profile : null
+    const expected = createSessionSignature(parsed.profile)
+    return parsed.signature === expected ? parsed.profile : null
+  } catch {
+    return null
+  }
 }
 
 function getAvailableRoles(profile: UserProfile) {

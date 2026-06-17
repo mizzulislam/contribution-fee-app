@@ -22,7 +22,7 @@ export default function AuditLogs() {
       const { data } = await spreadsheetApi.get('AuditLogs')
       if (data && Array.isArray(data)) {
         // Sort descending by date
-        setLogs(data.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()))
+        setLogs((data as AuditLog[]).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()))
       }
     } catch (error) {
       console.error(error)
@@ -69,14 +69,14 @@ export default function AuditLogs() {
           </button>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto w-full rounded-b-[20px] border-t border-border scrollbar-thin scrollbar-thumb-gray-200">
           <table className="w-full text-left text-sm text-gray-600">
             <thead className="bg-[#F3F4F6] text-gray-700 text-xs uppercase font-semibold border-b border-border">
               <tr>
                 <th className="px-6 py-4">Waktu</th>
                 <th className="px-6 py-4">Pengguna</th>
                 <th className="px-6 py-4">Aksi</th>
-                <th className="px-6 py-4 text-right">Alamat IP</th>
+                <th className="px-6 py-4 text-right hidden md:table-cell">Alamat IP</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -92,7 +92,7 @@ export default function AuditLogs() {
                     <td className="px-6 py-4 text-text-muted">{new Date(log.created_at).toLocaleString('id-ID')}</td>
                     <td className="px-6 py-4 font-medium text-gray-900">{log.user}</td>
                     <td className="px-6 py-4">{log.action}</td>
-                    <td className="px-6 py-4 text-center text-xs font-mono text-gray-500">{log.ip || '-'}</td>
+                    <td className="px-6 py-4 text-center text-xs font-mono text-gray-500 hidden md:table-cell">{log.ip || '-'}</td>
                   </tr>
                 ))
               )}

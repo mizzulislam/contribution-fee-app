@@ -6,6 +6,7 @@ import { spreadsheetApi } from '@/lib/spreadsheet'
 import { mergeAccounts } from '@/lib/chartOfAccounts'
 import Select from '@/components/ui/Select'
 import { syncBillsWithAccountingEntries } from '@/lib/billingAccountingSync'
+import { checkPeriodLock } from '@/lib/accounting/period'
 
 interface EntryLineForm {
   accountNumber: string
@@ -287,6 +288,11 @@ export default function JournalEntryForm({ onSuccess, editingEntry }: JournalEnt
   const handleRecord = async () => {
     setError('')
     try {
+      const isLocked = await checkPeriodLock(date)
+      if (isLocked) {
+        throw new Error('Gagal merekam transaksi: Periode akuntansi pada tanggal tersebut sudah ditutup (Locked).')
+      }
+
       if (!description.trim()) {
         throw new Error('Keterangan transaksi wajib diisi.')
       }

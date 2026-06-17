@@ -1,26 +1,105 @@
 import { useState } from 'react'
-import { User, Mail, Lock, Camera, Save, Loader2, CheckCircle2 } from 'lucide-react'
+import { User, Mail, Lock, Camera, Save, Loader2, CheckCircle2, X, AlertTriangle } from 'lucide-react'
+import { createPortal } from 'react-dom'
 import { useAuth } from '@/hooks/useAuth'
 import { spreadsheetApi } from '@/lib/spreadsheet'
+import { sha256 } from '@/utils/crypto'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
 
 export default function ProfileSettings() {
   const { profile, setProfile } = useAuth()
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [toastMessage, setToastMessage] = useState('')
+  const [alertDialog, setAlertDialog] = useState<{
+    isOpen: boolean
+    title: string
+    message: string
+    variant: 'danger' | 'info' | 'success'
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    variant: 'info'
+  })
   
+  // State Ganti Kata Sandi
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false)
+  const [oldPassword, setOldPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [isChangingPassword, setIsChangingPassword] = useState(false)
+  const [passwordError, setPasswordError] = useState<string | null>(null)
+
   const [formData, setFormData] = useState({
     name: profile?.full_name || 'Budi Santoso',
     email: profile?.email || 'budi@example.com',
     phone: '081234567890'
   })
 
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setPasswordError(null)
+    
+    if (newPassword !== confirmPassword) {
+      setPasswordError('Konfirmasi kata sandi baru tidak cocok.')
+      return
+    }
+    
+    if (newPassword.length < 6) {
+      setPasswordError('Kata sandi baru minimal harus 6 karakter.')
+      return
+    }
+    
+    setIsChangingPassword(true)
+    try {
+      const { data, error: apiError } = await spreadsheetApi.get('Users')
+      if (apiError || !data || !Array.isArray(data)) {
+        throw new Error('Gagal mengakses data pengguna.')
+      }
+      
+      const user = data.find((u: any) => u.id === profile?.id)
+      if (!user) {
+        throw new Error('Pengguna tidak ditemukan.')
+      }
+      
+      const hashedOldPassword = await sha256(oldPassword)
+      const isOldPasswordCorrect = user.password === hashedOldPassword || user.password === oldPassword
+      
+      if (!isOldPasswordCorrect) {
+        throw new Error('Kata sandi lama salah.')
+      }
+      
+      const hashedNewPassword = await sha256(newPassword)
+      const updatedUser = {
+        ...user,
+        password: hashedNewPassword,
+        updated_at: new Date().toISOString()
+      }
+      
+      const { success } = await spreadsheetApi.put('Users', updatedUser)
+      if (!success) {
+        throw new Error('Gagal memperbarui kata sandi di spreadsheet.')
+      }
+      
+      setToastMessage('Kata sandi berhasil diperbarui!')
+      setTimeout(() => setToastMessage(''), 3000)
+      setIsPasswordModalOpen(false)
+      setOldPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+    } catch (err: any) {
+      setPasswordError(err.message || 'Gagal mengubah kata sandi.')
+    } finally {
+      setIsChangingPassword(false)
+    }
+  }
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSaving(true)
     
     try {
-      // Asumsikan data profile disimpan di tabel Users
       if (profile?.id) {
         const payload = {
           id: profile.id,
@@ -34,7 +113,6 @@ export default function ProfileSettings() {
           throw new Error(error instanceof Error ? error.message : 'Gagal menyimpan profil')
         }
         
-        // Update the local authentication state so UI reflects the changes instantly
         setProfile({
           ...profile,
           full_name: formData.name
@@ -44,7 +122,12 @@ export default function ProfileSettings() {
       setToastMessage('Profil berhasil diperbarui!')
       setTimeout(() => setToastMessage(''), 3000)
     } catch (error) {
-      alert("Error: " + (error instanceof Error ? error.message : 'Terjadi kesalahan saat menyimpan profil'))
+      setAlertDialog({
+        isOpen: true,
+        title: 'Gagal Menyimpan',
+        message: "Error: " + (error instanceof Error ? error.message : 'Terjadi kesalahan saat menyimpan profil'),
+        variant: 'danger'
+      })
     } finally {
       setIsSaving(false)
       setIsEditing(false)
@@ -60,7 +143,12 @@ export default function ProfileSettings() {
     if (!file) return
 
     if (file.size > 2 * 1024 * 1024) {
-      alert('Ukuran foto maksimal 2MB')
+      setAlertDialog({
+        isOpen: true,
+        title: 'Ukuran Berlebihan',
+        message: 'Ukuran foto maksimal 2MB',
+        variant: 'danger'
+      })
       return
     }
 
@@ -78,7 +166,6 @@ export default function ProfileSettings() {
     reader.readAsDataURL(file)
   }
 
-  // ... rest of the render up to the camera button
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       <div className="relative">
@@ -122,7 +209,10 @@ export default function ProfileSettings() {
               <h3 className="font-semibold text-gray-900">Keamanan</h3>
             </div>
             <div className="p-4 space-y-4">
-              <button className="w-full flex items-center text-sm text-gray-700 hover:text-primary transition-colors p-2 hover:bg-primary-soft/10 rounded-md">
+              <button 
+                onClick={() => setIsPasswordModalOpen(true)}
+                className="w-full flex items-center text-sm text-gray-700 hover:text-primary transition-colors p-2 hover:bg-primary-soft/10 rounded-md"
+              >
                 <Lock className="w-4 h-4 mr-3" /> Ganti Kata Sandi
               </button>
               <button className="w-full flex items-center text-sm text-gray-700 hover:text-primary transition-colors p-2 hover:bg-primary-soft/10 rounded-md">
@@ -192,6 +282,104 @@ export default function ProfileSettings() {
           </div>
         </div>
       </div>
+
+      {/* Change Password Modal */}
+      {isPasswordModalOpen && createPortal(
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in duration-200"
+          onMouseDown={() => setIsPasswordModalOpen(false)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <div className="flex justify-between items-center p-6 border-b border-gray-100 bg-gray-50/50">
+              <h2 className="text-xl font-bold text-gray-900">Ganti Kata Sandi</h2>
+              <button 
+                onClick={() => setIsPasswordModalOpen(false)} 
+                className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-200"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleChangePassword} className="p-6 space-y-5">
+              {passwordError && (
+                <div className="bg-[#FEE2E2] text-[#B91C1C] p-4 rounded-xl text-sm flex items-start">
+                  <AlertTriangle className="w-5 h-5 mr-2 shrink-0" />
+                  <span>{passwordError}</span>
+                </div>
+              )}
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Kata Sandi Lama</label>
+                <input 
+                  type="password" 
+                  required
+                  className="form-input" 
+                  placeholder="Masukkan kata sandi saat ini"
+                  value={oldPassword}
+                  onChange={e => setOldPassword(e.target.value)}
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Kata Sandi Baru</label>
+                <input 
+                  type="password" 
+                  required
+                  className="form-input" 
+                  placeholder="Minimal 6 karakter"
+                  value={newPassword}
+                  onChange={e => setNewPassword(e.target.value)}
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Konfirmasi Kata Sandi Baru</label>
+                <input 
+                  type="password" 
+                  required
+                  className="form-input" 
+                  placeholder="Ulangi kata sandi baru"
+                  value={confirmPassword}
+                  onChange={e => setConfirmPassword(e.target.value)}
+                />
+              </div>
+              
+              <div className="pt-6 flex gap-3">
+                <button 
+                  type="button" 
+                  onClick={() => setIsPasswordModalOpen(false)}
+                  className="btn-secondary flex-1 py-2.5 font-medium"
+                >
+                  Batal
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={isChangingPassword}
+                  className="btn-primary flex-1 flex justify-center items-center py-2.5 font-medium shadow-md shadow-primary/20"
+                >
+                  {isChangingPassword ? (
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  ) : 'Simpan Sandi'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      <ConfirmDialog
+        isOpen={alertDialog.isOpen}
+        title={alertDialog.title}
+        message={alertDialog.message}
+        variant={alertDialog.variant}
+        showCancel={false}
+        confirmLabel="Mengerti"
+        onClose={() => setAlertDialog(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   )
 }

@@ -4,7 +4,9 @@ import { Droplets, Info, Loader2, Plus, X, Activity, Coffee, Beaker, Camera, Box
 
 import { useAuth } from '@/hooks/useAuth'
 import { spreadsheetApi } from '@/lib/spreadsheet'
+import { generateSecureId } from '@/utils/id'
 import Select from '@/components/ui/Select'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import {
   GALLON_CAPACITY,
   calculateGallonStock,
@@ -15,7 +17,7 @@ import {
 } from '@/lib/gallonStock'
 
 interface GallonContainer {
-  id: number
+  id: string | number
   name: string
   capacity: number
   type: string
@@ -58,9 +60,27 @@ export default function GallonsInfo() {
   // Container state
   const [isContainerListOpen, setIsContainerListOpen] = useState(false)
   const [isContainerModalOpen, setIsContainerModalOpen] = useState(false)
-  const [editingContainerId, setEditingContainerId] = useState<number | null>(null)
+  const [editingContainerId, setEditingContainerId] = useState<string | number | null>(null)
   const [containerForm, setContainerForm] = useState({ name: '', capacity: 0.6, type: 'Tumbler', photoUrl: '' })
   const [previewImage, setPreviewImage] = useState<string | null>(null)
+
+  // Dialog state
+  const [alertDialog, setAlertDialog] = useState<{
+    isOpen: boolean
+    title: string
+    message: string
+    variant: 'danger' | 'info' | 'success'
+    showCancel?: boolean
+    confirmLabel?: string
+    onConfirm?: () => void
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    variant: 'info',
+    showCancel: false,
+    confirmLabel: 'Mengerti'
+  })
 
   // Animation state for fill
   const [animatedStock, setAnimatedStock] = useState(0)
@@ -164,7 +184,14 @@ export default function GallonsInfo() {
     setIsSaving(true)
     
     if (!formData.containerId) {
-      alert("Harap pilih atau scan wadah terlebih dahulu.")
+      setAlertDialog({
+        isOpen: true,
+        title: 'Wadah Belum Dipilih',
+        message: "Harap pilih atau scan wadah terlebih dahulu.",
+        variant: 'info',
+        showCancel: false,
+        confirmLabel: 'Mengerti'
+      })
       setIsSaving(false)
       return
     }
@@ -180,7 +207,7 @@ export default function GallonsInfo() {
     const finalNote = formData.note || ''
     
     const payload = {
-      id: Date.now(),
+      id: generateSecureId('G'),
       date: new Date().toISOString().split('T')[0],
       type: 'Penggunaan',
       quantity: quantityNum,
@@ -197,7 +224,14 @@ export default function GallonsInfo() {
     if (res.success) {
       setGallons(prev => Math.max(0, prev - quantityNum))
     } else {
-      alert('Gagal menyimpan penggunaan galon ke sumber data.')
+      setAlertDialog({
+        isOpen: true,
+        title: 'Gagal Menyimpan',
+        message: 'Gagal menyimpan penggunaan galon ke sumber data.',
+        variant: 'danger',
+        showCancel: false,
+        confirmLabel: 'Mengerti'
+      })
       setIsSaving(false)
       return
     }
@@ -216,7 +250,14 @@ export default function GallonsInfo() {
       if (myConts.length > 0) {
         setFormData({ ...formData, containerId: String(myConts[0].id) })
       } else {
-        alert("Anda belum memiliki wadah. Silakan tambahkan wadah terlebih dahulu di menu Kelola Wadah Saya.")
+        setAlertDialog({
+          isOpen: true,
+          title: 'Tidak Ada Wadah',
+          message: "Anda belum memiliki wadah. Silakan tambahkan wadah terlebih dahulu di menu Kelola Wadah Saya.",
+          variant: 'info',
+          showCancel: false,
+          confirmLabel: 'Mengerti'
+        })
       }
     }, 1500)
   }
@@ -237,7 +278,7 @@ export default function GallonsInfo() {
     setIsSaving(true)
     
     const payload = {
-      id: editingContainerId || Date.now(),
+      id: editingContainerId || generateSecureId('GC'),
       name: containerForm.name,
       capacity: Number(containerForm.capacity),
       type: containerForm.type,
@@ -250,7 +291,14 @@ export default function GallonsInfo() {
       if (res.success) {
         setContainers(containers.map(c => c.id === editingContainerId ? payload : c))
       } else {
-        alert('Gagal menyimpan wadah ke sumber data.')
+        setAlertDialog({
+          isOpen: true,
+          title: 'Gagal Menyimpan',
+          message: 'Gagal menyimpan wadah ke sumber data.',
+          variant: 'danger',
+          showCancel: false,
+          confirmLabel: 'Mengerti'
+        })
         setIsSaving(false)
         return
       }
@@ -259,7 +307,14 @@ export default function GallonsInfo() {
       if (res.success) {
         setContainers([...containers, payload])
       } else {
-        alert('Gagal menambahkan wadah ke sumber data.')
+        setAlertDialog({
+          isOpen: true,
+          title: 'Gagal Menambahkan',
+          message: 'Gagal menambahkan wadah ke sumber data.',
+          variant: 'danger',
+          showCancel: false,
+          confirmLabel: 'Mengerti'
+        })
         setIsSaving(false)
         return
       }
@@ -277,15 +332,31 @@ export default function GallonsInfo() {
     setIsContainerModalOpen(true)
   }
 
-  const handleDeleteContainer = async (id: number) => {
-    if (confirm('Hapus wadah ini?')) {
-      const res = await spreadsheetApi.del('GallonContainers', id)
-      if (res.success) {
-        setContainers(containers.filter(c => c.id !== id))
-      } else {
-        alert('Gagal menghapus wadah dari sumber data.')
+  const handleDeleteContainer = (id: string | number) => {
+    setAlertDialog({
+      isOpen: true,
+      title: 'Hapus Wadah',
+      message: 'Apakah Anda yakin ingin menghapus wadah ini?',
+      variant: 'danger',
+      showCancel: true,
+      confirmLabel: 'Ya, Hapus',
+      onConfirm: async () => {
+        setAlertDialog(prev => ({ ...prev, isOpen: false }))
+        const res = await spreadsheetApi.del('GallonContainers', id)
+        if (res.success) {
+          setContainers(containers.filter(c => c.id !== id))
+        } else {
+          setAlertDialog({
+            isOpen: true,
+            title: 'Gagal Menghapus',
+            message: 'Gagal menghapus wadah dari sumber data.',
+            variant: 'danger',
+            showCancel: false,
+            confirmLabel: 'Mengerti'
+          })
+        }
       }
-    }
+    })
   }
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -637,7 +708,7 @@ export default function GallonsInfo() {
                     ) : myContainers.map((c) => (
                       <tr key={c.id} className="hover:bg-primary-soft/30 transition-colors">
                         <td className="px-4 py-3 font-medium text-gray-900 flex items-center justify-start gap-3 text-left">
-                          <div className="w-8 h-8 rounded-md bg-gray-100 flex items-center justify-center flex-shrink-0">
+                           <div className="w-8 h-8 rounded-md bg-gray-100 flex items-center justify-center flex-shrink-0">
                             {c.type === 'Gelas' ? <Beaker className="w-4 h-4 text-emerald-600" /> : <Coffee className="w-4 h-4 text-blue-600" />}
                           </div>
                           {c.name}
@@ -730,7 +801,7 @@ export default function GallonsInfo() {
                       <img src={containerForm.photoUrl} alt="Preview" className="w-full h-full object-cover" />
                       <button type="button" onClick={() => setContainerForm({...containerForm, photoUrl: ''})} className="absolute top-0 right-0 bg-red-500/90 hover:bg-red-600 text-white p-0.5 rounded-bl-lg transition-colors">
                         <X className="w-3 h-3" />
-                      </button>
+                       </button>
                     </div>
                   ) : (
                     <div className="w-16 h-16 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center bg-gray-50 flex-shrink-0">
@@ -775,6 +846,17 @@ export default function GallonsInfo() {
         </div>,
         document.body
       )}
+
+      <ConfirmDialog
+        isOpen={alertDialog.isOpen}
+        title={alertDialog.title}
+        message={alertDialog.message}
+        variant={alertDialog.variant}
+        showCancel={alertDialog.showCancel}
+        confirmLabel={alertDialog.confirmLabel}
+        onClose={() => setAlertDialog(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={alertDialog.onConfirm}
+      />
     </div>
   )
 }

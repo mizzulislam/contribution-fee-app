@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { spreadsheetApi } from '@/lib/spreadsheet'
-import { defaultEngine } from '@/lib/accounting'
-import { filterJournalEntriesByPeriod, type PeriodFilter } from '@/lib/accounting/period'
+import { defaultEngine, syncAccountingWithSheet, generateClosingEntries } from '@/lib/accounting'
+import { filterJournalEntriesByPeriod, buildPeriodAccountingEngine, type PeriodFilter } from '@/lib/accounting/period'
 import JournalEntryModal from '@/components/accounting/JournalEntryModal'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import { Loader2, ShieldAlert, ListTodo, ArrowUpDown, Edit, Pencil } from 'lucide-react'
@@ -58,6 +58,139 @@ export default function ClosingProcessView({ period }: ClosingProcessViewProps) 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [editingEntry, setEditingEntry] = useState<any | null>(null)
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [alertDialog, setAlertDialog] = useState<{
+    isOpen: boolean
+    title: string
+    message: string
+    variant: 'danger' | 'info' | 'success'
+    showCancel?: boolean
+    confirmLabel?: string
+    onConfirm?: () => void
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    variant: 'info',
+    showCancel: false,
+    confirmLabel: 'Mengerti'
+  })
+
+  const handleGenerateClosing = () => {
+    if (period.preset === 'all') {
+      setAlertDialog({
+        isOpen: true,
+        title: 'Periode Tidak Valid',
+        message: 'Pilih periode waktu yang spesifik (bukan Semua Periode) untuk menjalankan Tutup Buku.',
+        variant: 'info',
+        showCancel: false,
+        confirmLabel: 'Mengerti'
+      })
+      return
+    }
+    if (actualClosingEntries.length > 0) {
+      setAlertDialog({
+        isOpen: true,
+        title: 'Jurnal Sudah Ada',
+        message: 'Jurnal penutup untuk periode ini sudah ada. Harap hapus terlebih dahulu jika ingin membuat ulang.',
+        variant: 'info',
+        showCancel: false,
+        confirmLabel: 'Mengerti'
+      })
+      return
+    }
+    
+    setAlertDialog({
+      isOpen: true,
+      title: 'Konfirmasi Tutup Buku',
+      message: 'Apakah Anda yakin ingin menjalankan Tutup Buku untuk periode ini? Tindakan ini akan mengunci seluruh entri transaksi pada periode terkait.',
+      variant: 'info',
+      showCancel: true,
+      confirmLabel: 'Ya, Jalankan',
+      onConfirm: () => {
+        setAlertDialog(prev => ({ ...prev, isOpen: false }))
+        executeClosing()
+      }
+    })
+  }
+
+  const executeClosing = async () => {
+    setIsGenerating(true)
+    const closingDate = period.endDate || new Date().toISOString().split('T')[0]
+
+    // Saga rollback helper
+    const postedClosingEntries: string[] = []
+    let errorMsg = ''
+
+    try {
+      // Step 1: Re-fetch and build period engine
+      const periodEngine = buildPeriodAccountingEngine(period)
+      const tbItems = periodEngine.getTrialBalance().map(item => {
+        const acc = periodEngine.coa.getAccount(item.accountNumber)
+        return {
+          ...item,
+          accountType: acc ? acc.accountType : 'Expenses'
+        }
+      })
+      
+      // Step 2: Generate GAAP closing entries
+      const closingEntries = generateClosingEntries(tbItems, closingDate)
+      
+      if (closingEntries.length === 0) {
+        throw new Error('Tidak ada akun nominal (Pendapatan/Beban/Prive) dengan saldo aktif untuk ditutup pada periode ini.')
+      }
+
+      // Step 3: Post generated entries sequentially
+      for (const entry of closingEntries) {
+        const payload = {
+          id: entry.id,
+          date: entry.date,
+          description: entry.description,
+          debits: JSON.stringify(entry.debits),
+          credits: JSON.stringify(entry.credits),
+          source: 'manual_closing',
+          created_at: new Date().toISOString()
+        }
+        
+        const res = await spreadsheetApi.post('JournalEntries', payload)
+        if (!res.success) {
+          throw new Error((res.error as any)?.message || `Gagal memposting jurnal penutup ${entry.id}`)
+        }
+        postedClosingEntries.push(entry.id)
+      }
+
+      // Sync and reload
+      await syncAccountingWithSheet()
+      await loadData()
+      setAlertDialog({
+        isOpen: true,
+        title: 'Tutup Buku Berhasil',
+        message: 'Tutup Buku berhasil diselesaikan! Seluruh akun nominal telah dinihilkan ke Laba Ditahan.',
+        variant: 'success',
+        showCancel: false,
+        confirmLabel: 'Selesai'
+      })
+    } catch (err: any) {
+      console.error('Tutup Buku gagal:', err)
+      errorMsg = err.message || String(err)
+
+      // Rollback Posted Entries
+      for (const entryId of postedClosingEntries) {
+        await spreadsheetApi.del('JournalEntries', entryId)
+      }
+      
+      setAlertDialog({
+        isOpen: true,
+        title: 'Tutup Buku Gagal',
+        message: `Gagal menjalankan Tutup Buku: ${errorMsg}. Seluruh jurnal penutup baru telah dibatalkan (rolled back).`,
+        variant: 'danger',
+        showCancel: false,
+        confirmLabel: 'Mengerti'
+      })
+    } finally {
+      setIsGenerating(false)
+    }
+  }
 
   async function loadData() {
     setLoading(true)
@@ -75,6 +208,7 @@ export default function ClosingProcessView({ period }: ClosingProcessViewProps) 
     loadData()
   }, [])
 
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const actualClosingEntries = useMemo(() => {
     return filterJournalEntriesByPeriod(journalEntries, period).filter(isClosingEntry)
   }, [journalEntries, period])
@@ -160,6 +294,18 @@ export default function ClosingProcessView({ period }: ClosingProcessViewProps) 
         </ol>
       </div>
 
+      {period.preset === 'all' && (
+        <div className="p-4 bg-amber-50 border border-amber-200 text-amber-900 rounded-2xl flex items-start gap-3">
+          <ShieldAlert className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+          <div>
+            <div className="text-sm font-semibold">Tutup Buku Otomatis Dinonaktifkan</div>
+            <p className="text-xs mt-1">
+              Untuk menjalankan Tutup Buku otomatis, harap pilih periode waktu yang spesifik (seperti Bulan Ini atau Bulan Lalu) pada filter periode di atas.
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="card-container p-0 overflow-visible">
         <div className="p-5 border-b border-border bg-white flex flex-col sm:flex-row justify-between sm:items-center gap-4">
           <h3 className="font-bold text-gray-800 text-lg">Jurnal Penutup</h3>
@@ -167,6 +313,17 @@ export default function ClosingProcessView({ period }: ClosingProcessViewProps) 
             <div className="text-sm font-medium text-gray-700 bg-gray-50 px-3.5 py-2 rounded-xl border border-gray-200 shadow-sm min-h-10 flex items-center">
               Total jurnal: {sortedClosingEntries.length}
             </div>
+
+            {period.preset !== 'all' && actualClosingEntries.length === 0 && (
+              <button
+                onClick={handleGenerateClosing}
+                disabled={isGenerating}
+                className="text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed px-3.5 py-2 rounded-xl transition-colors shadow-sm hover:shadow-md min-h-10 flex items-center gap-1.5 cursor-pointer"
+              >
+                {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                <span>Jalankan Tutup Buku</span>
+              </button>
+            )}
             <button
               onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
               className="text-sm font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 px-3.5 py-2 rounded-xl border border-gray-200 transition-colors flex items-center gap-1.5 shadow-sm min-h-10"
@@ -381,6 +538,16 @@ export default function ClosingProcessView({ period }: ClosingProcessViewProps) 
         confirmLabel="Ya, Hapus"
         onClose={() => setIsDeleteDialogOpen(false)}
         onConfirm={handleDeleteSelected}
+      />
+      <ConfirmDialog
+        isOpen={alertDialog.isOpen}
+        title={alertDialog.title}
+        message={alertDialog.message}
+        variant={alertDialog.variant}
+        showCancel={alertDialog.showCancel}
+        confirmLabel={alertDialog.confirmLabel}
+        onClose={() => setAlertDialog(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={alertDialog.onConfirm}
       />
     </div>
   )

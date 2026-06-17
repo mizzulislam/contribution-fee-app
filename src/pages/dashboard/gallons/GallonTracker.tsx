@@ -1,78 +1,51 @@
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { spreadsheetApi } from '@/lib/spreadsheet'
 import { Plus, Loader2, X, Droplets, CalendarClock, Activity, Coffee, Trash2, Beaker, Pencil, Box, Camera, Eye, AlertTriangle, Info, Brain, TrendingUp, Calendar, AlertCircle } from 'lucide-react'
 import Select from '@/components/ui/Select'
 import { TableLoader } from '@/components/ui/TableLoader'
-import {
-  GALLON_CAPACITY,
-  calculateGallonStock,
-  daysBetween,
-  formatGallonQuantity,
-  isReliableGallonPrediction,
-  parseGallonStockDate,
-} from '@/lib/gallonStock'
-
-interface GallonActivity {
-  id: number
-  date: string
-  quantity: number
-  type: string
-  note?: string
-  userName?: string
-  containerName?: string
-  containerType?: string
-  containerCapacity?: number
-  photoUrl?: string
-  created_at?: string
-}
-
-interface GallonContainer {
-  id: number
-  name: string
-  capacity: number
-  type: string
-  photoUrl?: string
-}
-
-interface GallonPrediction {
-  nextRefillDate: string
-  estimatedGallons: number
-  accuracy: number
-  insight: string
-  chartData: number[]
-  chartDataNormalized: number[]
-  daysLeft: number
-  avgConsumption: string
-  isReliable: boolean
-}
+import { GALLON_CAPACITY, formatGallonQuantity } from '@/lib/gallonStock'
+import { useGallonTracker } from '@/hooks/useGallonTracker'
 
 export default function GallonTracker() {
-  const [activities, setActivities] = useState<GallonActivity[]>([])
-  const [gallonStock, setGallonStock] = useState(0)
-  const [loading, setLoading] = useState(true)
-  const [isSaving, setIsSaving] = useState(false)
-  const [rotateX, setRotateX] = useState(0)
-  const [rotateY, setRotateY] = useState(0)
-  const [isHovered, setIsHovered] = useState(false)
-  const [prediction, setPrediction] = useState<GallonPrediction | null>(null)
+  const {
+    activities,
+    gallonStock,
+    loading,
+    isSaving,
+    rotateX,
+    rotateY,
+    isHovered,
+    setIsHovered,
+    prediction,
+    isHistoryEditMode,
+    setIsHistoryEditMode,
+    historySelectedIds,
+    setHistorySelectedIds,
+    isDeletingHistory,
+    alertDialog,
+    setAlertDialog,
+    activeTab,
+    setActiveTab,
+    containers,
+    isContainerModalOpen,
+    setIsContainerModalOpen,
+    editingContainerId,
+    setEditingContainerId,
+    containerForm,
+    setContainerForm,
+    previewImage,
+    setPreviewImage,
+    handleSaveContainer,
+    handleEditContainer,
+    handlePhotoUpload,
+    handleDeleteContainer,
+    handleDeleteSelectedHistory,
+    handleToggleSelectAllHistory,
+    handleToggleSelectHistory,
+    handleMouseMove,
+    handleMouseLeave
+  } = useGallonTracker()
 
-  // History Edit State
-  const [isHistoryEditMode, setIsHistoryEditMode] = useState(false)
-  const [historySelectedIds, setHistorySelectedIds] = useState<number[]>([])
-  const [isDeletingHistory, setIsDeletingHistory] = useState(false)
-  const [alertDialog, setAlertDialog] = useState({
-    isOpen: false, title: '', message: '', isConfirm: false, onConfirm: () => {}
-  })
-  
-  // Container Management State
-  const [activeTab, setActiveTab] = useState<'overview' | 'containers'>('overview')
-  const [containers, setContainers] = useState<GallonContainer[]>([])
-  const [isContainerModalOpen, setIsContainerModalOpen] = useState(false)
-  const [editingContainerId, setEditingContainerId] = useState<number | null>(null)
-  const [containerForm, setContainerForm] = useState({ name: '', capacity: 0.6, type: 'Tumbler', photoUrl: '' })
-  const [previewImage, setPreviewImage] = useState<string | null>(null)
-  
   // Animation state for fill
   const [animatedStock, setAnimatedStock] = useState(0)
   const [isFilling, setIsFilling] = useState(true)
@@ -134,226 +107,6 @@ export default function GallonTracker() {
       if (rafId) cancelAnimationFrame(rafId)
     }
   }, [gallonStock])
-
-  async function fetchData() {
-    setLoading(true)
-    
-    const [resContainers, gallonsRes, journalRes] = await Promise.all([
-      spreadsheetApi.get('GallonContainers'),
-      spreadsheetApi.get('Gallons'),
-      spreadsheetApi.get('JournalEntries'),
-    ])
-
-    const contData = Array.isArray(resContainers.data) ? resContainers.data : []
-    setContainers(contData)
-
-    // 1. Fetch usage data (pengurangan)
-    const rawData = Array.isArray(gallonsRes.data) ? gallonsRes.data as GallonActivity[] : []
-    const journalEntries = Array.isArray(journalRes.data) ? journalRes.data : []
-    const usageData = rawData.filter(g => g.type === 'Penggunaan')
-    setActivities(usageData.reverse())
-
-    const stockSummary = calculateGallonStock({
-      gallonRows: rawData,
-      journalEntries,
-    })
-    const usedGallons = stockSummary.used
-    const finalStock = stockSummary.stock
-    setGallonStock(finalStock)
-
-    // Calculate real AI prediction data
-    let avgConsumption = 0
-    const chartData = [0, 0, 0, 0, 0, 0, 0] // H-6 to H-0 (Today)
-    
-    if (usageData.length > 0) {
-      const dates = usageData.map(d => parseGallonStockDate(d.date).getTime()).filter(t => !isNaN(t))
-      const oldest = dates.length > 0 ? Math.min(...dates) : new Date().getTime()
-      const now = new Date().getTime()
-      const daysDiff = daysBetween(new Date(oldest), new Date(now))
-      
-      avgConsumption = usedGallons / daysDiff
-      
-      for (let i = 0; i < 7; i++) {
-        const d = new Date(now - (6 - i) * 24 * 3600 * 1000)
-        const dateStr = d.toISOString().split('T')[0]
-        const dayUsed = usageData.filter(u => u.date === dateStr).reduce((acc, u) => acc + Number(u.quantity), 0)
-        chartData[i] = dayUsed
-      }
-    }
-
-    const isReliable = isReliableGallonPrediction(usageData.length, avgConsumption)
-    const daysLeft = isReliable ? finalStock / avgConsumption : 0
-    const estDate = isReliable ? new Date(Date.now() + daysLeft * 24 * 3600 * 1000) : null
-    const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
-    
-    // Normalize chart data for UI height (percentage)
-    const maxChartVal = Math.max(...chartData, 0.1) // prevent division by 0
-    const chartDataNormalized = chartData.map(val => (val / maxChartVal) * 100)
-
-    setPrediction({
-      nextRefillDate: estDate ? `${estDate.getDate()} ${months[estDate.getMonth()]} ${estDate.getFullYear()}` : '-',
-      estimatedGallons: isReliable ? Math.ceil(avgConsumption * 14) : 0,
-      accuracy: Math.min(100, Math.round((usageData.length / 14) * 100)),
-      insight: isReliable
-        ? `Berdasarkan riwayat penggunaan yang tersimpan, rata-rata konsumsi harian adalah ${avgConsumption.toFixed(2)} Galon/hari. Stok saat ini diprediksi habis dalam ${Math.floor(daysLeft)} hari.`
-        : 'Riwayat penggunaan galon belum cukup kuat untuk membuat prediksi hari habis yang akurat.',
-      chartData,
-      chartDataNormalized,
-      daysLeft: Math.max(0, Math.floor(daysLeft)),
-      avgConsumption: formatGallonQuantity(avgConsumption),
-      isReliable
-    })
-
-    setLoading(false)
-  }
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchData()
-    }, 0)
-    return () => clearTimeout(timer)
-  }, [])
-
-  const handleSaveContainer = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsSaving(true)
-    
-    if (editingContainerId) {
-      const payload = {
-        id: editingContainerId,
-        name: containerForm.name,
-        capacity: Number(containerForm.capacity),
-        type: containerForm.type,
-        photoUrl: containerForm.photoUrl,
-      }
-      
-      const res = await spreadsheetApi.put('GallonContainers', payload)
-      if (res.success) {
-        setContainers(containers.map(c => c.id === editingContainerId ? payload : c))
-      } else {
-        alert('Gagal menyimpan wadah ke sumber data.')
-      }
-    } else {
-      const payload = {
-        id: Date.now(),
-        name: containerForm.name,
-        capacity: Number(containerForm.capacity),
-        type: containerForm.type,
-        photoUrl: containerForm.photoUrl,
-      }
-      
-      const res = await spreadsheetApi.post('GallonContainers', payload)
-      if (res.success) {
-        setContainers([...containers, payload])
-      } else {
-        alert('Gagal menambahkan wadah ke sumber data.')
-      }
-    }
-    
-    setIsContainerModalOpen(false)
-    setIsSaving(false)
-    setContainerForm({ name: '', capacity: 0.6, type: 'Tumbler', photoUrl: '' })
-    setEditingContainerId(null)
-  }
-
-  const handleEditContainer = (c: GallonContainer) => {
-    setContainerForm({ name: c.name, capacity: c.capacity, type: c.type, photoUrl: c.photoUrl || '' })
-    setEditingContainerId(c.id)
-    setIsContainerModalOpen(true)
-  }
-
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setContainerForm({ ...containerForm, photoUrl: reader.result as string })
-      }
-      reader.readAsDataURL(file)
-    }
-  }
-
-  const handleDeleteContainer = (id: number) => {
-    setAlertDialog({
-      isOpen: true,
-      title: 'Hapus Wadah',
-      message: 'Yakin ingin menghapus wadah ini?',
-      isConfirm: true,
-      onConfirm: async () => {
-        const res = await spreadsheetApi.del('GallonContainers', id)
-        if (res.success) {
-          setContainers(containers.filter(c => c.id !== id))
-        } else {
-          alert('Gagal menghapus wadah dari sumber data.')
-        }
-        setAlertDialog(prev => ({...prev, isOpen: false}))
-      }
-    })
-  }
-
-  const handleDeleteSelectedHistory = () => {
-    if (historySelectedIds.length === 0) return;
-    setAlertDialog({
-      isOpen: true,
-      title: 'Hapus Riwayat',
-      message: `Yakin ingin menghapus ${historySelectedIds.length} riwayat aktivitas?`,
-      isConfirm: true,
-      onConfirm: async () => {
-        setAlertDialog(prev => ({...prev, isOpen: false}))
-        setIsDeletingHistory(true)
-        let hasError = false;
-        for (const id of historySelectedIds) {
-          const res = await spreadsheetApi.del('Gallons', id)
-          if (!res.success) hasError = true;
-        }
-        
-        if (hasError) {
-          alert('Beberapa data gagal dihapus')
-        } else {
-          setHistorySelectedIds([])
-          setIsHistoryEditMode(false)
-          fetchData()
-        }
-        setIsDeletingHistory(false)
-      }
-    })
-  }
-
-  const handleToggleSelectAllHistory = () => {
-    if (historySelectedIds.length === activities.length && activities.length > 0) {
-      setHistorySelectedIds([])
-    } else {
-      setHistorySelectedIds(activities.map(a => a.id))
-    }
-  }
-
-  const handleToggleSelectHistory = (id: number) => {
-    setHistorySelectedIds(prev => 
-      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-    )
-  }
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const y = e.clientY - rect.top
-    
-    const centerX = rect.width / 2
-    const centerY = rect.height / 2
-    
-    // Tilt angle up to 15 degrees based on cursor position
-    const rotateXValue = ((y - centerY) / centerY) * -15
-    const rotateYValue = ((x - centerX) / centerX) * 15
-    
-    setRotateX(rotateXValue)
-    setRotateY(rotateYValue)
-  }
-
-  const handleMouseLeave = () => {
-    setIsHovered(false)
-    setRotateX(0)
-    setRotateY(0)
-  }
 
   return (
     <div className="space-y-6">
@@ -596,7 +349,7 @@ export default function GallonTracker() {
             )}
           </div>
         </div>
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto w-full rounded-xl border border-gray-100 shadow-sm scrollbar-thin scrollbar-thumb-gray-200">
           <table className="w-full text-left text-sm text-gray-600">
             <thead className="bg-gray-50/80 text-gray-700 text-xs uppercase font-semibold border-b border-border">
               <tr>
@@ -611,12 +364,12 @@ export default function GallonTracker() {
                   </th>
                 )}
                 <th className="px-4 py-3">Tanggal</th>
-                <th className="px-4 py-3">Waktu</th>
+                <th className="px-4 py-3 hidden md:table-cell">Waktu</th>
                 <th className="px-4 py-3">Penghuni</th>
                 <th className="px-4 py-3">Wadah Digunakan</th>
-                <th className="px-4 py-3">Kapasitas</th>
+                <th className="px-4 py-3 hidden md:table-cell">Kapasitas</th>
                 <th className="px-4 py-3">Konversi (Galon)</th>
-                <th className="px-4 py-3">Keterangan</th>
+                <th className="px-4 py-3 hidden md:table-cell">Keterangan</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -676,7 +429,7 @@ export default function GallonTracker() {
                     </td>
                   )}
                   <td className="px-4 py-3 whitespace-nowrap">{formattedDate}</td>
-                  <td className="px-4 py-3 whitespace-nowrap">{formattedTime}</td>
+                  <td className="px-4 py-3 whitespace-nowrap hidden md:table-cell">{formattedTime}</td>
                   <td className="px-4 py-3 font-medium text-gray-900">{penghuniName}</td>
                   <td className="px-4 py-3 font-medium text-gray-900 flex items-center justify-start gap-3 text-left">
                     <div className="w-8 h-8 rounded-md bg-gray-100 flex items-center justify-center flex-shrink-0">
@@ -694,9 +447,9 @@ export default function GallonTracker() {
                       <span className="block text-xs text-gray-500 font-normal">{item.containerType || 'Input Langsung'}</span>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-gray-600">{item.containerCapacity ? `${item.containerCapacity} L` : '-'}</td>
+                  <td className="px-4 py-3 text-gray-600 hidden md:table-cell">{item.containerCapacity ? `${item.containerCapacity} L` : '-'}</td>
                   <td className="px-4 py-3 font-medium text-gray-900">-{Number(item.quantity).toLocaleString('id-ID', {maximumFractionDigits: 3})} Galon</td>
-                  <td className="px-4 py-3 text-gray-500">{item.note}</td>
+                  <td className="px-4 py-3 text-gray-500 hidden md:table-cell">{item.note}</td>
                 </tr>
                 )
               })}
@@ -797,7 +550,7 @@ export default function GallonTracker() {
               <Plus className="w-4 h-4 mr-1" /> Tambah Wadah
             </button>
           </div>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto w-full rounded-xl border border-gray-100 shadow-sm scrollbar-thin scrollbar-thumb-gray-200">
             <table className="w-full text-left text-sm text-gray-600">
               <thead className="bg-gray-50/80 text-gray-700 text-xs uppercase font-semibold border-b border-border text-center">
                 <tr>
