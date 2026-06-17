@@ -14,6 +14,8 @@ export const DEFAULT_CHART_OF_ACCOUNTS: Account[] = [
   { account_number: '1102', account_name: 'Kas di Bank BCA', account_type: 'Harta', is_default: true, status: 'Aktif' },
   { account_number: '1103', account_name: 'Kas di Bank Mandiri', account_type: 'Harta', is_default: true, status: 'Aktif' },
   { account_number: '1104', account_name: 'Piutang Penghuni', account_type: 'Harta', is_default: true, status: 'Aktif' },
+  { account_number: '1501', account_name: 'Peralatan Kos (Aset Tetap)', account_type: 'Harta', is_default: true, status: 'Aktif' },
+  { account_number: '1502', account_name: 'Akumulasi Penyusutan Peralatan Kos', account_type: 'Harta', is_default: true, status: 'Aktif' },
   
   // Kewajiban (Liabilities) - 2xxx
   { account_number: '2101', account_name: 'Hutang Usaha', account_type: 'Kewajiban', is_default: true, status: 'Aktif' },
@@ -21,7 +23,9 @@ export const DEFAULT_CHART_OF_ACCOUNTS: Account[] = [
   
   // Modal (Equity) - 3xxx
   { account_number: '3101', account_name: 'Modal Pemilik', account_type: 'Modal', is_default: true, status: 'Aktif' },
-  { account_number: '3201', account_name: 'Prive Pemilik', account_type: 'Modal', is_default: true, status: 'Aktif' },
+  { account_number: '3201', account_name: 'Laba Ditahan', account_type: 'Modal', is_default: true, status: 'Aktif' },
+  { account_number: '3301', account_name: 'Prive Pemilik', account_type: 'Modal', is_default: true, status: 'Aktif' },
+  { account_number: '3500', account_name: 'Ikhtisar Laba Rugi', account_type: 'Modal', is_default: true, status: 'Aktif' },
   
   // Pendapatan (Revenue) - 4xxx
   { account_number: '4101', account_name: 'Pendapatan Sewa Kamar', account_type: 'Pendapatan', is_default: true, status: 'Aktif' },
@@ -34,6 +38,8 @@ export const DEFAULT_CHART_OF_ACCOUNTS: Account[] = [
   { account_number: '5103', account_name: 'Beban Perawatan Bangunan', account_type: 'Beban', is_default: true, status: 'Aktif' },
   { account_number: '5104', account_name: 'Beban Gaji Karyawan', account_type: 'Beban', is_default: true, status: 'Aktif' },
   { account_number: '5105', account_name: 'Beban Administrasi Bank', account_type: 'Beban', is_default: true, status: 'Aktif' },
+  { account_number: '5106', account_name: 'Beban Air Galon & Konsumsi', account_type: 'Beban', is_default: true, status: 'Aktif' },
+  { account_number: '5107', account_name: 'Beban Penyusutan Peralatan Kos', account_type: 'Beban', is_default: true, status: 'Aktif' },
 ]
 
 interface SheetAccount {

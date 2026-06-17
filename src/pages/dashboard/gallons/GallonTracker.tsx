@@ -359,7 +359,10 @@ export default function GallonTracker() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Tracker Air Galon</h1>
+          <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center">
+            <Droplets className="mr-3 text-primary w-8 h-8" />
+            Tracker Air Galon
+          </h1>
           <p className="text-text-secondary mt-1">Pantau konsumsi dan manajemen wadah air.</p>
         </div>
         <div className="flex bg-gray-100 p-1 rounded-lg">

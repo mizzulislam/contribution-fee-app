@@ -82,7 +82,10 @@ export default function ResidentBillsList() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Tagihan Saya</h1>
+          <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center">
+            <FileText className="mr-3 text-primary w-8 h-8" />
+            Tagihan Saya
+          </h1>
           <p className="text-text-secondary mt-1">Daftar iuran yang menjadi tanggungan Anda.</p>
         </div>
       </div>

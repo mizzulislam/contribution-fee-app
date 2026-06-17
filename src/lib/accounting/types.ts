@@ -20,6 +20,8 @@ export interface JournalEntry {
   debits: JournalEntryLine[]
   credits: JournalEntryLine[]
   description: string
+  source?: string
+  source_id?: string
 }
 
 export interface LedgerAccount {
@@ -39,6 +41,20 @@ export interface TrialBalanceItem {
   accountName: string
   debit: number
   credit: number
+}
+
+export interface AdjustedTrialBalanceItem extends TrialBalanceItem {
+  accountType: AccountType
+}
+
+export interface AssetItem {
+  id: string | number
+  name: string
+  cost: number
+  salvageValue?: number
+  usefulLifeMonths?: number
+  usefulLifeYears?: number
+  purchaseDate: string
 }
 
 export interface FinancialStatements {

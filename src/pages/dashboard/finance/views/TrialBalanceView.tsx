@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import type { TrialBalanceItem } from '@/lib/accounting'
 import { buildPeriodAccountingEngine, getPeriodLabel, type PeriodFilter } from '@/lib/accounting/period'
 import AccountingDownloadMenu from '@/components/accounting/AccountingDownloadMenu'
-import { CheckCircle2, AlertCircle } from 'lucide-react'
+import { CheckCircle2, AlertCircle, Scale } from 'lucide-react'
 
 interface TrialBalanceViewProps {
   period: PeriodFilter
@@ -41,7 +41,10 @@ export default function TrialBalanceView({ period }: TrialBalanceViewProps) {
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Neraca Saldo</h1>
+          <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center">
+            <Scale className="mr-3 text-primary w-8 h-8" />
+            Neraca Saldo
+          </h1>
           <p className="text-text-secondary mt-1">Daftar seluruh saldo akhir akun untuk memastikan total Debit dan Kredit seimbang.</p>
         </div>
         <AccountingDownloadMenu

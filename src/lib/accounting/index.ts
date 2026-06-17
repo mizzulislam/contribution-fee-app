@@ -7,6 +7,7 @@ export * from './TrialBalance'
 export * from './FinancialStatements'
 export * from './ClosingProcess'
 export * from './AccountingEngine'
+export * from './optimizedCycle'
 
 // Create a singleton instance for global use
 import { AccountingEngine } from './AccountingEngine'

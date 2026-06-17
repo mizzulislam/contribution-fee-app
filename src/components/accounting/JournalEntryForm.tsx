@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { defaultEngine, syncAccountingWithSheet } from '@/lib/accounting'
 import type { Account, AccountType } from '@/lib/accounting'
-import { Save, AlertCircle, Plus, Trash2, CheckCircle2, AlertTriangle, Scale } from 'lucide-react'
+import { Save, AlertCircle, Plus, Trash2, CheckCircle2, AlertTriangle, Scale, Sparkles } from 'lucide-react'
 import { spreadsheetApi } from '@/lib/spreadsheet'
 import { mergeAccounts } from '@/lib/chartOfAccounts'
 import Select from '@/components/ui/Select'
@@ -20,6 +20,8 @@ interface JournalEntryFormProps {
     description: string
     debits: { accountNumber: string; amount: number }[]
     credits: { accountNumber: string; amount: number }[]
+    source?: string
+    source_id?: string
   }
 }
 
@@ -102,6 +104,186 @@ export default function JournalEntryForm({ onSuccess, editingEntry }: JournalEnt
   const totalCreditAmount = credits.reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0)
   const isBalanced = totalDebitAmount > 0 && Math.abs(totalDebitAmount - totalCreditAmount) < 0.001
 
+  const parsedDebitsPreview = debits
+    .filter(d => d.accountNumber && parseFloat(d.amount) > 0)
+    .map(d => ({ accountNumber: d.accountNumber, amount: parseFloat(d.amount) }))
+
+  const parsedCreditsPreview = credits
+    .filter(c => c.accountNumber && parseFloat(c.amount) > 0)
+    .map(c => ({ accountNumber: c.accountNumber, amount: parseFloat(c.amount) }))
+
+  const getAccountByNumber = (accountNumber: string) => (
+    accounts.find(account => account.accountNumber === accountNumber)
+  )
+
+  const monthEndDate = (() => {
+    const currentDate = new Date(date)
+    if (Number.isNaN(currentDate.getTime())) return false
+    const lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate()
+    return currentDate.getDate() === lastDayOfMonth
+  })()
+
+  const detectAdjustingJournal = (() => {
+    const normalizedDescription = description.toLowerCase()
+    const lines = [...parsedDebitsPreview, ...parsedCreditsPreview]
+    const relatedAccounts = lines
+      .map(line => getAccountByNumber(line.accountNumber))
+      .filter((account): account is Account => Boolean(account))
+
+    const accountNames = relatedAccounts.map(account => account.accountName.toLowerCase())
+    const accountTypes = relatedAccounts.map(account => account.accountType)
+    const accountNumbers = relatedAccounts.map(account => account.accountNumber)
+
+    const hasExpense = accountTypes.includes('Expenses')
+    const hasRevenue = accountTypes.includes('Revenues')
+    const hasAsset = accountTypes.includes('Assets')
+    const hasLiability = accountTypes.includes('Liabilities')
+
+    const keywordMatch = [
+      'penyesuaian',
+      'adjusting',
+      'akrual',
+      'accrual',
+      'deferral',
+      'deferal',
+      'penyusutan',
+      'depresiasi',
+      'amortisasi',
+      'beban dibayar dimuka',
+      'dibayar dimuka',
+      'uang muka',
+      'pendapatan diterima dimuka',
+      'sewa dibayar dimuka',
+      'beban terutang',
+      'pendapatan masih harus diterima'
+    ].some(keyword => normalizedDescription.includes(keyword))
+
+    const accountPatternMatch = accountNames.some(name => (
+      name.includes('akumulasi penyusutan') ||
+      name.includes('penyusutan') ||
+      name.includes('amortisasi') ||
+      name.includes('dibayar dimuka') ||
+      name.includes('uang muka') ||
+      name.includes('terutang') ||
+      name.includes('diterima dimuka')
+    ))
+
+    const numberPatternMatch = accountNumbers.some(number => (
+      number.startsWith('15') ||
+      number === '2102' ||
+      number === '4101' ||
+      number === '5107'
+    ))
+
+    const typePatternMatch =
+      (hasExpense && hasLiability) ||
+      (hasExpense && hasAsset) ||
+      (hasRevenue && hasLiability) ||
+      (hasRevenue && hasAsset)
+
+    const forcedAdjustingSource = ['manual_adjusting', 'depreciation', 'unearned_rent'].includes(editingEntry?.source || '')
+    const isAdjusting = forcedAdjustingSource || keywordMatch || accountPatternMatch || numberPatternMatch || (typePatternMatch && monthEndDate)
+
+    let reason = 'Belum memenuhi pola umum jurnal penyesuaian.'
+    if (forcedAdjustingSource) {
+      reason = 'Entri ini sudah berasal dari sumber jurnal penyesuaian.'
+    } else if (keywordMatch) {
+      reason = 'Keterangan transaksi memuat kata kunci jurnal penyesuaian.'
+    } else if (accountPatternMatch || numberPatternMatch) {
+      reason = 'Akun yang dipilih cocok dengan pola akun penyesuaian.'
+    } else if (typePatternMatch && monthEndDate) {
+      reason = 'Kombinasi tipe akun dan tanggal akhir periode cocok untuk penyesuaian.'
+    }
+
+    return { isAdjusting, reason }
+  })()
+
+  const detectClosingJournal = (() => {
+    const normalizedDescription = description.toLowerCase()
+    const lines = [...parsedDebitsPreview, ...parsedCreditsPreview]
+    const relatedAccounts = lines
+      .map(line => getAccountByNumber(line.accountNumber))
+      .filter((account): account is Account => Boolean(account))
+
+    const accountNames = relatedAccounts.map(account => account.accountName.toLowerCase())
+    const accountTypes = relatedAccounts.map(account => account.accountType)
+    const accountNumbers = relatedAccounts.map(account => account.accountNumber)
+
+    const keywordMatch = [
+      'jurnal penutup',
+      'tutup buku',
+      'closing',
+      'ikhtisar laba rugi',
+      'laba ditahan',
+      'prive',
+      'menutup akun',
+      'penutupan buku'
+    ].some(keyword => normalizedDescription.includes(keyword))
+
+    const accountPatternMatch = accountNames.some(name => (
+      name.includes('ikhtisar laba rugi') ||
+      name.includes('laba ditahan') ||
+      name.includes('prive')
+    ))
+
+    const numberPatternMatch = accountNumbers.some(number => (
+      number === '3500' ||
+      number === '3201' ||
+      number === '3301'
+    ))
+
+    const hasRevenue = accountTypes.includes('Revenues')
+    const hasExpense = accountTypes.includes('Expenses')
+    const hasEquity = accountTypes.includes('Equity')
+    const typePatternMatch = (hasRevenue && hasEquity) || (hasExpense && hasEquity)
+
+    const currentDate = new Date(date)
+    const endOfYearDate = !Number.isNaN(currentDate.getTime()) && currentDate.getMonth() === 11 && currentDate.getDate() === 31
+
+    const forcedClosingSource = ['manual_closing'].includes(editingEntry?.source || '') || normalizedDescription.includes('jurnal penutup:')
+    const isClosing = forcedClosingSource || keywordMatch || accountPatternMatch || numberPatternMatch || (typePatternMatch && endOfYearDate)
+
+    let reason = 'Belum memenuhi pola umum jurnal penutup.'
+    if (forcedClosingSource) {
+      reason = 'Entri ini sudah berasal dari sumber jurnal penutup.'
+    } else if (keywordMatch) {
+      reason = 'Keterangan transaksi memuat kata kunci jurnal penutup.'
+    } else if (accountPatternMatch || numberPatternMatch) {
+      reason = 'Akun yang dipilih cocok dengan pola akun penutup.'
+    } else if (typePatternMatch && endOfYearDate) {
+      reason = 'Kombinasi akun nominal dan ekuitas pada akhir tahun cocok untuk penutupan buku.'
+    }
+
+    return { isClosing, reason }
+  })()
+
+  const journalClassification = (() => {
+    if (detectClosingJournal.isClosing) {
+      return {
+        label: 'Terdeteksi sebagai jurnal penutup',
+        reason: detectClosingJournal.reason,
+        source: 'manual_closing',
+        tone: 'red' as const,
+      }
+    }
+
+    if (detectAdjustingJournal.isAdjusting) {
+      return {
+        label: 'Terdeteksi sebagai jurnal penyesuaian',
+        reason: detectAdjustingJournal.reason,
+        source: 'manual_adjusting',
+        tone: 'emerald' as const,
+      }
+    }
+
+    return {
+      label: 'Terdeteksi sebagai jurnal umum',
+      reason: 'Transaksi ini belum memenuhi pola jurnal penyesuaian atau jurnal penutup.',
+      source: 'manual_journal',
+      tone: 'slate' as const,
+    }
+  })()
+
   const handleRecord = async () => {
     setError('')
     try {
@@ -109,13 +291,8 @@ export default function JournalEntryForm({ onSuccess, editingEntry }: JournalEnt
         throw new Error('Keterangan transaksi wajib diisi.')
       }
 
-      const parsedDebits = debits
-        .filter(d => d.accountNumber && parseFloat(d.amount) > 0)
-        .map(d => ({ accountNumber: d.accountNumber, amount: parseFloat(d.amount) }))
-      
-      const parsedCredits = credits
-        .filter(c => c.accountNumber && parseFloat(c.amount) > 0)
-        .map(c => ({ accountNumber: c.accountNumber, amount: parseFloat(c.amount) }))
+      const parsedDebits = parsedDebitsPreview
+      const parsedCredits = parsedCreditsPreview
 
       if (parsedDebits.length === 0 || parsedCredits.length === 0) {
         throw new Error('Minimal harus ada satu akun Debit dan satu akun Kredit yang terisi dengan nominal valid.')
@@ -135,6 +312,8 @@ export default function JournalEntryForm({ onSuccess, editingEntry }: JournalEnt
         description: description,
         debits: JSON.stringify(parsedDebits),
         credits: JSON.stringify(parsedCredits),
+        source: editingEntry?.source || journalClassification.source,
+        source_id: editingEntry?.source_id,
       }
 
       if (editingEntry) {
@@ -219,6 +398,32 @@ export default function JournalEntryForm({ onSuccess, editingEntry }: JournalEnt
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Keterangan Transaksi</label>
             <input type="text" className="form-input w-full" placeholder="Contoh: Pembayaran asuransi bangunan..." value={description} onChange={(e) => setDescription(e.target.value)} />
+          </div>
+        </div>
+
+        <div className={`rounded-2xl border px-4 py-3 flex items-start gap-3 ${
+          journalClassification.tone === 'red'
+            ? 'bg-red-50 border-red-200 text-red-900'
+            : journalClassification.tone === 'emerald'
+              ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+              : 'bg-slate-50 border-slate-200 text-slate-700'
+        }`}>
+          <div className={`mt-0.5 p-2 rounded-xl ${
+            journalClassification.tone === 'red'
+              ? 'bg-red-100 text-red-700'
+              : journalClassification.tone === 'emerald'
+                ? 'bg-emerald-100 text-emerald-700'
+                : 'bg-slate-100 text-slate-500'
+          }`}>
+            <Sparkles className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="text-sm font-semibold">
+              {journalClassification.label}
+            </div>
+            <p className="text-xs mt-1 leading-relaxed">
+              {journalClassification.reason}
+            </p>
           </div>
         </div>
 

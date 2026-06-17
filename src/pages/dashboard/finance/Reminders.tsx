@@ -82,7 +82,7 @@ export default function Reminders({ period = defaultPeriod }: RemindersProps) {
   }
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="w-full space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center">
           <BellRing className="mr-3 text-primary w-8 h-8" />
@@ -91,8 +91,8 @@ export default function Reminders({ period = defaultPeriod }: RemindersProps) {
         <p className="text-text-secondary mt-1">Kirim peringatan otomatis tagihan jatuh tempo ke penghuni via sistem/WhatsApp.</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="card-container p-6 flex flex-col h-full">
+      <div className="grid w-full grid-cols-1 gap-6 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.35fr)]">
+        <div className="card-container flex h-full min-h-[420px] flex-col p-6">
           <h2 className="text-xl font-bold text-gray-900 mb-6">Status Tagihan Bulan Ini</h2>
           
           {loadingData ? (
@@ -133,9 +133,9 @@ export default function Reminders({ period = defaultPeriod }: RemindersProps) {
           </button>
         </div>
 
-        <div className="card-container p-6 bg-gradient-to-br from-white to-gray-50">
+        <div className="card-container flex h-full min-h-[420px] flex-col bg-gradient-to-br from-white to-gray-50 p-6">
           <h2 className="text-lg font-bold text-gray-900 mb-4">Template Pesan Pengingat</h2>
-          <div className="p-4 bg-white border border-gray-200 rounded-lg shadow-sm text-sm text-gray-700 font-mono leading-relaxed relative">
+          <div className="relative flex-1 rounded-lg border border-gray-200 bg-white p-4 font-mono text-sm leading-relaxed text-gray-700 shadow-sm">
             <p>Halo bang <span className="text-primary">[Nama Penghuni]</span>! 👋</p>
             <br />
             <p>Sekadar ngingetin nih, tagihan kos untuk bulan <span className="text-primary">[Bulan]</span> udah mau jatuh tempo pada <span className="text-primary">[Tanggal Jatuh Tempo]</span>.</p>

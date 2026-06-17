@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { BookOpen, ScrollText, Scale, FileBarChart, Loader2, CalendarDays, Filter } from 'lucide-react'
+import { BookOpen, ScrollText, Scale, FileBarChart, Loader2, CalendarDays, Filter, Sliders, Archive } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 import { syncAccountingWithSheet } from '@/lib/accounting'
@@ -11,11 +11,13 @@ import GeneralJournalView from './views/GeneralJournalView'
 import GeneralLedgerView from './views/GeneralLedgerView'
 import TrialBalanceView from './views/TrialBalanceView'
 import FinancialStatementsView from './views/FinancialStatementsView'
+import AdjustingEntriesView from './views/AdjustingEntriesView'
+import ClosingProcessView from './views/ClosingProcessView'
 
 export default function FinanceDashboard() {
   const [searchParams, setSearchParams] = useSearchParams()
   const tabParam = searchParams.get('tab')
-  const activeTab = tabParam && ['journal', 'ledger', 'trial_balance', 'statements'].includes(tabParam) ? tabParam : 'journal'
+  const activeTab = tabParam && ['journal', 'ledger', 'trial_balance', 'statements', 'adjusting', 'closing'].includes(tabParam) ? tabParam : 'journal'
   const [isSyncing, setIsSyncing] = useState(true)
   const [isPeriodOpen, setIsPeriodOpen] = useState(false)
   const [period, setPeriod] = useState<PeriodFilter>({ preset: 'all' })
@@ -66,13 +68,19 @@ export default function FinanceDashboard() {
     { id: 'ledger', label: 'Buku Besar', icon: ScrollText },
     { id: 'trial_balance', label: 'Neraca Saldo', icon: Scale },
     { id: 'statements', label: 'Laporan Keuangan', icon: FileBarChart },
+    { id: 'adjusting', label: 'Penyesuaian', icon: Sliders },
+    { id: 'closing', label: 'Tutup Buku', icon: Archive },
   ]
 
   return (
     <div className="space-y-6">
       {/* Tab Navigation */}
-      <div className="bg-white rounded-[20px] p-2 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2 shadow-sm border border-gray-100">
-        <div className="flex flex-wrap gap-2">
+      <div className="bg-white rounded-[20px] p-2 flex flex-row items-center justify-between gap-4 shadow-sm border border-gray-100 overflow-hidden w-full">
+        <div 
+          className="flex-1 flex items-center gap-2 overflow-x-auto no-scrollbar"
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        >
+          <style>{`.no-scrollbar::-webkit-scrollbar { display: none; }`}</style>
           {tabs.map((tab) => {
             const Icon = tab.icon
             const isActive = activeTab === tab.id
@@ -81,7 +89,7 @@ export default function FinanceDashboard() {
                 key={tab.id}
                 onClick={() => handleTabChange(tab.id)}
                 className={cn(
-                  "flex items-center px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300",
+                  "flex-shrink-0 flex items-center px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300",
                   isActive 
                     ? "bg-emerald-50 text-emerald-700 shadow-sm" 
                     : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
@@ -93,8 +101,8 @@ export default function FinanceDashboard() {
             )
           })}
         </div>
-
-        <div ref={periodDropdownRef} className="relative flex justify-end">
+        
+        <div ref={periodDropdownRef} className="flex-shrink-0 relative flex justify-end">
           <button
             type="button"
             onClick={() => setIsPeriodOpen(prev => !prev)}
@@ -178,6 +186,8 @@ export default function FinanceDashboard() {
             {activeTab === 'ledger' && <GeneralLedgerView period={period} />}
             {activeTab === 'trial_balance' && <TrialBalanceView period={period} />}
             {activeTab === 'statements' && <FinancialStatementsView period={period} />}
+            {activeTab === 'adjusting' && <AdjustingEntriesView period={period} />}
+            {activeTab === 'closing' && <ClosingProcessView period={period} />}
           </>
         )}
       </div>

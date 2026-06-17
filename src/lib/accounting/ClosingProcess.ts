@@ -46,13 +46,13 @@ export class ClosingProcess {
         totalExpense += bal
       }
 
-      if (l.account.accountNumber === '332') { // Assuming 332 is Dividends
+      if (l.account.accountNumber === '3301' || l.account.accountNumber === '332') { // Prive Pemilik / Dividends
         dividendsToClose += bal
       }
     })
 
-    const incomeSummaryAcc = '350' // Income Summary
-    const retainedEarningsAcc = '320' // Retained Earnings
+    const incomeSummaryAcc = '3500' // Income Summary
+    const retainedEarningsAcc = '3201' // Retained Earnings
 
     // Step 1: Close Revenues
     if (revenueDebits.length > 0) {
@@ -103,11 +103,12 @@ export class ClosingProcess {
 
     // Step 4: Close Dividends
     if (dividendsToClose > 0) {
+      const divAcc = this.ledger.getLedger('3301') ? '3301' : '332'
       // Dividends have Debit balance. To close, Credit Dividends, Debit RE.
       const entry = this.journal.journalize(
         date,
         [{ accountNumber: retainedEarningsAcc, amount: dividendsToClose }],
-        [{ accountNumber: '332', amount: dividendsToClose }],
+        [{ accountNumber: divAcc, amount: dividendsToClose }],
         'Closing Entry: Close Dividends to Retained Earnings'
       )
       this.ledger.postEntry(entry)

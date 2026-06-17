@@ -37,29 +37,28 @@ export class FinancialStatementsGenerator {
       if (type === 'Expenses') expenses += bal
       
       if (type === 'Assets') {
-        // Simplified heuristic: 100-149 Current, 150-189 PPE (including contra-asset), 190+ Intangible
+        // Updated heuristic for 4-digit account numbers: 1000-1499 Current, 1500-1899 PPE (including contra-asset), 1900+ Intangible
         const n = parseInt(num, 10)
-        if (n >= 100 && n < 150) currentAssets += bal
-        else if (n >= 150 && n < 190) {
-          // Note: Accumulated Depreciation has normal balance Debit calculated as negative usually, 
-          // or if Normal Balance is Credit, it subtracts. In our GL logic, if an asset gets a credit, balance reduces.
-          // So the balance is net PPE.
+        if (n >= 1000 && n < 1500) currentAssets += bal
+        else if (n >= 1500 && n < 1900) {
+          // Note: Accumulated Depreciation has normal balance Credit calculated as negative usually in net PPE
           propertyPlantEquipment += bal
         }
         else intangibleAssets += bal
       }
 
       if (type === 'Liabilities') {
-        // Simplified: 200-249 Current, 250+ Long-Term
+        // Updated: 2000-2499 Current, 2500+ Long-Term
         const n = parseInt(num, 10)
-        if (n >= 200 && n < 250) currentLiabilities += bal
+        if (n >= 2000 && n < 2500) currentLiabilities += bal
         else longTermLiabilities += bal
       }
 
       if (type === 'Equity') {
-        if (num === '311') commonStock += bal
-        if (num === '320') retainedEarnings += bal
-        if (num === '332') dividends += bal // Dividends have normal balance Debit, so GL calculates it as positive if debited
+        // Aligned standard accounts: 3101/311 modal, 3201/320 laba ditahan, 3301/332 prive
+        if (num === '3101' || num === '311') commonStock += bal
+        if (num === '3201' || num === '320') retainedEarnings += bal
+        if (num === '3301' || num === '332') dividends += bal // Dividends have normal balance Debit
       }
     })
 

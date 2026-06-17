@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useAuth } from '@/hooks/useAuth'
 import { spreadsheetApi } from '@/lib/spreadsheet'
-import { WalletCards, CalendarCheck, Droplets, ArrowRight, Building2, Users, Activity, ReceiptText, ArrowDownCircle, SearchCheck } from 'lucide-react'
+import { WalletCards, CalendarCheck, Droplets, ArrowRight, Building2, Users, Activity, ReceiptText, ArrowDownCircle, SearchCheck, X, LayoutDashboard, type LucideIcon } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { QuickActions } from '@/components/dashboard/QuickActions'
 import { FinancialChart } from '@/components/dashboard/FinancialChart'
@@ -18,9 +19,145 @@ interface JournalLine {
   amount: number
 }
 
+type DashboardCardTone = 'emerald' | 'blue' | 'orange' | 'rose' | 'amber' | 'purple'
+
+const dashboardCardToneClasses: Record<DashboardCardTone, {
+  border: string
+  background: string
+  glow: string
+  icon: string
+  eyebrow: string
+  divider: string
+  action: string
+  badge: string
+}> = {
+  emerald: {
+    border: 'border-emerald-100',
+    background: 'bg-gradient-to-br from-white via-white to-emerald-50/80',
+    glow: 'bg-emerald-100/60',
+    icon: 'bg-emerald-100 text-emerald-700',
+    eyebrow: 'text-emerald-700',
+    divider: 'border-emerald-100',
+    action: 'hover:text-emerald-700',
+    badge: 'bg-emerald-50 text-emerald-700 border-emerald-100',
+  },
+  blue: {
+    border: 'border-blue-100',
+    background: 'bg-gradient-to-br from-white via-white to-blue-50/80',
+    glow: 'bg-blue-100/70',
+    icon: 'bg-blue-100 text-blue-700',
+    eyebrow: 'text-blue-700',
+    divider: 'border-blue-100',
+    action: 'hover:text-blue-700',
+    badge: 'bg-blue-50 text-blue-700 border-blue-100',
+  },
+  orange: {
+    border: 'border-orange-100',
+    background: 'bg-gradient-to-br from-white via-white to-orange-50/80',
+    glow: 'bg-orange-100/70',
+    icon: 'bg-orange-100 text-orange-700',
+    eyebrow: 'text-orange-700',
+    divider: 'border-orange-100',
+    action: 'hover:text-orange-700',
+    badge: 'bg-orange-50 text-orange-700 border-orange-100',
+  },
+  rose: {
+    border: 'border-rose-100',
+    background: 'bg-gradient-to-br from-white via-white to-rose-50/80',
+    glow: 'bg-rose-100/70',
+    icon: 'bg-rose-100 text-rose-700',
+    eyebrow: 'text-rose-700',
+    divider: 'border-rose-100',
+    action: 'hover:text-rose-700',
+    badge: 'bg-rose-50 text-rose-700 border-rose-100',
+  },
+  amber: {
+    border: 'border-amber-100',
+    background: 'bg-gradient-to-br from-white via-white to-amber-50/80',
+    glow: 'bg-amber-100/70',
+    icon: 'bg-amber-100 text-amber-700',
+    eyebrow: 'text-amber-700',
+    divider: 'border-amber-100',
+    action: 'hover:text-amber-700',
+    badge: 'bg-amber-50 text-amber-700 border-amber-100',
+  },
+  purple: {
+    border: 'border-purple-100',
+    background: 'bg-gradient-to-br from-white via-white to-purple-50/80',
+    glow: 'bg-purple-100/70',
+    icon: 'bg-purple-100 text-purple-700',
+    eyebrow: 'text-purple-700',
+    divider: 'border-purple-100',
+    action: 'hover:text-purple-700',
+    badge: 'bg-purple-50 text-purple-700 border-purple-100',
+  },
+}
+
+interface DashboardMetricCardProps {
+  actionLabel: string
+  actionTo: string
+  badge?: string
+  eyebrow: string
+  icon: LucideIcon
+  note?: string
+  title: string
+  tone: DashboardCardTone
+  value: string
+}
+
+function DashboardMetricCard({
+  actionLabel,
+  actionTo,
+  badge,
+  eyebrow,
+  icon: Icon,
+  note,
+  title,
+  tone,
+  value,
+}: DashboardMetricCardProps) {
+  const toneClass = dashboardCardToneClasses[tone]
+
+  return (
+    <div className={`relative min-h-[220px] overflow-hidden rounded-2xl border ${toneClass.border} ${toneClass.background} p-6 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md`}>
+      <div className={`absolute right-0 top-0 h-24 w-24 ${toneClass.glow} blur-2xl`} />
+      <div className="relative flex h-full flex-col justify-between gap-6">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className={`text-xs font-bold uppercase tracking-wide ${toneClass.eyebrow}`}>{eyebrow}</p>
+              {badge && (
+                <span className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold ${toneClass.badge}`}>
+                  {badge}
+                </span>
+              )}
+            </div>
+            <h4 className="mt-2 text-base font-semibold text-gray-900">{title}</h4>
+          </div>
+          <div className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl ${toneClass.icon}`}>
+            <Icon className="h-6 w-6" />
+          </div>
+        </div>
+        <div>
+          <p className="break-words text-3xl font-black tracking-tight text-gray-950 sm:text-4xl">
+            {value}
+          </p>
+          {note && <p className="mt-2 text-sm font-medium text-text-secondary">{note}</p>}
+          <div className={`mt-8 border-t ${toneClass.divider} pt-5`}>
+            <Link to={actionTo} className={`inline-flex items-center text-sm font-bold text-gray-900 ${toneClass.action}`}>
+              {actionLabel} <ArrowRight className="ml-1 h-4 w-4" />
+            </Link>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function Dashboard() {
   const { profile, activeRole } = useAuth()
   const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false)
+  const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState(false)
   
   // Dashboard Data States
   const [totalUsers, setTotalUsers] = useState(0)
@@ -184,6 +321,15 @@ export default function Dashboard() {
     if (profile) fetchDashboardData()
   }, [profile, activeRole])
 
+  useEffect(() => {
+    if (!profile || !activeRole) return
+
+    if (sessionStorage.getItem('soematra_show_welcome_modal') === '1') {
+      setIsWelcomeModalOpen(true)
+      sessionStorage.removeItem('soematra_show_welcome_modal')
+    }
+  }, [profile, activeRole])
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount)
   }
@@ -193,83 +339,69 @@ export default function Dashboard() {
     return formatCurrency(value)
   }
 
+  const getRoleLabel = () => {
+    if (activeRole === 'super admin') return 'Super Admin'
+    if (activeRole === 'admin') return 'Admin'
+    return 'Warga'
+  }
+
+  const getWelcomeMessage = () => {
+    if (activeRole === 'super admin') return 'Pantau dan atur seluruh aktivitas sistem dari sini.'
+    if (activeRole === 'admin') return 'Kelola operasional kos, iuran, dan kebutuhan galon.'
+    return 'Jangan lupa cek tagihan dan jadwal piket Anda.'
+  }
+
+  const closeWelcomeModal = () => setIsWelcomeModalOpen(false)
+
   // Render Dashboard Khusus Super Admin
   const renderSuperAdminDashboard = () => (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      <div className="card-container flex flex-col justify-between">
-        <div>
-          <div className="flex justify-between items-start mb-4">
-            <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center">
-              <Users className="w-5 h-5 text-blue-600" />
-            </div>
-          </div>
-          <h3 className="text-text-secondary text-sm font-medium">Total Pengguna Aktif</h3>
-          <p className="text-2xl font-bold mt-1 text-gray-900">
-            {loading ? '...' : `${totalUsers} Orang`}
-          </p>
-        </div>
-        <Link to="/dashboard/users" className="text-sm font-semibold text-[#10B981] hover:text-[#047857] mt-4 flex items-center">
-          Kelola Pengguna <ArrowRight className="w-4 h-4 ml-1" />
-        </Link>
-      </div>
+    <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+      <DashboardMetricCard
+        actionLabel="Kelola Pengguna"
+        actionTo="/dashboard/warga"
+        eyebrow="Data Penghuni"
+        icon={Users}
+        title="Total Pengguna Aktif"
+        tone="blue"
+        value={loading ? '...' : `${totalUsers} Orang`}
+      />
 
-      <Link to="/dashboard/audit" className="card-container flex flex-col justify-between transition-all hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-0">
-        <div>
-          <div className="flex justify-between items-start mb-4">
-            <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center">
-              <Activity className="w-5 h-5 text-amber-600" />
-            </div>
-            {todayAuditLogs > 0 && <span className="badge badge-warning">Baru</span>}
-          </div>
-          <h3 className="text-text-secondary text-sm font-medium">Log Sistem Hari Ini</h3>
-          <p className="text-2xl font-bold mt-1 text-gray-900">
-            {loading ? '...' : `${todayAuditLogs} Aktivitas`}
-          </p>
-        </div>
-        <span className="text-sm font-semibold text-[#10B981] mt-4 flex items-center">
-          Lihat Audit Log <ArrowRight className="w-4 h-4 ml-1" />
-        </span>
-      </Link>
+      <DashboardMetricCard
+        actionLabel="Lihat Audit Log"
+        actionTo="/dashboard/audit"
+        badge={todayAuditLogs > 0 ? 'Baru' : undefined}
+        eyebrow="Audit Sistem"
+        icon={Activity}
+        title="Log Sistem Hari Ini"
+        tone="amber"
+        value={loading ? '...' : `${todayAuditLogs} Aktivitas`}
+      />
 
-      <Link to="/dashboard/billing?tab=bills" className="card-container flex flex-col justify-between transition-all hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-0">
-        <div>
-          <div className="flex justify-between items-start mb-4">
-            <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center">
-              <ReceiptText className="w-5 h-5 text-red-600" />
-            </div>
-            {totalUnpaidBills > 0 && <span className="badge badge-danger">Perlu Ditagih</span>}
-          </div>
-          <h3 className="text-text-secondary text-sm font-medium">Tagihan Belum Tuntas</h3>
-          <p className="text-2xl font-bold mt-1 text-gray-900">
-            {loading ? '...' : `${totalUnpaidBills} Tagihan`}
-          </p>
-          <p className="text-sm text-text-secondary mt-2">{loading ? '...' : formatCurrency(unpaidBills)}</p>
-        </div>
-        <span className="text-sm font-semibold text-[#10B981] mt-4 flex items-center">
-          Buka Daftar Tagihan <ArrowRight className="w-4 h-4 ml-1" />
-        </span>
-      </Link>
+      <DashboardMetricCard
+        actionLabel="Buka Daftar Tagihan"
+        actionTo="/dashboard/billing?tab=bills"
+        badge={totalUnpaidBills > 0 ? 'Perlu Ditagih' : undefined}
+        eyebrow="Penagihan"
+        icon={ReceiptText}
+        note={loading ? '...' : formatCurrency(unpaidBills)}
+        title="Tagihan Belum Tuntas"
+        tone="rose"
+        value={loading ? '...' : `${totalUnpaidBills} Tagihan`}
+      />
 
-      <Link to="/dashboard/billing?tab=verification" className="card-container flex flex-col justify-between transition-all hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-0">
-        <div>
-          <div className="flex justify-between items-start mb-4">
-            <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center">
-              <SearchCheck className="w-5 h-5 text-blue-600" />
-            </div>
-            {pendingPaymentCount > 0 && <span className="badge badge-info">Antrean</span>}
-          </div>
-          <h3 className="text-text-secondary text-sm font-medium">Pembayaran Menunggu Verifikasi</h3>
-          <p className="text-2xl font-bold mt-1 text-gray-900">
-            {loading ? '...' : `${pendingPaymentCount} Pembayaran`}
-          </p>
-          <p className="text-sm text-text-secondary mt-2">{loading ? '...' : formatCurrency(pendingPaymentAmount)}</p>
-        </div>
-        <span className="text-sm font-semibold text-[#10B981] mt-4 flex items-center">
-          Buka Verifikasi Bayar <ArrowRight className="w-4 h-4 ml-1" />
-        </span>
-      </Link>
+      <DashboardMetricCard
+        actionLabel="Buka Verifikasi Bayar"
+        actionTo="/dashboard/billing?tab=verification"
+        badge={pendingPaymentCount > 0 ? 'Antrean' : undefined}
+        eyebrow="Verifikasi"
+        icon={SearchCheck}
+        note={loading ? '...' : formatCurrency(pendingPaymentAmount)}
+        title="Pembayaran Menunggu Verifikasi"
+        tone="emerald"
+        value={loading ? '...' : `${pendingPaymentCount} Pembayaran`}
+      />
 
-      <div className="md:col-span-3">
+      <div className="md:col-span-2 xl:col-span-4">
         <FinancialChart />
       </div>
     </div>
@@ -493,62 +625,41 @@ export default function Dashboard() {
 
   // Render Dashboard Khusus User/Penghuni
   const renderUserDashboard = () => (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      <div className="card-container flex flex-col justify-between">
-        <div>
-          <div className="flex justify-between items-start mb-4">
-            <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center">
-              <WalletCards className="w-5 h-5 text-red-600" />
-            </div>
-            {myUnpaidAmount > 0 && <span className="badge badge-danger">Ada Tagihan</span>}
-          </div>
-          <h3 className="text-text-secondary text-sm font-medium">Tagihan Anda</h3>
-          <p className="text-2xl font-bold mt-1 text-gray-900">
-            {loading ? '...' : formatCurrency(myUnpaidAmount)}
-          </p>
-        </div>
-        <Link to="/dashboard/billing-user?tab=confirm" className="text-sm font-semibold text-[#10B981] hover:text-[#047857] mt-4 flex items-center">
-          Bayar Sekarang <ArrowRight className="w-4 h-4 ml-1" />
-        </Link>
-      </div>
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+      <DashboardMetricCard
+        actionLabel="Bayar Sekarang"
+        actionTo="/dashboard/billing-user?tab=confirm"
+        badge={myUnpaidAmount > 0 ? 'Ada Tagihan' : undefined}
+        eyebrow="Pembayaran"
+        icon={WalletCards}
+        title="Tagihan Anda"
+        tone="rose"
+        value={loading ? '...' : formatCurrency(myUnpaidAmount)}
+      />
 
-      <div className="card-container flex flex-col justify-between">
-        <div>
-          <div className="flex justify-between items-start mb-4">
-            <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center">
-              <CalendarCheck className="w-5 h-5 text-blue-600" />
-            </div>
-            {nextUserDuty && <span className="badge badge-info">Aktif</span>}
-          </div>
-          <h3 className="text-text-secondary text-sm font-medium">Jadwal Piket Galon</h3>
-          <p className="text-2xl font-bold mt-1 text-gray-900">
-            {loading ? '...' : nextUserDuty?.date ? new Date(nextUserDuty.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Tidak Ada'}
-          </p>
-          {nextUserDuty?.task && <p className="text-sm text-text-secondary mt-1">{nextUserDuty.task}</p>}
-        </div>
-        <Link to="/dashboard/duties-mine" className="text-sm font-semibold text-[#10B981] hover:text-[#047857] mt-4 flex items-center">
-          Konfirmasi Piket <ArrowRight className="w-4 h-4 ml-1" />
-        </Link>
-      </div>
+      <DashboardMetricCard
+        actionLabel="Konfirmasi Piket"
+        actionTo="/dashboard/duties-mine"
+        badge={nextUserDuty ? 'Aktif' : undefined}
+        eyebrow="Kalender Kos"
+        icon={CalendarCheck}
+        note={nextUserDuty?.task}
+        title="Jadwal Piket Galon"
+        tone="blue"
+        value={loading ? '...' : nextUserDuty?.date ? new Date(nextUserDuty.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Tidak Ada'}
+      />
 
-      <div className="card-container flex flex-col justify-between">
-        <div>
-          <div className="flex justify-between items-start mb-4">
-            <div className="w-10 h-10 rounded-full bg-[#ECFDF5] flex items-center justify-center">
-              <Activity className="w-5 h-5 text-[#10B981]" />
-            </div>
-          </div>
-          <h3 className="text-text-secondary text-sm font-medium">Laporan Kas Bersama</h3>
-          <p className="text-2xl font-bold mt-1 text-gray-900">
-            {loading ? '...' : formatCurrency(cashBalance)}
-          </p>
-        </div>
-        <Link to="/dashboard/cash-reports" className="text-sm font-semibold text-[#10B981] hover:text-[#047857] mt-4 flex items-center">
-          Lihat Kas Kos <ArrowRight className="w-4 h-4 ml-1" />
-        </Link>
-      </div>
+      <DashboardMetricCard
+        actionLabel="Lihat Kas Kos"
+        actionTo="/dashboard/cash-reports"
+        eyebrow="Transparansi Kas"
+        icon={Activity}
+        title="Laporan Kas Bersama"
+        tone="emerald"
+        value={loading ? '...' : formatCurrency(cashBalance)}
+      />
 
-      <div className="md:col-span-3">
+      <div className="lg:col-span-3">
         <UserActivityChart />
       </div>
     </div>
@@ -558,24 +669,14 @@ export default function Dashboard() {
     <div className="space-y-6">
       <div className="flex justify-between items-end">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Dashboard</h1>
+          <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center">
+            <LayoutDashboard className="mr-3 text-primary w-8 h-8" />
+            Dashboard
+          </h1>
           <p className="text-text-secondary mt-1">Ringkasan operasional dan keuangan kos hari ini.</p>
         </div>
       </div>
       
-      {/* Greeting Card with Soft Gradient */}
-      <div className="rounded-[20px] bg-gradient-to-br from-[#ECFDF5] to-white border border-[#D1FAE5] p-6 sm:p-8 shadow-sm">
-        <h2 className="text-2xl font-bold text-[#047857] mb-2">
-          Selamat datang, {profile?.full_name || 'Pengguna'}!
-        </h2>
-        <p className="text-gray-600">
-          Anda login sebagai <span className="font-semibold text-[#10B981] capitalize">{activeRole || 'user'}</span>. 
-          {activeRole === 'super admin' && ' Pantau dan atur seluruh aktivitas sistem dari sini.'}
-          {activeRole === 'admin' && ' Kelola operasional kos, iuran, dan kebutuhan galon.'}
-          {activeRole === 'user' && ' Jangan lupa cek tagihan dan jadwal piket Anda.'}
-        </p>
-      </div>
-
       <QuickActions onOpenTransaction={() => setIsTransactionModalOpen(true)} />
 
       {/* Render Specific Dashboard Cards Based on Role */}
@@ -588,6 +689,54 @@ export default function Dashboard() {
         onClose={() => setIsTransactionModalOpen(false)} 
         onSuccess={fetchDashboardData}
       />
+
+      {isWelcomeModalOpen && createPortal(
+        <div
+          className="fixed inset-0 z-[120] flex items-center justify-center bg-gray-950/50 p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="welcome-modal-title"
+          onMouseDown={closeWelcomeModal}
+        >
+          <div
+            className="w-full max-w-lg overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-2xl shadow-gray-900/20"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <div className="relative bg-gradient-to-br from-[#ECFDF5] via-white to-white p-6 sm:p-8">
+              <button
+                type="button"
+                onClick={closeWelcomeModal}
+                className="absolute right-4 top-4 inline-flex h-9 w-9 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-white hover:text-gray-700"
+                aria-label="Tutup dialog selamat datang"
+              >
+                <X className="h-5 w-5" />
+              </button>
+
+              <div className="mb-5 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
+                <Activity className="h-6 w-6" />
+              </div>
+
+              <h2 id="welcome-modal-title" className="pr-8 text-2xl font-bold tracking-tight text-gray-950">
+                Selamat datang, {profile?.full_name || 'Pengguna'}!
+              </h2>
+              <p className="mt-3 text-sm leading-6 text-gray-600">
+                Anda login sebagai <span className="font-semibold text-emerald-700">{getRoleLabel()}</span>. {getWelcomeMessage()}
+              </p>
+            </div>
+
+            <div className="flex justify-end border-t border-gray-100 bg-white px-6 py-4">
+              <button
+                type="button"
+                onClick={closeWelcomeModal}
+                className="btn-primary min-w-28"
+              >
+                Mulai
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   )
 }

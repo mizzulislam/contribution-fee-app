@@ -39,6 +39,7 @@ export default function Login() {
       }
 
       if (userFound) {
+        sessionStorage.setItem('soematra_show_welcome_modal', '1')
         navigate('/dashboard')
       } else {
         throw new Error('Email atau password salah. (Atau koneksi Spreadsheet belum terhubung)')

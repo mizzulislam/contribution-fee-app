@@ -7,8 +7,9 @@ import { mergeAccounts } from '@/lib/chartOfAccounts'
 type TimeRange = 'harian' | 'mingguan' | 'bulanan'
 
 interface JournalLine {
-  accountNumber: string
-  amount: number
+  accountNumber?: string | number
+  account_number?: string | number
+  amount?: string | number
 }
 
 interface JournalEntryRow {
@@ -31,14 +32,36 @@ const DAYS = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab']
 
 function parseLines(lines: string | JournalLine[] | undefined): JournalLine[] {
   if (!lines) return []
-  if (Array.isArray(lines)) return lines
+  if (Array.isArray(lines)) return normalizeLines(lines)
 
   try {
     const parsed = JSON.parse(lines)
-    return Array.isArray(parsed) ? parsed : []
+    return Array.isArray(parsed) ? normalizeLines(parsed) : []
   } catch {
     return []
   }
+}
+
+function normalizeLines(lines: JournalLine[]): JournalLine[] {
+  return lines
+    .map(line => ({
+      accountNumber: line.accountNumber ?? line.account_number,
+      amount: parseAmount(line.amount),
+    }))
+    .filter(line => line.accountNumber !== undefined && line.accountNumber !== null && line.accountNumber !== '')
+}
+
+function parseAmount(value: string | number | undefined) {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : 0
+  if (!value) return 0
+
+  const normalized = String(value)
+    .replace(/[^\d,.-]/g, '')
+    .replace(/\.(?=\d{3}(\D|$))/g, '')
+    .replace(',', '.')
+
+  const amount = Number(normalized)
+  return Number.isFinite(amount) ? amount : 0
 }
 
 function startOfDay(date: Date) {
@@ -101,28 +124,40 @@ export function FinancialChart() {
   const [entries, setEntries] = useState<JournalEntryRow[]>([])
   const [accountTypes, setAccountTypes] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     let isMounted = true
 
     async function fetchChartData() {
       setLoading(true)
-      const [journalRes, masterRes] = await Promise.all([
-        spreadsheetApi.get('JournalEntries'),
-        spreadsheetApi.get('MasterData'),
-      ])
+      setError(null)
 
-      if (!isMounted) return
+      try {
+        const [journalRes, masterRes] = await Promise.all([
+          spreadsheetApi.get('JournalEntries'),
+          spreadsheetApi.get('MasterData'),
+        ])
 
-      const accounts = mergeAccounts(Array.isArray(masterRes.data) ? masterRes.data : [])
-      setAccountTypes(
-        accounts.reduce<Record<string, string>>((map, account) => {
-          map[String(account.account_number)] = account.account_type
-          return map
-        }, {})
-      )
-      setEntries(Array.isArray(journalRes.data) ? journalRes.data : [])
-      setLoading(false)
+        if (!isMounted) return
+
+        const accounts = mergeAccounts(Array.isArray(masterRes.data) ? masterRes.data : [])
+        setAccountTypes(
+          accounts.reduce<Record<string, string>>((map, account) => {
+            map[String(account.account_number)] = account.account_type
+            return map
+          }, {})
+        )
+        setEntries(Array.isArray(journalRes.data) ? journalRes.data : [])
+      } catch (err) {
+        console.error('Financial chart fetch error:', err)
+        if (isMounted) {
+          setEntries([])
+          setError('Data arus kas belum dapat dimuat.')
+        }
+      } finally {
+        if (isMounted) setLoading(false)
+      }
     }
 
     fetchChartData()
@@ -143,13 +178,13 @@ export function FinancialChart() {
 
       parseLines(entry.credits).forEach(line => {
         if (accountTypes[String(line.accountNumber)] === 'Pendapatan') {
-          bucket.pemasukan += Number(line.amount) || 0
+          bucket.pemasukan += parseAmount(line.amount)
         }
       })
 
       parseLines(entry.debits).forEach(line => {
         if (accountTypes[String(line.accountNumber)] === 'Beban') {
-          bucket.pengeluaran += Number(line.amount) || 0
+          bucket.pengeluaran += parseAmount(line.amount)
         }
       })
     })
@@ -192,14 +227,18 @@ export function FinancialChart() {
         </div>
       </div>
 
-      <div className="flex-1 w-full min-h-[250px]">
+      <div className="w-full h-[280px] sm:h-[300px]">
         {loading ? (
-          <div className="flex h-full min-h-[250px] items-center justify-center text-emerald-700">
+          <div className="flex h-full items-center justify-center text-emerald-700">
             <Loader2 className="mr-2 h-5 w-5 animate-spin" />
             Memuat data arus kas...
           </div>
+        ) : error ? (
+          <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-rose-200 bg-rose-50/40 px-4 text-center text-sm text-rose-700">
+            {error}
+          </div>
         ) : !hasData ? (
-          <div className="flex h-full min-h-[250px] items-center justify-center rounded-xl border border-dashed border-gray-200 text-sm text-gray-500">
+          <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-gray-200 text-sm text-gray-500">
             Belum ada data jurnal pada periode ini.
           </div>
         ) : (

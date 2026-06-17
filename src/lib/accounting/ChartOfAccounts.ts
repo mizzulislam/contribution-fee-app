@@ -62,6 +62,7 @@ export class ChartOfAccounts {
     this.addAccount('1103', 'Kas di Bank Mandiri', 'Assets')
     this.addAccount('1104', 'Piutang Penghuni', 'Assets')
     this.addAccount('1501', 'Peralatan Kos (Aset Tetap)', 'Assets')
+    this.addAccount('1502', 'Akumulasi Penyusutan Peralatan Kos', 'Assets')
     
     // Liabilities (Kewajiban) - 2xxx
     this.addAccount('2101', 'Hutang Usaha', 'Liabilities')
@@ -69,7 +70,8 @@ export class ChartOfAccounts {
     
     // Equity (Modal) - 3xxx
     this.addAccount('3101', 'Modal Pemilik', 'Equity')
-    this.addAccount('3201', 'Prive Pemilik', 'Equity')
+    this.addAccount('3201', 'Laba Ditahan', 'Equity')
+    this.addAccount('3301', 'Prive Pemilik', 'Equity')
     this.addAccount('3500', 'Ikhtisar Laba Rugi', 'Equity') // Income Summary
     
     // Revenues (Pendapatan) - 4xxx
@@ -84,5 +86,6 @@ export class ChartOfAccounts {
     this.addAccount('5104', 'Beban Gaji Karyawan', 'Expenses')
     this.addAccount('5105', 'Beban Administrasi Bank', 'Expenses')
     this.addAccount('5106', 'Beban Air Galon & Konsumsi', 'Expenses')
+    this.addAccount('5107', 'Beban Penyusutan Peralatan Kos', 'Expenses')
   }
 }

@@ -268,7 +268,10 @@ export default function ContributionsList() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Manajemen Iuran</h1>
+          <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center">
+            <FileText className="mr-3 text-primary w-8 h-8" />
+            Manajemen Iuran
+          </h1>
           <p className="text-text-secondary mt-1">Kelola data tagihan dan iuran bulanan.</p>
         </div>
         <button onClick={openAddModal} className="btn-primary flex items-center">
