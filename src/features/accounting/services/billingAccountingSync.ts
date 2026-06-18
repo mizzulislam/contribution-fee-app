@@ -17,6 +17,10 @@ interface BillRow {
   contributions?: string | { title?: string; contribution_types?: { name?: string } }
   title?: string
   description?: string
+  payment_source?: string
+  accounting_journal_id?: string | number
+  paid_at?: string
+  updated_at?: string
 }
 
 interface JournalLine {
