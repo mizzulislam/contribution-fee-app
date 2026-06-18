@@ -207,6 +207,29 @@ export const spreadsheetApi = {
       console.error('Spreadsheet RESTORE Error:', error)
       return { success: false, error }
     }
+  },
+
+  /**
+   * Mengirim aksi khusus (custom action) ke backend Google Apps Script
+   */
+  async sendCustomAction(action: string, payload: Record<string, any>) {
+    if (SPREADSHEET_API_URL.includes('YOUR_SCRIPT_ID')) {
+      return { success: false, error: new Error('Spreadsheet API belum dikonfigurasi.') }
+    }
+    try {
+      const response = await fetchWithTimeout(SPREADSHEET_API_URL, {
+        method: 'POST',
+        headers: buildHeaders(),
+        body: JSON.stringify(withAuthContext({ action, ...payload })),
+        credentials: 'omit'
+      })
+      const result = await response.json()
+      if (result.status !== 'success') throw new Error(result.message || 'Custom action failed')
+      return { success: true, data: result, error: null }
+    } catch (error) {
+      console.error(`Spreadsheet Action ${action} Error:`, error)
+      return { success: false, error }
+    }
   }
 }
 

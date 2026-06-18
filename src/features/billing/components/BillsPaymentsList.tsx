@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { CheckCircle2, Clock, XCircle, FileText, Search, Bell, Plus, X, Save, Check, Pencil, Trash2, Edit, Loader2 } from 'lucide-react'
 import { TableLoader } from '@/components/ui/TableLoader'
@@ -15,6 +16,32 @@ interface BillsPaymentsProps {
 const defaultPeriod: PeriodFilter = { preset: 'all' }
 
 export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsProps) {
+  const [sendingStatus, setSendingStatus] = useState<Record<string, boolean>>({})
+  const [whatsappSettings, setWhatsappSettings] = useState({
+    provider: 'manual',
+    token: '',
+    sender: ''
+  })
+
+  useEffect(() => {
+    async function loadWhatsappSettings() {
+      try {
+        const { data } = await spreadsheetApi.get('NotificationSettings')
+        if (data && data.length > 0) {
+          const remoteSettings = data[0]
+          setWhatsappSettings({
+            provider: remoteSettings.whatsappProvider || 'manual',
+            token: remoteSettings.whatsappToken || '',
+            sender: remoteSettings.whatsappSender || ''
+          })
+        }
+      } catch (err) {
+        console.error('Failed to load WhatsApp settings:', err)
+      }
+    }
+    loadWhatsappSettings()
+  }, [])
+
   const {
     bills,
     setBills,
@@ -255,7 +282,7 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
                       <div className="flex justify-center gap-1.5">
                         {bill.status === 'unpaid' && (
                           <button 
-                            onClick={() => {
+                            onClick={async () => {
                               const resident = users.find(u => u.full_name === bill.resident_name || u.nickname === bill.resident_name)
                               const phone = resident?.phone_number ? String(resident.phone_number).replace(/[^0-9]/g, '') : ''
                               let formattedPhone = phone
@@ -263,24 +290,51 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
                                 formattedPhone = '62' + phone.slice(1)
                               }
                               
-                              if (formattedPhone) {
-                                const nickname = resident?.nickname || bill.resident_name.split(' ')[0]
-                                const amountStr = new Intl.NumberFormat('id-ID').format(bill.amount)
-                                const dueDateStr = new Date(bill.due_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
-                                const titleStr = getContributionData(bill.contributions).title || 'Iuran'
-                                
-                                const msg = `Halo bang ${nickname}! 👋\n\nSekadar ngingetin nih, tagihan ${titleStr} sebesar *Rp ${amountStr}* udah mau jatuh tempo pada ${dueDateStr}.\n\nBoleh minta tolong diselesaikan pembayarannya dan upload buktinya lewat Portal Penghuni ya bang. Kalo ada kendala, kabarin aja!\n\nMakasih banyak kerjasamanya, sehat selalu! 🙏\n— Bendahara Soematra Kost`
-                                
-                                window.open(`https://wa.me/${formattedPhone}?text=${encodeURIComponent(msg)}`, '_blank')
-                              } else {
+                              if (!formattedPhone) {
                                 setToastMessage(`Nomor telepon ${bill.resident_name} tidak ditemukan`)
-                                setTimeout(() => setToastMessage(''), 3000)
+                                  setTimeout(() => setToastMessage(''), 3000)
+                                return
+                              }
+
+                              const nickname = resident?.nickname || bill.resident_name.split(' ')[0]
+                              const amountStr = new Intl.NumberFormat('id-ID').format(bill.amount)
+                              const dueDateStr = new Date(bill.due_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+                              const titleStr = getContributionData(bill.contributions).title || 'Iuran'
+                              
+                              const msg = `Halo bang ${nickname}! 👋\n\nSekadar ngingetin nih, tagihan ${titleStr} sebesar *Rp ${amountStr}* udah mau jatuh tempo pada ${dueDateStr}.\n\nBoleh minta tolong diselesaikan pembayarannya dan upload buktinya lewat Portal Penghuni ya bang. Kalo ada kendala, kabarin aja!\n\nMakasih banyak kerjasamanya, sehat selalu! 🙏\n— Bendahara Soematra Kost`
+                              
+                              if (whatsappSettings.provider === 'fonnte' && whatsappSettings.token) {
+                                setSendingStatus(prev => ({ ...prev, [bill.id]: true }))
+                                try {
+                                  const response = await (spreadsheetApi as any).sendCustomAction('send_whatsapp', {
+                                    target: formattedPhone,
+                                    message: msg
+                                  })
+                                  if (response.success) {
+                                    setToastMessage(`Pesan otomatis berhasil dikirim ke ${nickname}!`)
+                                  } else {
+                                    throw new Error(response.error?.message || 'Gagal mengirim pesan')
+                                  }
+                                } catch (err: any) {
+                                  console.error(err)
+                                  setToastMessage(`Gagal mengirim: ${err.message || 'Error tidak diketahui'}`)
+                                } finally {
+                                  setSendingStatus(prev => ({ ...prev, [bill.id]: false }))
+                                  setTimeout(() => setToastMessage(''), 4000)
+                                }
+                              } else {
+                                window.open(`https://wa.me/${formattedPhone}?text=${encodeURIComponent(msg)}`, '_blank')
                               }
                             }}
-                            title="Ingatkan"
-                            className="p-1.5 text-orange-600 hover:text-orange-700 hover:bg-orange-50 rounded-lg transition-colors border border-transparent hover:border-orange-200"
+                            disabled={sendingStatus[bill.id]}
+                            title={sendingStatus[bill.id] ? "Mengirim..." : "Ingatkan"}
+                            className="p-1.5 text-orange-600 hover:text-orange-700 hover:bg-orange-50 rounded-lg transition-colors border border-transparent hover:border-orange-200 disabled:opacity-50"
                           >
-                            <Bell className="w-4 h-4" />
+                            {sendingStatus[bill.id] ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Bell className="w-4 h-4" />
+                            )}
                           </button>
                         )}
                         <button 

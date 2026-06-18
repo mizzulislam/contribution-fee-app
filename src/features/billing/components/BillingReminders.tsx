@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { BellRing, Send, CheckCircle2, X, Check } from 'lucide-react'
+import { BellRing, Send, CheckCircle2, X, Check, Loader2 } from 'lucide-react'
 import { spreadsheetApi } from '@/services/sheets-client'
 import { isDateInPeriod, type PeriodFilter } from '@/features/accounting/calculations/period'
 
@@ -71,13 +71,20 @@ export default function Reminders({ period = defaultPeriod }: RemindersProps) {
   
   const [isQueueOpen, setIsQueueOpen] = useState(false)
   const [sentStatus, setSentStatus] = useState<Record<string, boolean>>({})
+  const [sendingStatus, setSendingStatus] = useState<Record<string, boolean>>({})
+  const [whatsappSettings, setWhatsappSettings] = useState({
+    provider: 'manual',
+    token: '',
+    sender: ''
+  })
 
   async function fetchData() {
     setLoadingData(true)
     try {
-      const [usersRes, billsRes] = await Promise.all([
+      const [usersRes, billsRes, settingsRes] = await Promise.all([
         spreadsheetApi.get('Users'),
-        spreadsheetApi.get('Bills')
+        spreadsheetApi.get('Bills'),
+        spreadsheetApi.get('NotificationSettings')
       ])
 
       let usersList: UserRow[] = []
@@ -86,6 +93,15 @@ export default function Reminders({ period = defaultPeriod }: RemindersProps) {
       if (usersRes.data && Array.isArray(usersRes.data)) {
         usersList = usersRes.data.filter(u => (!u.status || u.status === 'Aktif') && String(u.role).includes('user'))
         setTotalPenghuni(usersList.length)
+      }
+
+      if (settingsRes.data && Array.isArray(settingsRes.data) && settingsRes.data.length > 0) {
+        const remoteSettings = settingsRes.data[0]
+        setWhatsappSettings({
+          provider: remoteSettings.whatsappProvider || 'manual',
+          token: remoteSettings.whatsappToken || '',
+          sender: remoteSettings.whatsappSender || ''
+        })
       }
 
       if (billsRes.data && Array.isArray(billsRes.data)) {
@@ -157,20 +173,44 @@ export default function Reminders({ period = defaultPeriod }: RemindersProps) {
     return `Halo bang ${nickname}! 👋\n\nSekadar ngingetin nih, ada tagihan kos untuk bulan ini yang belum lunas:\n\n${billsStr}\nTotal Tagihan: *Rp ${totalStr}*\n\nBoleh minta tolong diselesaikan pembayarannya dan upload buktinya lewat Portal Penghuni ya bang. Kalo ada kendala atau pertanyaan, kabarin aja!\n\nMakasih banyak kerjasamanya, sehat selalu! 🙏\n— Bendahara Soematra Kost`
   }
 
-  const sendIndividualWA = (res: UnpaidResident) => {
+  const sendIndividualWA = async (res: UnpaidResident) => {
     const phone = res.phoneNumber.replace(/[^0-9]/g, '')
     let formattedPhone = phone
     if (phone.startsWith('0')) {
       formattedPhone = '62' + phone.slice(1)
     }
     
-    if (formattedPhone) {
-      const msg = formatWAMessage(res)
-      window.open(`https://wa.me/${formattedPhone}?text=${encodeURIComponent(msg)}`, '_blank')
-      setSentStatus(prev => ({ ...prev, [res.residentName]: true }))
-    } else {
+    if (!formattedPhone) {
       setToastMessage(`Nomor telepon ${res.residentName} tidak ditemukan atau kosong`)
       setTimeout(() => setToastMessage(''), 3000)
+      return
+    }
+
+    const msg = formatWAMessage(res)
+
+    if (whatsappSettings.provider === 'fonnte' && whatsappSettings.token) {
+      setSendingStatus(prev => ({ ...prev, [res.residentName]: true }))
+      try {
+        const response = await (spreadsheetApi as any).sendCustomAction('send_whatsapp', {
+          target: formattedPhone,
+          message: msg
+        })
+        if (response.success) {
+          setSentStatus(prev => ({ ...prev, [res.residentName]: true }))
+          setToastMessage(`Pesan otomatis berhasil dikirim ke ${res.nickname}!`)
+        } else {
+          throw new Error(response.error?.message || 'Gagal mengirim pesan')
+        }
+      } catch (err: any) {
+        console.error(err)
+        setToastMessage(`Gagal mengirim: ${err.message || 'Error tidak diketahui'}`)
+      } finally {
+        setSendingStatus(prev => ({ ...prev, [res.residentName]: false }))
+        setTimeout(() => setToastMessage(''), 4000)
+      }
+    } else {
+      window.open(`https://wa.me/${formattedPhone}?text=${encodeURIComponent(msg)}`, '_blank')
+      setSentStatus(prev => ({ ...prev, [res.residentName]: true }))
     }
   }
 
@@ -282,9 +322,18 @@ export default function Reminders({ period = defaultPeriod }: RemindersProps) {
                       ) : (
                         <button
                           onClick={() => sendIndividualWA(res)}
-                          className="btn-primary py-1.5 px-3 text-xs flex items-center justify-center font-semibold"
+                          disabled={sendingStatus[res.residentName]}
+                          className="btn-primary py-1.5 px-3 text-xs flex items-center justify-center font-semibold disabled:opacity-50"
                         >
-                          <Send className="w-3.5 h-3.5 mr-1.5" /> Kirim WA
+                          {sendingStatus[res.residentName] ? (
+                            <>
+                              <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Mengirim...
+                            </>
+                          ) : (
+                            <>
+                              <Send className="w-3.5 h-3.5 mr-1.5" /> Kirim WA
+                            </>
+                          )}
                         </button>
                       )}
                     </div>

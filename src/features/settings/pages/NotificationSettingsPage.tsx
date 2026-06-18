@@ -15,7 +15,10 @@ export default function NotificationSettings() {
     gallonReminderDays: 5,
     gallonResidentCount: 10,
     gallonConsumptionRate: 2,
-    gallonStock: 2
+    gallonStock: 2,
+    whatsappProvider: 'manual',
+    whatsappToken: '',
+    whatsappSender: ''
   })
   
   const [isSaving, setIsSaving] = useState(false)
@@ -39,6 +42,9 @@ export default function NotificationSettings() {
           gallonResidentCount: remoteSettings.gallonResidentCount ? parseInt(remoteSettings.gallonResidentCount) : 10,
           gallonConsumptionRate: remoteSettings.gallonConsumptionRate ? parseFloat(remoteSettings.gallonConsumptionRate) : 2,
           gallonStock: remoteSettings.gallonStock ? parseInt(remoteSettings.gallonStock) : 2,
+          whatsappProvider: remoteSettings.whatsappProvider || 'manual',
+          whatsappToken: remoteSettings.whatsappToken || '',
+          whatsappSender: remoteSettings.whatsappSender || ''
         })
       }
     } catch (err) {
@@ -235,6 +241,69 @@ export default function NotificationSettings() {
                 )}
               </div>
             )}
+          </div>
+
+          {/* Integrasi WhatsApp Gateway Section */}
+          <div className="mt-8 border-t border-gray-200 pt-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-6 border-b pb-4">Integrasi WhatsApp Gateway</h2>
+            
+            <div className="space-y-6">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                  Provider WhatsApp
+                </label>
+                <Select
+                  value={settings.whatsappProvider}
+                  onChange={(val) => setSettings({ ...settings, whatsappProvider: val })}
+                  options={[
+                    { value: 'manual', label: 'Manual (wa.me Redirect)' },
+                    { value: 'fonnte', label: 'Fonnte (Otomatis)' }
+                  ]}
+                />
+                <p className="text-xs text-text-secondary mt-1">
+                  Pilih 'Fonnte' untuk pengiriman otomatis di latar belakang, atau 'Manual' untuk pengalihan tautan browser.
+                </p>
+              </div>
+
+              {settings.whatsappProvider === 'fonnte' && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 p-5 bg-gray-50 border border-gray-100 rounded-xl animate-in fade-in slide-in-from-top-2">
+                  <div className="sm:col-span-2">
+                    <p className="text-xs text-orange-600 font-semibold bg-orange-50 border border-orange-100 px-3 py-2 rounded-lg">
+                      ⚠️ Catatan: Hubungkan perangkat Anda di Fonnte terlebih dahulu dan ambil token dari halaman dashboard Fonnte.
+                    </p>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      API Token Fonnte
+                    </label>
+                    <input
+                      type="password"
+                      placeholder="Masukkan token Fonnte Anda"
+                      value={settings.whatsappToken}
+                      onChange={(e) => setSettings({ ...settings, whatsappToken: e.target.value })}
+                      className="form-input text-sm w-full"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      Nomor Pengirim / Device ID (Opsional)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Contoh: 628123456789"
+                      value={settings.whatsappSender}
+                      onChange={(e) => setSettings({ ...settings, whatsappSender: e.target.value })}
+                      className="form-input text-sm w-full"
+                    />
+                    <p className="text-[10px] text-text-secondary mt-1">
+                      Kosongkan jika ingin menggunakan device default di Fonnte.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

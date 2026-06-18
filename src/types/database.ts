@@ -9,6 +9,7 @@ export interface User {
   status: 'Aktif' | 'Nonaktif' | string;
   nickname?: string;
   password?: string;
+  phone_number?: string | number;
 }
 
 export interface Bill {

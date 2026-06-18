@@ -300,9 +300,21 @@ function doPost(e) {
       }
       validateWritePayload(sheetName, action, rowData, userEmail, userRole);
       
-      const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-      const newRow = [];
+      let headers = sheet.getRange(1, 1, 1, Math.max(1, sheet.getLastColumn())).getValues()[0];
       
+      // Auto-append missing headers
+      let headersUpdated = false;
+      const rowKeys = Object.keys(rowData);
+      for (let k = 0; k < rowKeys.length; k++) {
+        const key = rowKeys[k];
+        if (headers.indexOf(key) === -1) {
+          sheet.getRange(1, headers.length + 1).setValue(key);
+          headers.push(key);
+          headersUpdated = true;
+        }
+      }
+      
+      const newRow = [];
       for (let i = 0; i < headers.length; i++) {
         const key = headers[i];
         newRow.push(rowData[key] !== undefined ? rowData[key] : "");
@@ -328,9 +340,21 @@ function doPost(e) {
       
       const range = sheet.getDataRange();
       const values = range.getValues();
-      const headers = values[0];
-      const idColIdx = headers.indexOf("id");
+      let headers = values[0];
       
+      // Auto-append missing headers
+      let headersUpdated = false;
+      const rowKeys = Object.keys(rowData);
+      for (let k = 0; k < rowKeys.length; k++) {
+        const key = rowKeys[k];
+        if (headers.indexOf(key) === -1) {
+          sheet.getRange(1, headers.length + 1).setValue(key);
+          headers.push(key);
+          headersUpdated = true;
+        }
+      }
+      
+      const idColIdx = headers.indexOf("id");
       if (idColIdx === -1) {
         throw new Error("Kolom 'id' tidak ditemukan di sheet '" + sheetName + "'.");
       }
@@ -439,6 +463,86 @@ function doPost(e) {
       sheet.getRange(2, 1, rowsToWrite.length, headers.length).setValues(rowsToWrite);
       logToAudit(userEmail, userRole, action, sheetName, { rowCount: restoreDataList.length });
       return responseJson({ status: "success", message: "Restorasi data sheet berhasil." });
+    }
+
+    // ==========================================
+    // ACTION: SEND_WHATSAPP
+    // ==========================================
+    if (action === "send_whatsapp") {
+      const target = String(body.target || '').trim();
+      const message = String(body.message || '').trim();
+      
+      if (!target || !message) {
+        throw new Error("Nomor tujuan (target) dan pesan (message) harus diisi.");
+      }
+      
+      // Ambil konfigurasi WhatsApp dari NotificationSettings
+      let provider = "manual";
+      let token = "";
+      let sender = "";
+      
+      try {
+        const settingsSheet = ss.getSheetByName("NotificationSettings");
+        if (settingsSheet) {
+          const settingsValues = settingsSheet.getDataRange().getValues();
+          if (settingsValues.length > 1) {
+            const settingsHeaders = settingsValues[0];
+            const provIdx = settingsHeaders.indexOf("whatsappProvider");
+            const tokIdx = settingsHeaders.indexOf("whatsappToken");
+            const sendIdx = settingsHeaders.indexOf("whatsappSender");
+            
+            if (provIdx !== -1) provider = String(settingsValues[1][provIdx]);
+            if (tokIdx !== -1) token = String(settingsValues[1][tokIdx]);
+            if (sendIdx !== -1) sender = String(settingsValues[1][sendIdx]);
+          }
+        }
+      } catch (err) {
+        console.error("Gagal membaca NotificationSettings:", err.message);
+      }
+      
+      if (provider === "fonnte") {
+        if (!token) {
+          throw new Error("API Token Fonnte belum dikonfigurasi di Pengaturan Notifikasi.");
+        }
+        
+        const payload = {
+          target: target,
+          message: message
+        };
+        if (sender) {
+          payload.sender = sender;
+        }
+        
+        const options = {
+          method: "post",
+          headers: {
+            "Authorization": token
+          },
+          payload: payload,
+          muteHttpExceptions: true
+        };
+        
+        const response = UrlFetchApp.fetch("https://api.fonnte.com/send", options);
+        const responseCode = response.getResponseCode();
+        const responseText = response.getContentText();
+        
+        logToAudit(userEmail, userRole, "send_whatsapp", "Fonnte", { target: target, code: responseCode, response: responseText });
+        
+        if (responseCode >= 200 && responseCode < 300) {
+          const resJson = JSON.parse(responseText);
+          if (resJson.status === true || resJson.status === "true") {
+            return responseJson({ status: "success", message: "Pesan WhatsApp berhasil dikirim via Fonnte." });
+          } else {
+            throw new Error("Fonnte API Error: " + (resJson.reason || responseText));
+          }
+        } else {
+          throw new Error("Gagal mengirim pesan via Fonnte (HTTP " + responseCode + "): " + responseText);
+        }
+      } else if (provider === "manual") {
+        return responseJson({ status: "success", provider: "manual", message: "Menggunakan mode manual. Silakan gunakan wa.me." });
+      } else {
+        throw new Error("Provider WhatsApp '" + provider + "' tidak didukung.");
+      }
     }
     
     throw new Error("Aksi '" + action + "' tidak dikenali.");
