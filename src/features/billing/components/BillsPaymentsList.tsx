@@ -125,13 +125,13 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'paid':
-        return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 border border-emerald-200"><CheckCircle2 className="w-3.5 h-3.5" /> Lunas</span>
+        return <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-emerald-200 bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-700"><CheckCircle2 className="h-3.5 w-3.5" /> Lunas</span>
       case 'unpaid':
-        return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700 border border-amber-200"><XCircle className="w-3.5 h-3.5" /> Belum Bayar</span>
+        return <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-amber-200 bg-amber-100 px-3 py-1 text-xs font-medium text-amber-700"><XCircle className="h-3.5 w-3.5" /> Belum Bayar</span>
       case 'pending':
-        return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 border border-blue-200"><Clock className="w-3.5 h-3.5" /> Menunggu Konfirmasi</span>
+        return <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-blue-200 bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700"><Clock className="h-3.5 w-3.5" /> Menunggu Konfirmasi</span>
       default:
-        return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200"><Clock className="w-3.5 h-3.5" /> {status}</span>
+        return <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-gray-200 bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700"><Clock className="h-3.5 w-3.5" /> {status}</span>
     }
   }
 
@@ -547,55 +547,62 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
       {/* Detail Modal */}
       {isDetailModalOpen && selectedBill && createPortal(
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/60 p-3 backdrop-blur-sm sm:p-4"
           onMouseDown={() => setIsDetailModalOpen(false)}
         >
           <div
-            className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden"
+            className="max-h-[calc(100dvh-1.5rem)] w-full max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-2xl bg-white shadow-xl sm:max-w-md"
             onMouseDown={(event) => event.stopPropagation()}
           >
-            <div className="flex justify-between items-center p-6 border-b border-gray-100 bg-gray-50/50">
-              <h2 className="text-xl font-bold text-gray-900">Rincian Tagihan</h2>
-              <button onClick={() => setIsDetailModalOpen(false)} className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-200">
-                <X className="w-5 h-5" />
+            <div className="flex items-center justify-between border-b border-gray-100 bg-gray-50/50 px-4 py-4 sm:p-6">
+              <h2 className="text-lg font-bold text-gray-900 sm:text-xl">Rincian Tagihan</h2>
+              <button onClick={() => setIsDetailModalOpen(false)} className="rounded-full p-1.5 text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-600">
+                <X className="h-4 w-4 sm:h-5 sm:w-5" />
               </button>
             </div>
-            <div className="p-6 space-y-5">
-              <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-500">Penghuni</span>
-                  <span className="font-semibold text-gray-900">{selectedBill.resident_name} (Kamar {selectedBill.room_number})</span>
+            <div className="max-h-[calc(100dvh-6.5rem)] space-y-4 overflow-y-auto p-4 sm:space-y-5 sm:p-6">
+              <div className="space-y-2.5 rounded-xl border border-gray-100 bg-gray-50 p-3.5 sm:space-y-3 sm:p-4">
+                <div className="grid grid-cols-[104px_minmax(0,1fr)] items-start gap-3 sm:grid-cols-[120px_minmax(0,1fr)]">
+                  <span className="text-sm font-medium leading-snug text-gray-500">Penghuni</span>
+                  <span className="text-right text-sm font-semibold leading-snug text-gray-900">{selectedBill.resident_name}</span>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-500">Tagihan</span>
-                  <span className="font-medium text-gray-900">{getContributionData(selectedBill.contributions).title}</span>
+                <div className="grid grid-cols-[104px_minmax(0,1fr)] items-center gap-3 sm:grid-cols-[120px_minmax(0,1fr)]">
+                  <span className="text-sm font-medium leading-snug text-gray-500">Kamar</span>
+                  <span className="text-right text-sm font-semibold leading-snug text-gray-900">Kamar {selectedBill.room_number}</span>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-500">Jatuh Tempo</span>
-                  <span className="font-medium text-gray-900">{new Date(selectedBill.due_date).toLocaleDateString('id-ID')}</span>
+                <div className="grid grid-cols-[104px_minmax(0,1fr)] items-start gap-3 sm:grid-cols-[120px_minmax(0,1fr)]">
+                  <span className="text-sm font-medium leading-snug text-gray-500">Tagihan</span>
+                  <span className="text-right text-sm font-semibold leading-snug text-gray-900">{getContributionData(selectedBill.contributions).title}</span>
                 </div>
-                <div className="flex justify-between items-center pt-2 border-t border-gray-200">
-                  <span className="text-sm text-gray-500">Nominal</span>
-                  <span className="text-lg font-bold text-primary">{formatCurrency(selectedBill.amount)}</span>
+                <div className="grid grid-cols-[104px_minmax(0,1fr)] items-center gap-3 sm:grid-cols-[120px_minmax(0,1fr)]">
+                  <span className="text-sm font-medium leading-snug text-gray-500">Jatuh Tempo</span>
+                  <span className="text-right text-sm font-semibold leading-snug text-gray-900">{new Date(selectedBill.due_date).toLocaleDateString('id-ID')}</span>
+                </div>
+                <div className="grid grid-cols-[104px_minmax(0,1fr)] items-center gap-3 border-t border-gray-200 pt-3 sm:grid-cols-[120px_minmax(0,1fr)]">
+                  <span className="text-sm font-medium leading-snug text-gray-500">Nominal</span>
+                  <span className="inline-flex items-baseline justify-end gap-2 text-right text-base font-bold leading-none text-primary">
+                    <span className="text-sm font-semibold text-gray-500">Rp</span>
+                    <span>{new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(selectedBill.amount)}</span>
+                  </span>
                 </div>
               </div>
               {debtInfo.hasDebt && (
-                <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl text-sm flex items-start gap-3">
-                  <Clock className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+                <div className="flex items-start gap-3 rounded-xl border border-blue-100 bg-blue-50 p-3.5 text-sm sm:p-4">
+                  <Clock className="mt-0.5 h-4 w-4 shrink-0 text-blue-600 sm:h-5 sm:w-5" />
                   <div>
-                    <p className="font-semibold text-blue-900">Kompensasi Utang Tersedia</p>
-                    <p className="text-blue-700 mt-0.5 text-xs leading-relaxed">
+                    <p className="text-sm font-semibold text-blue-900">Kompensasi Utang Tersedia</p>
+                    <p className="mt-0.5 text-xs leading-relaxed text-blue-700">
                       Bendahara memiliki utang sebesar <span className="font-bold text-blue-900">{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(debtInfo.balance)}</span> ke {selectedBill.resident_name}.
                     </p>
                   </div>
                 </div>
               )}
-              <div className="flex justify-between items-center bg-white border border-gray-200 p-4 rounded-xl">
-                <span className="text-sm font-medium text-gray-700">Status Pembayaran</span>
-                {getStatusBadge(selectedBill.status)}
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white p-3.5 sm:p-4">
+                <span className="shrink-0 text-xs font-semibold text-gray-700 sm:text-sm">Status Pembayaran</span>
+                <div className="min-w-0">{getStatusBadge(selectedBill.status)}</div>
               </div>
               {selectedBill.status === 'unpaid' && (
-                <div className="grid grid-cols-2 gap-3 pt-2">
+                <div className="grid grid-cols-2 gap-2 pt-1 sm:gap-3 sm:pt-2">
                   {debtInfo.hasDebt && (
                     <button 
                       type="button"
@@ -606,9 +613,9 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
                           setIsDetailModalOpen(false)
                         }
                       }}
-                      className="btn-primary flex items-center justify-center bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-sm py-2.5 px-4 font-semibold rounded-xl transition-all"
+                      className="flex min-h-10 items-center justify-center rounded-xl bg-blue-600 px-3 py-2 text-xs font-semibold text-white transition-all hover:bg-blue-700 disabled:opacity-50 sm:px-4 sm:py-2.5 sm:text-sm"
                     >
-                      {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
+                      {isSubmitting ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin sm:mr-2 sm:h-4 sm:w-4" /> : <Check className="mr-1.5 h-3.5 w-3.5 sm:mr-2 sm:h-4 sm:w-4" />}
                       Potong Utang
                     </button>
                   )}
@@ -618,9 +625,9 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
                       await handleMarkAsPaid(selectedBill)
                       setIsDetailModalOpen(false)
                     }}
-                    className={`btn-primary flex items-center justify-center bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-sm py-2.5 px-4 font-semibold rounded-xl transition-all ${!debtInfo.hasDebt ? 'col-span-2' : ''}`}
+                    className={`flex min-h-10 items-center justify-center rounded-xl bg-emerald-600 px-3 py-2 text-xs font-semibold text-white transition-all hover:bg-emerald-700 disabled:opacity-50 sm:px-4 sm:py-2.5 sm:text-sm ${!debtInfo.hasDebt ? 'col-span-2' : ''}`}
                   >
-                    {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
+                    {isSubmitting ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin sm:mr-2 sm:h-4 sm:w-4" /> : <Check className="mr-1.5 h-3.5 w-3.5 sm:mr-2 sm:h-4 sm:w-4" />}
                     {debtInfo.hasDebt ? 'Lunas Manual' : 'Tandai Lunas'}
                   </button>
                 </div>

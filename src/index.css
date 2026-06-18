@@ -89,13 +89,22 @@
 @layer components {
   /* Button Styles from DESIGN.md */
   .btn-primary {
-    @apply bg-[#10B981] hover:bg-[#047857] text-white rounded-[10px] font-semibold px-4 py-2.5 transition-colors focus:ring-2 focus:ring-offset-2 focus:ring-[#10B981];
+    @apply bg-[#10B981] hover:bg-[#047857] text-white rounded-[10px] font-semibold px-3.5 py-2 text-sm leading-5 transition-colors focus:ring-2 focus:ring-offset-2 focus:ring-[#10B981] sm:px-4 sm:py-2.5 sm:text-base;
   }
   .btn-secondary {
-    @apply bg-white hover:bg-gray-50 text-[#047857] border border-[#D1FAE5] rounded-[10px] font-semibold px-4 py-2.5 transition-colors focus:ring-2 focus:ring-offset-2 focus:ring-[#10B981];
+    @apply bg-white hover:bg-gray-50 text-[#047857] border border-[#D1FAE5] rounded-[10px] font-semibold px-3.5 py-2 text-sm leading-5 transition-colors focus:ring-2 focus:ring-offset-2 focus:ring-[#10B981] sm:px-4 sm:py-2.5 sm:text-base;
   }
   .btn-danger {
-    @apply bg-[#EF4444] hover:bg-red-600 text-white rounded-[10px] font-semibold px-4 py-2.5 transition-colors focus:ring-2 focus:ring-offset-2 focus:ring-[#EF4444];
+    @apply bg-[#EF4444] hover:bg-red-600 text-white rounded-[10px] font-semibold px-3.5 py-2 text-sm leading-5 transition-colors focus:ring-2 focus:ring-offset-2 focus:ring-[#EF4444] sm:px-4 sm:py-2.5 sm:text-base;
+  }
+
+  @media (max-width: 639px) {
+    .btn-primary > svg,
+    .btn-secondary > svg,
+    .btn-danger > svg {
+      width: 1rem;
+      height: 1rem;
+    }
   }
   
   /* Input Styles from DESIGN.md */

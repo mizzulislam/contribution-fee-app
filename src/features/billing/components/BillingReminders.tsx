@@ -226,41 +226,42 @@ export default function Reminders({ period = defaultPeriod }: RemindersProps) {
         <p className="text-xs sm:text-sm text-text-secondary mt-1">Kirim peringatan otomatis tagihan jatuh tempo ke penghuni via sistem/WhatsApp.</p>
       </div>
 
-      <div className="grid w-full grid-cols-1 gap-6 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.35fr)]">
-        <div className="card-container flex h-full min-h-[420px] flex-col p-6">
-          <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-6">Status Tagihan Bulan Ini</h2>
+      <div className="grid w-full grid-cols-1 gap-4 sm:gap-6 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.35fr)]">
+        <div className="card-container flex h-full min-h-[320px] flex-col p-4 sm:min-h-[420px] sm:p-6">
+          <h2 className="mb-5 text-base font-bold text-gray-900 sm:mb-6 sm:text-xl">Status Tagihan Bulan Ini</h2>
           
           {loadingData ? (
             <div className="py-12 text-center text-gray-500 text-sm animate-pulse">Memuat data real-time...</div>
           ) : (
-            <div className="space-y-4 mb-8">
-              <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg text-sm">
-                <span className="text-gray-600">Total Penghuni</span>
-                <span className="font-bold text-gray-900">{totalPenghuni} Orang</span>
+            <div className="mb-6 space-y-3 sm:mb-8 sm:space-y-4">
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg bg-gray-50 p-3 text-xs sm:text-sm">
+                <span className="truncate whitespace-nowrap text-gray-600">Total Penghuni</span>
+                <span className="whitespace-nowrap font-bold text-gray-900">{totalPenghuni} Orang</span>
               </div>
-              <div className="flex justify-between items-center p-3 bg-success/10 rounded-lg text-sm">
-                <span className="text-success-dark">Sudah Lunas</span>
-                <span className="font-bold text-success">{sudahLunas} Orang</span>
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg bg-success/10 p-3 text-xs sm:text-sm">
+                <span className="truncate whitespace-nowrap text-success-dark">Sudah Lunas</span>
+                <span className="whitespace-nowrap font-bold text-success">{sudahLunas} Orang</span>
               </div>
-              <div className="flex justify-between items-center p-3 bg-orange-50 rounded-lg text-sm">
-                <span className="text-orange-700 font-medium">Belum Lunas / Pending</span>
-                <span className="font-bold text-orange-600">{belumLunas} Orang</span>
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg bg-orange-50 p-3 text-xs sm:text-sm">
+                <span className="truncate whitespace-nowrap font-medium text-orange-700">Belum Lunas / Pending</span>
+                <span className="whitespace-nowrap font-bold text-orange-600">{belumLunas} Orang</span>
               </div>
             </div>
           )}
 
           <button 
-            className="w-full py-3 mt-auto flex items-center justify-center font-semibold rounded-xl text-white bg-primary hover:bg-primary-dark shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="mt-auto flex min-h-11 w-full items-center justify-center rounded-xl bg-primary px-3 py-2.5 text-xs font-semibold text-white shadow-md transition-all hover:bg-primary-dark hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50 sm:px-4 sm:py-3 sm:text-base"
             onClick={handleSendReminders}
             disabled={loadingData || belumLunas === 0}
           >
-            <Send className="w-5 h-5 mr-2" /> Kirim Pengingat Massal ({belumLunas} Orang)
+            <Send className="mr-2 h-4 w-4 shrink-0 sm:h-5 sm:w-5" />
+            <span className="whitespace-nowrap">Kirim Pengingat Massal ({belumLunas} Orang)</span>
           </button>
         </div>
 
-        <div className="card-container flex h-full min-h-[420px] flex-col bg-gradient-to-br from-white to-gray-50 p-6">
-          <h2 className="text-lg font-bold text-gray-900 mb-4">Template Pesan Pengingat</h2>
-          <div className="relative flex-1 rounded-lg border border-gray-200 bg-white p-4 font-mono text-sm leading-relaxed text-gray-700 shadow-sm">
+        <div className="card-container flex h-full min-h-[340px] flex-col bg-gradient-to-br from-white to-gray-50 p-4 sm:min-h-[420px] sm:p-6">
+          <h2 className="mb-4 text-base font-bold text-gray-900 sm:text-lg">Template Pesan Pengingat</h2>
+          <div className="relative flex-1 rounded-lg border border-gray-200 bg-white p-3 font-mono text-xs leading-relaxed text-gray-700 shadow-sm sm:p-4 sm:text-sm">
             <p>Halo bang <span className="text-primary">[Nama Penghuni]</span>! 👋</p>
             <br />
             <p>Sekadar ngingetin nih, ada tagihan kos untuk bulan ini yang belum lunas:</p>
