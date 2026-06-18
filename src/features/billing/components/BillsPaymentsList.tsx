@@ -256,8 +256,26 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
                         {bill.status === 'unpaid' && (
                           <button 
                             onClick={() => {
-                              setToastMessage(`Berhasil mengirim pengingat ke ${bill.resident_name}`)
-                              setTimeout(() => setToastMessage(''), 3000)
+                              const resident = users.find(u => u.full_name === bill.resident_name || u.nickname === bill.resident_name)
+                              const phone = resident?.phone_number ? String(resident.phone_number).replace(/[^0-9]/g, '') : ''
+                              let formattedPhone = phone
+                              if (phone.startsWith('0')) {
+                                formattedPhone = '62' + phone.slice(1)
+                              }
+                              
+                              if (formattedPhone) {
+                                const nickname = resident?.nickname || bill.resident_name.split(' ')[0]
+                                const amountStr = new Intl.NumberFormat('id-ID').format(bill.amount)
+                                const dueDateStr = new Date(bill.due_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+                                const titleStr = getContributionData(bill.contributions).title || 'Iuran'
+                                
+                                const msg = `Halo bang ${nickname}! 👋\n\nSekadar ngingetin nih, tagihan ${titleStr} sebesar *Rp ${amountStr}* udah mau jatuh tempo pada ${dueDateStr}.\n\nBoleh minta tolong diselesaikan pembayarannya dan upload buktinya lewat Portal Penghuni ya bang. Kalo ada kendala, kabarin aja!\n\nMakasih banyak kerjasamanya, sehat selalu! 🙏\n— Bendahara Soematra Kost`
+                                
+                                window.open(`https://wa.me/${formattedPhone}?text=${encodeURIComponent(msg)}`, '_blank')
+                              } else {
+                                setToastMessage(`Nomor telepon ${bill.resident_name} tidak ditemukan`)
+                                setTimeout(() => setToastMessage(''), 3000)
+                              }
                             }}
                             title="Ingatkan"
                             className="p-1.5 text-orange-600 hover:text-orange-700 hover:bg-orange-50 rounded-lg transition-colors border border-transparent hover:border-orange-200"
