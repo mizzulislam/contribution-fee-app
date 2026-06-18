@@ -505,20 +505,21 @@ function doPost(e) {
           throw new Error("API Token Fonnte belum dikonfigurasi di Pengaturan Notifikasi.");
         }
         
-        const payload = {
-          target: target,
-          message: message
-        };
+        const payloadParts = [
+          "target=" + encodeURIComponent(target),
+          "message=" + encodeURIComponent(message)
+        ];
         if (sender) {
-          payload.sender = sender;
+          payloadParts.push("sender=" + encodeURIComponent(sender));
         }
         
         const options = {
           method: "post",
+          contentType: "application/x-www-form-urlencoded; charset=UTF-8",
           headers: {
             "Authorization": token
           },
-          payload: payload,
+          payload: payloadParts.join("&"),
           muteHttpExceptions: true
         };
         
