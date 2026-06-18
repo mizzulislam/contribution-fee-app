@@ -2,10 +2,10 @@ import { useState, useEffect } from 'react'
 import { billingService } from '@/features/billing/services/billing.service'
 import { spreadsheetApi } from '@/services/sheets-client'
 import { checkPeriodLock, toInputDate, isDateInPeriod, type PeriodFilter } from '@/features/accounting/calculations/period'
-import { syncBillsWithAccountingEntries } from '@/features/accounting/services/billingAccountingSync'
 import { generateSecureId } from '@/utils/id'
 import type { Bill, User, Payment } from '@/types/database'
 import { defaultEngine, syncAccountingWithSheet } from '@/features/accounting'
+import { syncBillsWithAccountingEntries } from '@/features/accounting/services/billingAccountingSync'
 
 interface AlertDialogState {
   isOpen: boolean
@@ -89,7 +89,7 @@ export function useBillsManager(period: PeriodFilter = { preset: 'all' }) {
           bills: billsRes.data,
           journalEntries: journalRes.data && Array.isArray(journalRes.data) ? journalRes.data : [],
           users: userRows,
-          persist: true,
+          persist: false,
         })
         setBills(syncedBills as Bill[])
         if (syncedCount > 0) {
@@ -435,21 +435,8 @@ export function useBillsManager(period: PeriodFilter = { preset: 'all' }) {
         if (!resPay.success) throw new Error(resPay.error?.message || `Gagal membuat pembayaran lunas untuk ${bill.resident_name}`)
         createdPayments.push(paymentId)
 
-        const journalId = generateSecureId('JE')
-        const journalPayload = {
-          id: journalId,
-          date: new Date().toISOString().split('T')[0],
-          description: `Penerimaan Kas Sewa Kamar (Lunas Massal) - ${bill.resident_name}`,
-          debits: JSON.stringify([{ accountNumber: '1102', amount: Number(bill.amount) }]),
-          credits: JSON.stringify([{ accountNumber: '1104', amount: Number(bill.amount) }]),
-          source: 'payment_verification',
-          source_id: paymentId,
-          created_at: new Date().toISOString()
-        }
-
-        const resJournal = await spreadsheetApi.post('JournalEntries', journalPayload)
-        if (!resJournal.success) throw new Error((resJournal.error as any)?.message || `Gagal memposting kas masuk untuk ${bill.resident_name}`)
-        createdJournals.push(journalId)
+        // Marking bills paid from the billing module should not generate accounting journal entries here.
+        // Cash receipt recording belongs in the accounting module.
       }
     } catch (err: any) {
       transactionSuccess = false
@@ -485,6 +472,61 @@ export function useBillsManager(period: PeriodFilter = { preset: 'all' }) {
         confirmLabel: 'Mengerti'
       })
     }
+  }
+
+  // Helper: parse contributions payload and pick a revenue account
+  const parseContribution = (contrib: any) => {
+    if (!contrib) return { title: '', contribution_types: { name: '' } }
+    if (typeof contrib === 'string') {
+      try {
+        return JSON.parse(contrib)
+      } catch {
+        const titleMatch = contrib.match(/title=([^,}]+)/)
+        const nameMatch = contrib.match(/name=([^,}]+)/)
+        return {
+          title: titleMatch ? titleMatch[1].trim() : contrib,
+          contribution_types: { name: nameMatch ? nameMatch[1].trim() : '' }
+        }
+      }
+    }
+    return contrib || { title: '', contribution_types: { name: '' } }
+  }
+
+  const pickRevenueAccount = (contrib: any) => {
+    const parsed = parseContribution(contrib)
+    const label = (parsed.contribution_types?.name || parsed.title || '').toString().toLowerCase()
+    if (label.includes('sewa')) return '4101'
+    if (label.includes('denda')) return '4102'
+    return '4103'
+  }
+
+  const makeJournalDescription = (contrib: any, residentName: string) => {
+    const parsed = parseContribution(contrib)
+    const kind = parsed.contribution_types?.name || parsed.title || 'Tagihan'
+    return `Pencatatan Piutang - ${kind} - ${residentName}`
+  }
+
+  const findReceivableAccount = (residentName: string) => {
+    const residentNameTokens = residentName
+      .split(/\s+/)
+      .map(token => token.trim())
+      .filter(Boolean)
+      .map(token => token.toLowerCase())
+
+    const accounts = defaultEngine.coa.getAllAccounts()
+    const exactMatch = accounts.find(acc => {
+      if (acc.accountType !== 'Assets') return false
+      const nameLower = acc.accountName.toLowerCase()
+      return residentNameTokens.every(term => nameLower.includes(term))
+    })
+
+    if (exactMatch) return exactMatch
+
+    return accounts.find(acc => {
+      if (acc.accountType !== 'Assets') return false
+      const nameLower = acc.accountName.toLowerCase()
+      return residentNameTokens.some(term => nameLower.includes(term))
+    }) || null
   }
 
   const handleCreateInvoice = async (e: React.FormEvent) => {
@@ -527,11 +569,21 @@ export function useBillsManager(period: PeriodFilter = { preset: 'all' }) {
       }
 
       const selectedUser = users.find(u => u.full_name === newBill.resident_name)
+      const selectedTemplate = templates.find(t => t.title === newBill.title)
+      const contributionPayload = {
+        title: newBill.title,
+        contribution_types: {
+          name: selectedTemplate?.contribution_types?.name || selectedTemplate?.category || 'Kustom',
+          period_type: selectedTemplate?.contribution_types?.period_type || 'Bulanan'
+        }
+      }
       const updatedBill: Bill = {
         ...originalBill,
         resident_name: newBill.resident_name,
         room_number: selectedUser ? (selectedUser.room_number || 'N/A') : originalBill.room_number,
-        contributions: JSON.stringify({ title: newBill.title, contribution_types: { name: 'Kustom' } }),
+        title: contributionPayload.title,
+        contributions: JSON.stringify(contributionPayload),
+        category: selectedTemplate?.contribution_types?.name || selectedTemplate?.category || originalBill.category,
         due_date: newBill.due_date,
         amount: Number(newBill.amount)
       }
@@ -543,18 +595,7 @@ export function useBillsManager(period: PeriodFilter = { preset: 'all' }) {
         const res = await billingService.updateBill(updatedBill)
         if (!res.success) throw new Error(res.error?.message || 'Gagal menyimpan perubahan tagihan.')
 
-        const { data: journalEntries } = await spreadsheetApi.get('JournalEntries')
-        const matchedJournal = Array.isArray(journalEntries) && journalEntries.find(j => String(j.id) === `BIL-${editingBillId}`)
-        if (matchedJournal) {
-          const updatedJournal = {
-            ...matchedJournal,
-            debits: JSON.stringify([{ accountNumber: '1104', amount: Number(updatedBill.amount) }]),
-            credits: JSON.stringify([{ accountNumber: '4101', amount: Number(updatedBill.amount) }])
-          }
-          const resJ = await spreadsheetApi.put('JournalEntries', updatedJournal)
-          if (!resJ.success) throw new Error((resJ.error as any)?.message || 'Gagal memperbarui jurnal piutang.')
-        }
-
+        // Billing updates no longer synchronize invoice journals to accounting. Accounting entries are now managed from the accounting module only.
         setIsFormSuccessOpen(true)
       } catch (err: any) {
         console.error(err)
@@ -575,6 +616,15 @@ export function useBillsManager(period: PeriodFilter = { preset: 'all' }) {
 
     let billsToAdd: Bill[] = []
 
+    const selectedTemplate = templates.find(t => t.title === newBill.title)
+    const contributionPayload = {
+      title: newBill.title,
+      contribution_types: {
+        name: selectedTemplate?.contribution_types?.name || selectedTemplate?.category || 'Kustom',
+        period_type: selectedTemplate?.contribution_types?.period_type || 'Bulanan'
+      }
+    }
+
     if (newBill.resident_name === 'ALL') {
       const activeUsers = users.filter(u => (!u.status || u.status === 'Aktif') && String(u.role).includes('user'))
       billsToAdd = activeUsers.map((user, idx) => ({
@@ -582,7 +632,9 @@ export function useBillsManager(period: PeriodFilter = { preset: 'all' }) {
         resident_name: user.full_name,
         resident_email: user.email,
         room_number: user.room_number || 'N/A',
-        contributions: JSON.stringify({ title: newBill.title, contribution_types: { name: 'Kustom' } }),
+        title: contributionPayload.title,
+        contributions: JSON.stringify(contributionPayload),
+        category: contributionPayload.contribution_types.name,
         due_date: newBill.due_date,
         amount: Number(newBill.amount),
         status: 'unpaid'
@@ -595,7 +647,9 @@ export function useBillsManager(period: PeriodFilter = { preset: 'all' }) {
         resident_name: selectedUser ? selectedUser.full_name : newBill.resident_name,
         resident_email: selectedUser ? selectedUser.email : '',
         room_number: selectedUser ? (selectedUser.room_number || 'N/A') : 'N/A',
-        contributions: JSON.stringify({ title: newBill.title, contribution_types: { name: 'Kustom' } }),
+        title: contributionPayload.title,
+        contributions: JSON.stringify(contributionPayload),
+        category: contributionPayload.contribution_types.name,
         due_date: newBill.due_date,
         amount: Number(newBill.amount),
         status: 'unpaid'
@@ -643,22 +697,8 @@ export function useBillsManager(period: PeriodFilter = { preset: 'all' }) {
         }
         createdBills.push(bill)
 
-        const journalPayload = {
-          id: `BIL-${bill.id}`,
-          date: new Date().toISOString().split('T')[0],
-          description: `Pencatatan Piutang Sewa - ${bill.resident_name} (${newBill.title})`,
-          debits: JSON.stringify([{ accountNumber: '1104', amount: Number(bill.amount) }]),
-          credits: JSON.stringify([{ accountNumber: '4101', amount: Number(bill.amount) }]),
-          source: 'billing_invoice',
-          source_id: String(bill.id),
-          created_at: new Date().toISOString()
-        }
-
-        const resJournal = await spreadsheetApi.post('JournalEntries', journalPayload)
-        if (!resJournal.success) {
-          throw new Error((resJournal.error as any)?.message || `Gagal memposting jurnal piutang untuk ${bill.resident_name}`)
-        }
-        createdJournals.push(journalPayload.id)
+        // New billing invoices are no longer recorded directly into accounting journal entries from the billing module.
+        // Accounting recording should be performed from the accounting module when needed.
       }
     } catch (err: any) {
       transactionSuccess = false
@@ -768,8 +808,11 @@ export function useBillsManager(period: PeriodFilter = { preset: 'all' }) {
         date: new Date().toISOString().split('T')[0],
         description: `Kompensasi Utang-Piutang: Pelunasan ${titleVal} - ${bill.resident_name} via potongan Utang Bendahara`,
         debits: JSON.stringify([{ accountNumber: debtAccountNumber, amount: Number(bill.amount) }]),
-        credits: JSON.stringify([{ accountNumber: '1104', amount: Number(bill.amount) }]),
-        source: 'payment_verification',
+        credits: JSON.stringify([{
+          accountNumber: findReceivableAccount(bill.resident_name)?.accountNumber || '1104',
+          amount: Number(bill.amount)
+        }]),
+        source: 'debt_compensation',
         source_id: paymentId,
         created_at: new Date().toISOString()
       }

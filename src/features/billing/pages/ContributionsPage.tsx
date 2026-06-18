@@ -142,6 +142,16 @@ export default function ContributionsList() {
 
   const formatDueDate = (dueDate: string, periodType: string) => {
     if (!dueDate) return '-'
+    if (periodType === 'Satu Kali') {
+      try {
+        const d = new Date(dueDate)
+        if (!isNaN(d.getTime())) {
+          return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+        }
+      } catch (e) {
+        return dueDate
+      }
+    }
     if (periodType === 'Bulanan') return `Tgl ${dueDate} tiap bulan`
     if (periodType === 'Tahunan') {
       const parts = dueDate.split('-')
@@ -373,13 +383,13 @@ export default function ContributionsList() {
           <table className="min-w-[700px] w-full text-left text-sm">
             <thead className="bg-[#F3F4F6] border-b border-border text-gray-600">
               <tr>
-                <th className="px-6 py-3 font-semibold whitespace-nowrap">Judul</th>
-                <th className="px-6 py-3 font-semibold whitespace-nowrap">Kategori</th>
+                <th className="px-6 py-3 font-semibold whitespace-nowrap text-center">Judul</th>
+                <th className="px-6 py-3 font-semibold whitespace-nowrap text-center">Kategori</th>
                 <th className="px-6 py-3 font-semibold whitespace-nowrap text-center hidden md:table-cell">Siklus</th>
-                <th className="px-6 py-3 font-semibold whitespace-nowrap">Nominal</th>
+                <th className="px-6 py-3 font-semibold whitespace-nowrap text-center">Nominal</th>
                 <th className="px-6 py-3 font-semibold whitespace-nowrap text-center hidden md:table-cell">Jatuh Tempo</th>
                 <th className="px-6 py-3 font-semibold whitespace-nowrap text-center">Status</th>
-                <th className="px-6 py-3 font-semibold whitespace-nowrap text-right">Aksi</th>
+                <th className="px-6 py-3 font-semibold whitespace-nowrap text-center">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border text-gray-700 bg-white">

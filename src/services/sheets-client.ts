@@ -49,6 +49,25 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutM
   }
 }
 
+async function parseJsonResponse<T = any>(response: Response): Promise<T> {
+  const text = await response.text();
+  const snippet = text.length > 300 ? `${text.slice(0, 300)}...` : text;
+
+  if (!response.ok) {
+    throw new Error(`Spreadsheet request gagal: ${response.status} ${response.statusText}. Response: ${snippet}`);
+  }
+
+  if (!text) {
+    return {} as T;
+  }
+
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new Error(`Spreadsheet API returned non-JSON response: ${snippet}`);
+  }
+}
+
 interface RequesterContext {
   userEmail?: string
   userRole?: string
@@ -102,8 +121,8 @@ export const spreadsheetApi = {
       const response = await fetchWithTimeout(`${SPREADSHEET_API_URL}?action=get&sheet=${sheetName}${tokenParam}${emailParam}${roleParam}`, {
         credentials: 'omit'
       })
-      if (!response.ok) throw new Error('Network response was not ok')
-      const result = await response.json()
+      if (!response.ok) throw new Error(`Spreadsheet GET request gagal: ${response.status} ${response.statusText}`)
+      const result = await parseJsonResponse<{ status: string; message?: string; data: unknown }>(response)
       if (result.status === 'error') throw new Error(result.message || 'Spreadsheet API mengembalikan error.')
       const normalizedData = normalizeData(sheetName, result.data)
       return { data: normalizedData, error: null }
@@ -129,9 +148,8 @@ export const spreadsheetApi = {
         body: JSON.stringify(withAuthContext({ action: 'post', sheet: sheetName, data })),
         credentials: 'omit'
       })
-      
-      const result = await response.json()
-      if (result.status !== 'success') throw new Error(result.message)
+      const result = await parseJsonResponse<{ status: string; message?: string }>(response)
+      if (result.status !== 'success') throw new Error(result.message || 'Spreadsheet API mengembalikan error saat POST')
       
       return { success: true, error: null }
     } catch (error) {
@@ -154,8 +172,8 @@ export const spreadsheetApi = {
         body: JSON.stringify(withAuthContext({ action: 'put', sheet: sheetName, data })),
         credentials: 'omit'
       })
-      const result = await response.json()
-      if (result.status !== 'success') throw new Error(result.message)
+      const result = await parseJsonResponse<{ status: string; message?: string }>(response)
+      if (result.status !== 'success') throw new Error(result.message || 'Spreadsheet API mengembalikan error saat PUT')
       return { success: true, error: null }
     } catch (error) {
       console.error('Spreadsheet PUT Error:', error)
@@ -177,8 +195,8 @@ export const spreadsheetApi = {
         body: JSON.stringify(withAuthContext({ action: 'delete', sheet: sheetName, id })),
         credentials: 'omit'
       })
-      const result = await response.json()
-      if (result.status !== 'success') throw new Error(result.message)
+      const result = await parseJsonResponse<{ status: string; message?: string }>(response)
+      if (result.status !== 'success') throw new Error(result.message || 'Spreadsheet API mengembalikan error saat DELETE')
       return { success: true, error: null }
     } catch (error) {
       console.error('Spreadsheet DELETE Error:', error)
@@ -200,8 +218,8 @@ export const spreadsheetApi = {
         body: JSON.stringify(withAuthContext({ action: 'restore', sheet: sheetName, data })),
         credentials: 'omit'
       })
-      const result = await response.json()
-      if (result.status !== 'success') throw new Error(result.message)
+      const result = await parseJsonResponse<{ status: string; message?: string }>(response)
+      if (result.status !== 'success') throw new Error(result.message || 'Spreadsheet API mengembalikan error saat RESTORE')
       return { success: true, error: null }
     } catch (error) {
       console.error('Spreadsheet RESTORE Error:', error)
@@ -223,7 +241,7 @@ export const spreadsheetApi = {
         body: JSON.stringify(withAuthContext({ action, ...payload })),
         credentials: 'omit'
       })
-      const result = await response.json()
+      const result = await parseJsonResponse<{ status: string; message?: string }>(response)
       if (result.status !== 'success') throw new Error(result.message || 'Custom action failed')
       return { success: true, data: result, error: null }
     } catch (error) {
@@ -240,6 +258,16 @@ export const spreadsheetApi = {
 export function parseGoogleSheetsObject(str: string): any {
   if (!str || typeof str !== 'string') return str
   const trimmed = str.trim()
+
+  // First try standard JSON parsing for JSON-style strings.
+  if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+    try {
+      return JSON.parse(trimmed)
+    } catch {
+      // Fallback to the legacy Google Sheets object parser below.
+    }
+  }
+
   if (!trimmed.startsWith('{') || !trimmed.endsWith('}')) {
     try {
       return JSON.parse(trimmed)

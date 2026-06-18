@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
-import { CheckCircle2, Clock, XCircle, FileText, Search, Bell, Plus, X, Save, Check, Pencil, Trash2, Edit, Loader2 } from 'lucide-react'
+import { ArrowUpDown, CheckCircle2, Clock, XCircle, FileText, Search, Bell, Plus, X, Save, Check, Pencil, Trash2, Edit, Loader2 } from 'lucide-react'
 import { TableLoader } from '@/components/ui/TableLoader'
 import Select from '@/components/ui/Select'
 import { type PeriodFilter } from '@/features/accounting/calculations/period'
@@ -85,13 +85,43 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
     handleMarkAsPaid
   } = useBillsManager(period)
 
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
+
+  const sortedBills = useMemo(() => {
+    return [...filteredBills].sort((a, b) => {
+      const dateA = new Date(a.due_date).getTime()
+      const dateB = new Date(b.due_date).getTime()
+      return sortOrder === 'asc' ? dateA - dateB : dateB - dateA
+    })
+  }, [filteredBills, sortOrder])
+
+  useEffect(() => {
+    try {
+      const examples = filteredBills.slice(0, 8).map(b => ({ id: b.id, contributions: b.contributions }))
+      console.debug('[DEBUG] sample bill.contributions:', examples)
+      examples.forEach(ex => {
+        try {
+          const parsed = typeof ex.contributions === 'string' ? JSON.parse(ex.contributions) : ex.contributions
+          console.debug('[DEBUG] parsed contributions for', ex.id, parsed)
+        } catch (e) {
+          console.debug('[DEBUG] raw contributions for', ex.id, ex.contributions)
+        }
+      })
+    } catch (e) {}
+  }, [filteredBills])
+
   const getDebtInfo = () => {
     if (!selectedBill) return { hasDebt: false, account: null, balance: 0 }
     const user = users.find(u => u.full_name === selectedBill.resident_name)
+    const residentNameTokens = selectedBill.resident_name
+      .split(' ')
+      .map(token => token.trim())
+      .filter(Boolean)
+
     const searchTerms = [
       user?.nickname,
-      user?.full_name?.split(' ')[0],
-      selectedBill.resident_name.split(' ')[0]
+      user?.full_name,
+      ...residentNameTokens
     ].filter(Boolean)
 
     const accounts = defaultEngine.coa.getAllAccounts()
@@ -136,22 +166,40 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
   }
 
   const getContributionData = (contrib: any) => {
+    if (!contrib) return { title: '', contribution_types: { name: '' } }
     if (typeof contrib === 'string') {
       try {
         return JSON.parse(contrib)
-      } catch(e) {
+      } catch {
         const titleMatch = contrib.match(/title=([^,}]+)/)
-        const nameMatch = contrib.match(/name=([^,}]+)/)
-        if (titleMatch || nameMatch) {
-          return {
-            title: titleMatch ? titleMatch[1].trim() : '',
-            contribution_types: { name: nameMatch ? nameMatch[1].trim() : '' }
-          }
+        const typeMatch = contrib.match(/contribution_types\s*=\s*\{[^}]*name=([^,}]+)/)
+        const nameMatch = typeMatch || contrib.match(/\bname=([^,}]+)/)
+        const parsedTitle = titleMatch ? titleMatch[1].trim() : ''
+        const parsedName = nameMatch ? nameMatch[1].trim() : ''
+        return {
+          title: parsedTitle,
+          contribution_types: { name: parsedName || '' }
         }
-        return { title: contrib, contribution_types: { name: 'Kustom' } }
       }
     }
-    return contrib || {}
+    return contrib || { title: '', contribution_types: { name: '' } }
+  }
+
+  const getBillTitle = (bill: any) => {
+    const contributionData = getContributionData(bill.contributions)
+    return contributionData.title || bill.title || bill.description || contributionData.contribution_types?.name || bill.category || 'Tagihan'
+  }
+
+  const getBillSubtitle = (bill: any) => {
+    const contributionData = getContributionData(bill.contributions)
+    const titleText = getBillTitle(bill)
+    if (contributionData.contribution_types?.name && contributionData.contribution_types.name !== titleText) {
+      return contributionData.contribution_types.name
+    }
+    if (bill.category && bill.category !== titleText) {
+      return bill.category
+    }
+    return bill.month || 'Tagihan Penghuni'
   }
 
   return (
@@ -176,50 +224,62 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
       </div>
 
       <div className="card-container">
-        <div className="py-4 pr-4 pl-0 sm:py-6 sm:pr-6 sm:pl-0 border-b border-border flex flex-col sm:flex-row gap-4 justify-between items-center bg-gray-50/50 rounded-t-[20px]">
-          <div className="relative w-full sm:max-w-lg">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input 
-              type="text" 
-              placeholder="Cari penghuni atau tagihan..." 
-              className="form-input pl-10 bg-white"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-          {!isEditMode ? (
-            <button
-              type="button"
-              onClick={() => setIsEditMode(true)}
-              className="btn-secondary flex h-[42px] w-full items-center justify-end sm:justify-center whitespace-nowrap px-4 text-sm text-blue-700 hover:bg-blue-50 hover:border-blue-200 focus:border-gray-200 focus:outline-none focus:ring-0 focus-visible:border-gray-200 focus-visible:outline-none focus-visible:ring-0 sm:w-auto"
-            >
-              <Edit className="w-4 h-4 mr-2 flex-shrink-0" />
-              Edit
-            </button>
-          ) : (
-            <div className="flex gap-2 w-full sm:w-auto animate-in fade-in slide-in-from-right-4 duration-300">
+<div className="py-4 pr-4 pl-0 sm:py-6 sm:pr-6 sm:pl-0 border-b border-border flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center bg-gray-50/50 rounded-t-[20px]">
+            <div className="relative w-full sm:max-w-lg">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <input 
+                type="text" 
+                placeholder="Cari penghuni atau tagihan..." 
+                className="form-input pl-10 bg-white"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
               <button
                 type="button"
-                onClick={() => {
-                  setIsEditMode(false)
-                  setSelectedBillIds([])
-                }}
-                disabled={isBulkActioning}
-                className="btn-secondary flex items-center justify-end sm:justify-center whitespace-nowrap h-[42px] text-sm px-4 disabled:opacity-50 focus:border-gray-200 focus:outline-none focus:ring-0 focus-visible:border-gray-200 focus-visible:outline-none focus-visible:ring-0 w-full sm:w-auto flex-1 sm:flex-initial"
+                onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                className="text-sm font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 px-3.5 py-2 rounded-xl border border-gray-200 transition-colors flex items-center gap-2 shadow-sm min-h-10"
               >
-                Batal
+                <ArrowUpDown className="w-4 h-4 text-gray-500" />
+                <span>Urutkan: {sortOrder === 'asc' ? 'Terlama' : 'Terbaru'}</span>
               </button>
-              <button 
-                onClick={handleBulkDelete}
-                disabled={isBulkActioning || selectedBillIds.length === 0}
-                className="btn-secondary flex items-center justify-end sm:justify-center whitespace-nowrap h-[42px] text-sm text-red-600 hover:bg-red-50 hover:border-red-200 border-gray-200 px-4 disabled:opacity-50 focus:border-gray-200 focus:outline-none focus:ring-0 focus-visible:border-gray-200 focus-visible:outline-none focus-visible:ring-0 w-full sm:w-auto flex-1 sm:flex-initial"
-              >
-                <Trash2 className="w-4 h-4 mr-2 flex-shrink-0" />
-                <span>Hapus Pilihan ({selectedBillIds.length})</span>
-              </button>
+
+              {!isEditMode ? (
+                <button
+                  type="button"
+                  onClick={() => setIsEditMode(true)}
+                  className="btn-secondary flex h-[42px] w-full items-center justify-end sm:justify-center whitespace-nowrap px-4 text-sm text-blue-700 hover:bg-blue-50 hover:border-blue-200 focus:border-gray-200 focus:outline-none focus:ring-0 focus-visible:border-gray-200 focus-visible:outline-none focus-visible:ring-0 sm:w-auto"
+                >
+                  <Edit className="w-4 h-4 mr-2 flex-shrink-0" />
+                  Edit
+                </button>
+              ) : (
+                <div className="flex gap-2 w-full sm:w-auto animate-in fade-in slide-in-from-right-4 duration-300">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsEditMode(false)
+                      setSelectedBillIds([])
+                    }}
+                    disabled={isBulkActioning}
+                    className="btn-secondary flex items-center justify-end sm:justify-center whitespace-nowrap h-[42px] text-sm px-4 disabled:opacity-50 focus:border-gray-200 focus:outline-none focus:ring-0 focus-visible:border-gray-200 focus-visible:outline-none focus-visible:ring-0 w-full sm:w-auto flex-1 sm:flex-initial"
+                  >
+                    Batal
+                  </button>
+                  <button 
+                    onClick={handleBulkDelete}
+                    disabled={isBulkActioning || selectedBillIds.length === 0}
+                    className="btn-secondary flex items-center justify-end sm:justify-center whitespace-nowrap h-[42px] text-sm text-red-600 hover:bg-red-50 hover:border-red-200 border-gray-200 px-4 disabled:opacity-50 focus:border-gray-200 focus:outline-none focus:ring-0 focus-visible:border-gray-200 focus-visible:outline-none focus-visible:ring-0 w-full sm:w-auto flex-1 sm:flex-initial"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2 flex-shrink-0" />
+                    <span>Hapus Pilihan ({selectedBillIds.length})</span>
+                  </button>
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          </div>
 
         <div className="overflow-x-auto w-full rounded-xl border border-gray-100 shadow-sm scrollbar-thin scrollbar-thumb-gray-200">
           <table className="min-w-[750px] w-full text-left text-sm">
@@ -246,14 +306,14 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
             <tbody className="divide-y divide-border text-gray-700 bg-white">
               {loading ? (
                 <TableLoader colSpan={isEditMode ? 7 : 6} text="Memuat data tagihan..." />
-              ) : filteredBills.length === 0 ? (
+              ) : sortedBills.length === 0 ? (
                 <tr>
                   <td colSpan={isEditMode ? 7 : 6} className="px-6 py-12 text-center text-text-muted">
                     Tidak ada tagihan yang ditemukan.
                   </td>
                 </tr>
               ) : (
-                filteredBills.map((bill) => (
+                sortedBills.map((bill) => (
                   <tr key={bill.id} className="hover:bg-[#ECFDF5] transition-colors">
                     {isEditMode && (
                       <td className="px-6 py-4 text-center">
@@ -272,8 +332,8 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
                       <div className="text-xs text-text-secondary mt-0.5">Kamar {bill.room_number}</div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="font-medium text-gray-900">{getContributionData(bill.contributions).title}</div>
-                      <div className="text-xs text-text-secondary mt-0.5">{getContributionData(bill.contributions).contribution_types?.name}</div>
+                      <div className="font-medium text-gray-900">{getBillTitle(bill)}</div>
+                      <div className="text-xs text-text-secondary mt-0.5">{getBillSubtitle(bill)}</div>
                     </td>
                     <td className="px-6 py-4 text-center text-text-secondary hidden md:table-cell">{new Date(bill.due_date).toLocaleDateString('id-ID')}</td>
                     <td className="px-6 py-4 font-semibold">{formatCurrency(bill.amount)}</td>

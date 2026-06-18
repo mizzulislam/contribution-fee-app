@@ -347,7 +347,9 @@ export default function JournalEntryForm({ onSuccess, editingEntry }: JournalEnt
         spreadsheetApi.get('Users'),
       ])
 
-      if (Array.isArray(billsRes.data)) {
+      const shouldSyncBillEntry = String(entryData.source || '').toLowerCase().includes('debt_compensation')
+
+      if (shouldSyncBillEntry && Array.isArray(billsRes.data)) {
         await syncBillsWithAccountingEntries({
           bills: billsRes.data,
           journalEntries: [entryData],

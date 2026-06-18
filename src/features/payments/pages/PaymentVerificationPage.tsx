@@ -239,22 +239,8 @@ export default function Verification({ period = defaultPeriod }: VerificationPro
 
       // Step 3: Post Journal Entry if approved
       if (action === 'approve') {
-        const cashAccount = resolveCashAccount(item)
-        
-        const journalPayload = {
-          id: journalId,
-          date: new Date().toISOString().split('T')[0],
-          description: `Penerimaan Pembayaran Sewa - ${item.resident_name || ''} (${item.title || ''})`,
-          debits: JSON.stringify([{ accountNumber: cashAccount, amount: Number(item.amount) }]),
-          credits: JSON.stringify([{ accountNumber: '1104', amount: Number(item.amount) }]),
-          source: 'payment_verification',
-          source_id: String(item.id),
-          created_at: new Date().toISOString()
-        }
-
-        const res3 = await spreadsheetApi.post('JournalEntries', journalPayload)
-        if (!res3.success) throw new Error((res3.error as any)?.message || 'Gagal memposting jurnal penerimaan kas di Sheets.')
-        step3Success = true
+        // Approved payment verification now updates payment and bill status only.
+        // Cash journal entries should be created from the accounting module, not directly from the payments page.
       }
 
       setAlertDialog(prev => ({ ...prev, isOpen: false }))

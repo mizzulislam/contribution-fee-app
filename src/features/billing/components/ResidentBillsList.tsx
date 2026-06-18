@@ -63,6 +63,41 @@ export default function ResidentBillsList() {
     )
   }
 
+  const getContributionData = (contrib: any) => {
+    if (!contrib) return { title: '', contribution_types: { name: '' } }
+    if (typeof contrib === 'string') {
+      try {
+        return JSON.parse(contrib)
+      } catch {
+        const titleMatch = contrib.match(/title=([^,}]+)/)
+        const typeMatch = contrib.match(/contribution_types\s*=\s*\{[^}]*name=([^,}]+)/)
+        const nameMatch = typeMatch || contrib.match(/\bname=([^,}]+)/)
+        return {
+          title: titleMatch ? titleMatch[1].trim() : '',
+          contribution_types: { name: nameMatch ? nameMatch[1].trim() : '' }
+        }
+      }
+    }
+    return contrib || { title: '', contribution_types: { name: '' } }
+  }
+
+  const getBillTitle = (bill: ResidentBill) => {
+    const contributionData = getContributionData(bill.contributions)
+    return contributionData.title || bill.title || bill.description || contributionData.contribution_types?.name || 'Tagihan Kos'
+  }
+
+  const getBillSubtitle = (bill: ResidentBill) => {
+    const contributionData = getContributionData(bill.contributions)
+    const titleText = getBillTitle(bill)
+    if (contributionData.contribution_types?.name && contributionData.contribution_types.name !== titleText) {
+      return contributionData.contribution_types.name
+    }
+    if (bill.category && bill.category !== titleText) {
+      return bill.category
+    }
+    return bill.month || '-'
+  }
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'paid':
@@ -116,8 +151,8 @@ export default function ResidentBillsList() {
                 bills.map((bill) => (
                   <tr key={bill.id} className="hover:bg-[#ECFDF5] transition-colors">
                     <td className="px-3 sm:px-6 py-4">
-                      <div className="font-medium text-gray-900">{bill.contributions?.title || bill.title || bill.description || 'Tagihan Kos'}</div>
-                      <div className="text-xs text-text-secondary mt-0.5">{bill.contributions?.contribution_types?.name || bill.category || bill.month || '-'}</div>
+                      <div className="font-medium text-gray-900">{getBillTitle(bill)}</div>
+                      <div className="text-xs text-text-secondary mt-0.5">{getBillSubtitle(bill)}</div>
                     </td>
                     <td className="px-3 sm:px-6 py-4 text-text-secondary">{new Date(bill.due_date).toLocaleDateString('id-ID')}</td>
                     <td className="px-3 sm:px-6 py-4 font-semibold">{formatCurrency(bill.amount)}</td>

@@ -124,9 +124,18 @@ function isGallonBill(bill: BillRow) {
   return label.includes('galon') && (label.includes('iuran') || label.includes('air') || label.includes('tagihan'))
 }
 
-function isGallonContributionJournal(entry: JournalEntryRow) {
+function isOfficialPaymentSource(source: string) {
+  const normalized = normalizeText(source)
+  if (!normalized) return false
+  const isManualSource = ['manual_journal', 'manual_adjusting', 'manual_closing'].some(keyword => normalized.includes(keyword))
+  if (isManualSource) return false
+  return normalized.includes('payment') || normalized.includes('verifikasi')
+}
+
+function isDebtCompensationJournal(entry: JournalEntryRow) {
   const description = normalizeText(entry.description)
-  return description.includes('galon') && description.includes('iuran')
+  const source = normalizeText(String((entry as any).source || ''))
+  return source.includes('debt_compensation') || description.includes('kompensasi utang')
 }
 
 function getResidentAliases(bill: BillRow, users: UserRow[]) {
@@ -161,23 +170,29 @@ function getResidentAliases(bill: BillRow, users: UserRow[]) {
   return Array.from(aliases).filter(alias => alias.length >= 3)
 }
 
-function findMatchingJournalEntry(bill: BillRow, journalEntries: JournalEntryRow[], users: UserRow[]) {
-  if (!isGallonBill(bill)) return null
+function isAmountMatch(billAmount: number, journalAmount: number) {
+  if (billAmount <= 0 || journalAmount <= 0) return false
+  const tolerance = Math.max(1000, billAmount * 0.02)
+  return Math.abs(journalAmount - billAmount) <= tolerance
+}
 
+function findMatchingJournalEntry(bill: BillRow, journalEntries: JournalEntryRow[], users: UserRow[]) {
   const aliases = getResidentAliases(bill, users)
   if (aliases.length === 0) return null
 
+  const billAmount = parseAmount(bill.amount)
+  if (billAmount <= 0) return null
+
   return journalEntries.find(entry => {
-    if (!isGallonContributionJournal(entry)) return false
+    if (!isDebtCompensationJournal(entry)) return false
     if (!isSameAccountingPeriod(bill.due_date, entry.date)) return false
 
     const description = normalizeText(entry.description)
     const hasResidentName = aliases.some(alias => containsPhrase(description, alias))
     if (!hasResidentName) return false
 
-    const billAmount = parseAmount(bill.amount)
     const journalAmount = getJournalAmount(entry)
-    return billAmount <= 0 || journalAmount <= 0 || journalAmount >= billAmount * 0.75
+    return isAmountMatch(billAmount, journalAmount)
   }) || null
 }
 
