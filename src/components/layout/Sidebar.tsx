@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react"
 import { useLocation } from "react-router-dom"
 import {
   LayoutDashboard, Users, WalletCards,
@@ -16,6 +17,19 @@ export function Sidebar() {
   const location = useLocation()
   const { activeRole } = useAuth()
   const { isCollapsed, isMobileOpen, toggleCollapsed, closeMobile } = useSidebarStore()
+
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+
+  const displayCollapsed = isCollapsed && !isMobile
 
   // --- NAVIGATION MENUS PER ROLE ---
   const superAdminNav = [
@@ -74,7 +88,7 @@ export function Sidebar() {
 
         <div>
           <SidebarLogo 
-            collapsed={isCollapsed} 
+            collapsed={displayCollapsed} 
             onClick={() => {
               if (window.innerWidth >= 768) {
                 toggleCollapsed()
@@ -96,14 +110,14 @@ export function Sidebar() {
                 label={item.name}
                 icon={item.icon}
                 active={active}
-                collapsed={isCollapsed}
+                collapsed={displayCollapsed}
               />
             )
           })}
         </nav>
 
         <div className="p-3 mt-auto">
-          <SidebarProfile />
+          <SidebarProfile collapsed={displayCollapsed} />
         </div>
       </aside>
     </>

@@ -95,9 +95,9 @@ export default function Login() {
         </div>
       </div>
       
-      <div className="text-center md:text-left mb-8">
-        <h2 className="text-3xl font-bold text-gray-900 mb-2">Masuk ke Sistem</h2>
-        <p className="text-gray-500">Silakan masukkan email dan kata sandi Anda</p>
+      <div className="text-center md:text-left mb-6 sm:mb-8">
+        <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Masuk ke Sistem</h2>
+        <p className="text-sm sm:text-base text-gray-500">Silakan masukkan email dan kata sandi Anda</p>
       </div>
 
       {error && (

@@ -59,6 +59,7 @@ export default function ClosingProcessView({ period }: ClosingProcessViewProps) 
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [editingEntry, setEditingEntry] = useState<any | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [alertDialog, setAlertDialog] = useState<{
     isOpen: boolean
     title: string
@@ -224,15 +225,32 @@ export default function ClosingProcessView({ period }: ClosingProcessViewProps) 
   const handleDeleteSelected = async () => {
     if (selectedIds.length === 0) return
 
-    const results = await Promise.all(selectedIds.map(id => spreadsheetApi.del('JournalEntries', id)))
-    if (results.some(result => !result.success)) {
-      console.error('Sebagian jurnal penutup gagal dihapus dari spreadsheet.')
-    }
+    setIsDeleting(true)
+    try {
+      const count = selectedIds.length
+      const results = await Promise.all(selectedIds.map(id => spreadsheetApi.del('JournalEntries', id)))
+      if (results.some(result => !result.success)) {
+        console.error('Sebagian jurnal penutup gagal dihapus dari spreadsheet.')
+      }
 
-    setJournalEntries(prev => prev.filter(entry => !selectedIds.includes(String(entry.id))))
-    setSelectedIds([])
-    setIsEditMode(false)
-    setIsDeleteDialogOpen(false)
+      setJournalEntries(prev => prev.filter(entry => !selectedIds.includes(String(entry.id))))
+      setSelectedIds([])
+      setIsEditMode(false)
+      setIsDeleteDialogOpen(false)
+
+      setAlertDialog({
+        isOpen: true,
+        title: 'Penghapusan Berhasil',
+        message: `${count} entri jurnal penutup berhasil dihapus secara permanen dari database.`,
+        variant: 'success',
+        showCancel: false,
+        confirmLabel: 'Selesai'
+      })
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setIsDeleting(false)
+    }
   }
 
   const formatCurrencyParts = (val: number) => {
@@ -270,11 +288,11 @@ export default function ClosingProcessView({ period }: ClosingProcessViewProps) 
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="space-y-2">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight leading-tight flex items-center">
-            <ShieldAlert className="mr-3 text-primary w-8 h-8 flex-shrink-0" />
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight leading-tight flex items-center">
+            <ShieldAlert className="mr-2 sm:mr-3 text-primary w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0" />
             Tutup Buku (Closing the Books)
           </h1>
-          <p className="text-text-secondary mt-1">
+          <p className="text-xs sm:text-sm text-text-secondary mt-1">
             Daftar jurnal penutup aktual yang tersimpan di sistem.
           </p>
         </div>
@@ -363,8 +381,8 @@ export default function ClosingProcessView({ period }: ClosingProcessViewProps) 
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full table-fixed text-left text-sm">
+        <div className="overflow-x-auto w-full">
+          <table className="min-w-[850px] w-full table-fixed text-left text-sm">
             <colgroup>
               {isEditMode && <col className="w-12" />}
               <col className="w-[11%]" />
@@ -536,6 +554,7 @@ export default function ClosingProcessView({ period }: ClosingProcessViewProps) 
         title="Hapus Jurnal Penutup"
         message={`Apakah Anda yakin ingin menghapus ${selectedIds.length} jurnal penutup terpilih?`}
         confirmLabel="Ya, Hapus"
+        isLoading={isDeleting}
         onClose={() => setIsDeleteDialogOpen(false)}
         onConfirm={handleDeleteSelected}
       />

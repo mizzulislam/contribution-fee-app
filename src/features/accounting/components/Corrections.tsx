@@ -11,17 +11,17 @@ export default function Corrections() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center">
-            <FileWarning className="mr-3 text-primary w-8 h-8" />
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight flex items-center">
+            <FileWarning className="mr-2 sm:mr-3 text-primary w-6 h-6 sm:w-8 sm:h-8" />
             Pengajuan Koreksi Data
           </h1>
-          <p className="text-text-secondary mt-1">Kelola permohonan perbaikan data salah input dari penghuni.</p>
+          <p className="text-xs sm:text-sm text-text-secondary mt-1">Kelola permohonan perbaikan data salah input dari penghuni.</p>
         </div>
       </div>
 
       <div className="card-container">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-gray-600">
+        <div className="overflow-x-auto w-full">
+          <table className="min-w-[700px] w-full text-left text-sm text-gray-600">
             <thead className="bg-[#F3F4F6] text-gray-700 text-xs uppercase font-semibold border-b border-border">
               <tr>
                 <th className="px-6 py-4">Tanggal</th>

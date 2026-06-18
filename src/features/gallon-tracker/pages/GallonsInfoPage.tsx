@@ -386,18 +386,24 @@ export default function GallonsInfo() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center">
-            <Droplets className="mr-3 text-primary w-8 h-8" />
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight flex items-center">
+            <Droplets className="mr-2 sm:mr-3 text-primary w-6 h-6 sm:w-8 sm:h-8" />
             Informasi Galon
           </h1>
-          <p className="text-text-secondary mt-1">Pantau ketersediaan air galon di kos saat ini.</p>
+          <p className="text-xs sm:text-sm text-text-secondary mt-1">Pantau ketersediaan air galon di kos saat ini.</p>
         </div>
-        <div className="flex space-x-3">
-          <button onClick={() => setIsContainerListOpen(true)} className="btn-secondary py-2 px-4 text-sm flex items-center">
+        <div className="flex w-full sm:w-auto gap-3">
+          <button 
+            onClick={() => setIsContainerListOpen(true)} 
+            className="btn-secondary flex-1 sm:flex-initial flex h-10 items-center justify-center whitespace-nowrap px-4 text-xs sm:text-sm font-semibold"
+          >
             Kelola Wadah Saya
           </button>
-          <button onClick={() => setIsModalOpen(true)} className="btn-primary py-2 px-4 text-sm flex items-center shadow-md hover:shadow-lg">
-            <Plus className="w-4 h-4 mr-1.5" /> Catat Penggunaan
+          <button 
+            onClick={() => setIsModalOpen(true)} 
+            className="btn-primary flex-1 sm:flex-initial flex h-10 items-center justify-center whitespace-nowrap px-4 text-xs sm:text-sm font-semibold shadow-md hover:shadow-lg"
+          >
+            <Plus className="w-4 h-4 mr-1.5 flex-shrink-0" /> Catat Penggunaan
           </button>
         </div>
       </div>
@@ -692,8 +698,8 @@ export default function GallonsInfo() {
                 </button>
               </div>
               
-              <div className="bg-white border border-border rounded-xl overflow-hidden">
-                <table className="w-full text-left text-sm text-gray-600">
+              <div className="bg-white border border-border rounded-xl overflow-x-auto w-full">
+                <table className="min-w-[500px] w-full text-left text-sm text-gray-600">
                   <thead className="bg-gray-50/80 text-gray-700 text-xs uppercase font-semibold border-b border-border text-center">
                     <tr>
                       <th className="px-4 py-3">Nama Wadah</th>

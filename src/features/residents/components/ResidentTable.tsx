@@ -76,8 +76,8 @@ export function WargaTable({
         </div>
       </div>
       
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm">
+      <div className="overflow-x-auto w-full">
+        <table className="min-w-[750px] w-full text-left text-sm">
           <thead className="bg-[#F3F4F6] border-b border-border text-gray-600 uppercase font-semibold text-xs">
             <tr>
               <th className="px-6 py-4 whitespace-nowrap text-left">Nama Pengguna</th>

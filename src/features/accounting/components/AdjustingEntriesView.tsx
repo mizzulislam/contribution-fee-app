@@ -58,6 +58,16 @@ export default function AdjustingEntriesView({ period }: AdjustingEntriesViewPro
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [editingEntry, setEditingEntry] = useState<any | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [successDialog, setSuccessDialog] = useState<{
+    isOpen: boolean
+    title: string
+    message: string
+  }>({
+    isOpen: false,
+    title: '',
+    message: ''
+  })
 
   async function loadData() {
     setLoading(true)
@@ -90,15 +100,29 @@ export default function AdjustingEntriesView({ period }: AdjustingEntriesViewPro
   const handleDeleteSelected = async () => {
     if (selectedIds.length === 0) return
 
-    const results = await Promise.all(selectedIds.map(id => spreadsheetApi.del('JournalEntries', id)))
-    if (results.some(result => !result.success)) {
-      console.error('Sebagian jurnal penyesuaian gagal dihapus dari spreadsheet.')
-    }
+    setIsDeleting(true)
+    try {
+      const count = selectedIds.length
+      const results = await Promise.all(selectedIds.map(id => spreadsheetApi.del('JournalEntries', id)))
+      if (results.some(result => !result.success)) {
+        console.error('Sebagian jurnal penyesuaian gagal dihapus dari spreadsheet.')
+      }
 
-    setJournalEntries(prev => prev.filter(entry => !selectedIds.includes(String(entry.id))))
-    setSelectedIds([])
-    setIsEditMode(false)
-    setIsDeleteDialogOpen(false)
+      setJournalEntries(prev => prev.filter(entry => !selectedIds.includes(String(entry.id))))
+      setSelectedIds([])
+      setIsEditMode(false)
+      setIsDeleteDialogOpen(false)
+
+      setSuccessDialog({
+        isOpen: true,
+        title: 'Penghapusan Berhasil',
+        message: `${count} entri jurnal penyesuaian berhasil dihapus secara permanen dari database.`
+      })
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setIsDeleting(false)
+    }
   }
 
   const formatCurrencyParts = (val: number) => {
@@ -136,11 +160,11 @@ export default function AdjustingEntriesView({ period }: AdjustingEntriesViewPro
     <div className="space-y-6 animate-in fade-in duration-500">
       <div>
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight leading-tight flex items-center">
-            <SlidersHorizontal className="mr-3 text-primary w-8 h-8 flex-shrink-0" />
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight leading-tight flex items-center">
+            <SlidersHorizontal className="mr-2 sm:mr-3 text-primary w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0" />
             Jurnal Penyesuaian (Adjusting Entries)
           </h1>
-          <p className="text-text-secondary mt-1">
+          <p className="text-xs sm:text-sm text-text-secondary mt-1">
             Daftar jurnal penyesuaian aktual yang tersimpan di sistem.
           </p>
         </div>
@@ -192,8 +216,8 @@ export default function AdjustingEntriesView({ period }: AdjustingEntriesViewPro
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full table-fixed text-left text-sm">
+        <div className="overflow-x-auto w-full">
+          <table className="min-w-[850px] w-full table-fixed text-left text-sm">
             <colgroup>
               {isEditMode && <col className="w-12" />}
               <col className="w-[11%]" />
@@ -365,8 +389,18 @@ export default function AdjustingEntriesView({ period }: AdjustingEntriesViewPro
         title="Hapus Jurnal Penyesuaian"
         message={`Apakah Anda yakin ingin menghapus ${selectedIds.length} jurnal penyesuaian terpilih?`}
         confirmLabel="Ya, Hapus"
+        isLoading={isDeleting}
         onClose={() => setIsDeleteDialogOpen(false)}
         onConfirm={handleDeleteSelected}
+      />
+      <ConfirmDialog
+        isOpen={successDialog.isOpen}
+        title={successDialog.title}
+        message={successDialog.message}
+        variant="success"
+        showCancel={false}
+        confirmLabel="Selesai"
+        onClose={() => setSuccessDialog(prev => ({ ...prev, isOpen: false }))}
       />
     </div>
   )

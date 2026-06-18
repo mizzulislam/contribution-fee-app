@@ -1,5 +1,5 @@
 import { createPortal } from 'react-dom'
-import { CheckCircle2, Clock, XCircle, FileText, Search, Bell, Plus, X, Save, Check, Pencil, Trash2, Edit } from 'lucide-react'
+import { CheckCircle2, Clock, XCircle, FileText, Search, Bell, Plus, X, Save, Check, Pencil, Trash2, Edit, Loader2 } from 'lucide-react'
 import { TableLoader } from '@/components/ui/TableLoader'
 import Select from '@/components/ui/Select'
 import { type PeriodFilter } from '@/features/accounting/calculations/period'
@@ -32,6 +32,7 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
     selectedBill,
     setSelectedBill,
     isSubmitting,
+    isFormSuccessOpen,
     toastMessage,
     setToastMessage,
     newBill,
@@ -53,7 +54,8 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
     handleCreateInvoice,
     handleEditClick: handleEdit,
     buildDefaultDueDate,
-    handleDebtCompensation
+    handleDebtCompensation,
+    handleMarkAsPaid
   } = useBillsManager(period)
 
   const getDebtInfo = () => {
@@ -129,11 +131,11 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center">
-            <FileText className="mr-3 text-primary w-8 h-8" />
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight flex items-center">
+            <FileText className="mr-2 sm:mr-3 text-primary w-6 h-6 sm:w-8 sm:h-8" />
             Tagihan & Pembayaran
           </h1>
-          <p className="text-text-secondary mt-1">Pantau seluruh status tagihan penghuni dan riwayat pembayarannya.</p>
+          <p className="text-xs sm:text-sm text-text-secondary mt-1">Pantau seluruh status tagihan penghuni dan riwayat pembayarannya.</p>
         </div>
         <button 
           onClick={() => {
@@ -162,7 +164,7 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
             <button
               type="button"
               onClick={() => setIsEditMode(true)}
-              className="btn-secondary flex h-[42px] w-full items-center justify-center whitespace-nowrap px-4 text-sm text-blue-700 hover:bg-blue-50 hover:border-blue-200 focus:border-gray-200 focus:outline-none focus:ring-0 focus-visible:border-gray-200 focus-visible:outline-none focus-visible:ring-0 sm:w-auto"
+              className="btn-secondary flex h-[42px] w-full items-center justify-end sm:justify-center whitespace-nowrap px-4 text-sm text-blue-700 hover:bg-blue-50 hover:border-blue-200 focus:border-gray-200 focus:outline-none focus:ring-0 focus-visible:border-gray-200 focus-visible:outline-none focus-visible:ring-0 sm:w-auto"
             >
               <Edit className="w-4 h-4 mr-2 flex-shrink-0" />
               Edit
@@ -176,14 +178,14 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
                   setSelectedBillIds([])
                 }}
                 disabled={isBulkActioning}
-                className="btn-secondary flex items-center justify-center whitespace-nowrap h-[42px] text-sm px-4 disabled:opacity-50 focus:border-gray-200 focus:outline-none focus:ring-0 focus-visible:border-gray-200 focus-visible:outline-none focus-visible:ring-0"
+                className="btn-secondary flex items-center justify-end sm:justify-center whitespace-nowrap h-[42px] text-sm px-4 disabled:opacity-50 focus:border-gray-200 focus:outline-none focus:ring-0 focus-visible:border-gray-200 focus-visible:outline-none focus-visible:ring-0 w-full sm:w-auto flex-1 sm:flex-initial"
               >
                 Batal
               </button>
               <button 
                 onClick={handleBulkDelete}
                 disabled={isBulkActioning || selectedBillIds.length === 0}
-                className="btn-secondary flex items-center justify-center whitespace-nowrap h-[42px] text-sm text-red-600 hover:bg-red-50 hover:border-red-200 border-gray-200 px-4 disabled:opacity-50 focus:border-gray-200 focus:outline-none focus:ring-0 focus-visible:border-gray-200 focus-visible:outline-none focus-visible:ring-0"
+                className="btn-secondary flex items-center justify-end sm:justify-center whitespace-nowrap h-[42px] text-sm text-red-600 hover:bg-red-50 hover:border-red-200 border-gray-200 px-4 disabled:opacity-50 focus:border-gray-200 focus:outline-none focus:ring-0 focus-visible:border-gray-200 focus-visible:outline-none focus-visible:ring-0 w-full sm:w-auto flex-1 sm:flex-initial"
               >
                 <Trash2 className="w-4 h-4 mr-2 flex-shrink-0" />
                 <span>Hapus Pilihan ({selectedBillIds.length})</span>
@@ -193,7 +195,7 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
         </div>
 
         <div className="overflow-x-auto w-full rounded-xl border border-gray-100 shadow-sm scrollbar-thin scrollbar-thumb-gray-200">
-          <table className="w-full text-left text-sm">
+          <table className="min-w-[750px] w-full text-left text-sm">
             <thead className="bg-[#F3F4F6] border-b border-border text-gray-600">
               <tr>
                 {isEditMode && (
@@ -321,108 +323,148 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <form onSubmit={handleCreateInvoice} className="p-6 space-y-4">
-              {isLoadingForm ? (
-                <div className="py-8 text-center text-gray-500 text-sm animate-pulse">Memuat form data...</div>
-              ) : (
-                <>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Nama Penghuni</label>
-                    <Select 
-                      options={editingBillId ? [
-                        ...users.filter(u => (!u.status || u.status === 'Aktif') && String(u.role).includes('user')).map(u => ({ label: `${u.full_name} (Kamar ${u.room_number || '-'})`, value: u.full_name }))
-                      ] : [
-                        { label: '--- Semua Penghuni ---', value: 'ALL' },
-                        ...users.filter(u => (!u.status || u.status === 'Aktif') && String(u.role).includes('user')).map(u => ({ label: `${u.full_name} (Kamar ${u.room_number || '-'})`, value: u.full_name }))
-                      ]}
-                      value={newBill.resident_name}
-                      onChange={val => setNewBill({...newBill, resident_name: val})}
-                      placeholder="Pilih penghuni..."
-                    />
+            {isFormSuccessOpen ? (
+              <div className="p-8 flex flex-col items-center justify-center text-center animate-in fade-in duration-300 min-h-[350px]">
+                <div className="mb-5 inline-flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100 shadow-sm animate-bounce">
+                  <CheckCircle2 className="h-8 w-8" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">
+                  {editingBillId ? 'Tagihan Berhasil Diperbarui!' : 'Tagihan Berhasil Dibuat!'}
+                </h3>
+                <p className="text-gray-500 max-w-sm mb-6 leading-relaxed text-xs">
+                  Tagihan untuk <span className="font-semibold text-gray-800">"{newBill.resident_name === 'ALL' ? 'Semua Penghuni Warga' : newBill.resident_name}"</span> telah berhasil dicatat ke sistem billing dan piutang.
+                </p>
+                <div className="w-full bg-gray-50 border border-gray-100 rounded-xl p-4 mb-6 text-left space-y-2 text-xs shadow-sm">
+                  <div className="flex justify-between items-center pb-2 border-b border-gray-200/60">
+                    <span className="text-gray-500 font-medium">Judul Tagihan</span>
+                    <span className="font-semibold text-gray-800">{newBill.title}</span>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Keterangan / Judul Tagihan</label>
-                    <Select 
-                      options={templates.map(t => ({ label: t.title, value: t.title }))}
-                      value={newBill.title}
-                      onChange={val => {
-                        const template = templates.find(t => t.title === val)
-                        let formattedDueDate = newBill.due_date || buildDefaultDueDate()
-                        if (template && template.due_date) {
-                          const today = new Date()
-                          const pt = template.contribution_types?.period_type || 'Bulanan'
-                          
-                          if (pt === 'Bulanan') {
-                            const day = parseInt(template.due_date)
-                            if (!isNaN(day)) {
-                              let nextDate = new Date(today.getFullYear(), today.getMonth(), day)
-                              if (nextDate < today) {
-                                nextDate = new Date(today.getFullYear(), today.getMonth() + 1, day)
-                              }
-                              formattedDueDate = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}-${String(nextDate.getDate()).padStart(2, '0')}`
-                            }
-                          } else if (pt === 'Tahunan') {
-                            const parts = template.due_date.split('-')
-                            if (parts.length === 2) {
-                              const month = parseInt(parts[0])
-                              const day = parseInt(parts[1])
-                              let nextDate = new Date(today.getFullYear(), month - 1, day)
-                              if (nextDate < today) {
-                                nextDate = new Date(today.getFullYear() + 1, month - 1, day)
-                              }
-                              formattedDueDate = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}-${String(nextDate.getDate()).padStart(2, '0')}`
-                            }
-                          } else if (pt === 'Mingguan') {
-                            const days = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu']
-                            const targetDay = days.indexOf(template.due_date)
-                            if (targetDay !== -1) {
-                              const nextDate = new Date(today)
-                              const diff = (targetDay + 7 - today.getDay()) % 7
-                              nextDate.setDate(today.getDate() + (diff === 0 ? 7 : diff))
-                              formattedDueDate = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}-${String(nextDate.getDate()).padStart(2, '0')}`
-                            }
-                          } else {
-                            try {
-                              const d = new Date(template.due_date)
-                              if (!isNaN(d.getTime())) {
-                                formattedDueDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-                              }
-                            } catch (e) {}
-                          }
-                        }
-                        setNewBill({...newBill, title: val, amount: template ? Number(template.amount) || 0 : 0, due_date: formattedDueDate})
-                      }}
-                      placeholder="Pilih template iuran..."
-                    />
-                    {newBill.title && !templates.find(t => t.title === newBill.title) && (
-                      <input 
-                        type="text" 
-                        className="form-input mt-2" 
-                        value={newBill.title} 
-                        onChange={e => setNewBill({...newBill, title: e.target.value})} 
-                        placeholder="Atau ketik keterangan kustom..." 
-                      />
-                    )}
+                  <div className="flex justify-between items-center pb-2 border-b border-gray-200/60">
+                    <span className="text-gray-500 font-medium">Nominal</span>
+                    <span className="font-bold text-emerald-600 text-sm">
+                      Rp {new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(newBill.amount)}
+                    </span>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Nominal (Rp)</label>
-                      <input required type="number" className="form-input bg-gray-50" value={newBill.amount || ''} onChange={e => setNewBill({...newBill, amount: Number(e.target.value)})} placeholder="50000" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Jatuh Tempo</label>
-                      <input required type="date" className="form-input" value={newBill.due_date} onChange={e => setNewBill({...newBill, due_date: e.target.value})} />
-                    </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-500 font-medium">Jatuh Tempo</span>
+                    <span className="font-medium text-gray-800">
+                      {newBill.due_date ? new Date(newBill.due_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '-'}
+                    </span>
                   </div>
-                </>
-              )}
-              <div className="pt-4 flex gap-3">
-                <button type="button" onClick={closeFormModal} className="btn-secondary flex-1">Batal</button>
-                <button type="submit" disabled={isSubmitting || isLoadingForm || !newBill.resident_name || !newBill.title} className="btn-primary flex-1 flex justify-center items-center">
-                  {isSubmitting ? 'Memproses...' : <><Save className="w-5 h-5 mr-2" /> Simpan</>}
+                </div>
+                <button
+                  type="button"
+                  onClick={closeFormModal}
+                  className="btn-primary w-full py-2.5 font-semibold text-sm shadow-md shadow-emerald-500/15 bg-emerald-600 hover:bg-emerald-700 hover:border-emerald-700 focus:outline-none"
+                >
+                  Selesai
                 </button>
               </div>
-            </form>
+            ) : (
+              <form onSubmit={handleCreateInvoice} className="p-6 space-y-4">
+                {isLoadingForm ? (
+                  <div className="py-8 text-center text-gray-500 text-sm animate-pulse">Memuat form data...</div>
+                ) : (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Nama Penghuni</label>
+                      <Select 
+                        options={editingBillId ? [
+                          ...users.filter(u => (!u.status || u.status === 'Aktif') && String(u.role).includes('user')).map(u => ({ label: `${u.full_name} (Kamar ${u.room_number || '-'})`, value: u.full_name }))
+                        ] : [
+                          { label: '--- Semua Penghuni ---', value: 'ALL' },
+                          ...users.filter(u => (!u.status || u.status === 'Aktif') && String(u.role).includes('user')).map(u => ({ label: `${u.full_name} (Kamar ${u.room_number || '-'})`, value: u.full_name }))
+                        ]}
+                        value={newBill.resident_name}
+                        onChange={val => setNewBill({...newBill, resident_name: val})}
+                        placeholder="Pilih penghuni..."
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Keterangan / Judul Tagihan</label>
+                      <Select 
+                        options={templates.map(t => ({ label: t.title, value: t.title }))}
+                        value={newBill.title}
+                        onChange={val => {
+                          const template = templates.find(t => t.title === val)
+                          let formattedDueDate = newBill.due_date || buildDefaultDueDate()
+                          if (template && template.due_date) {
+                            const today = new Date()
+                            const pt = template.contribution_types?.period_type || 'Bulanan'
+                            
+                            if (pt === 'Bulanan') {
+                              const day = parseInt(template.due_date)
+                              if (!isNaN(day)) {
+                                let nextDate = new Date(today.getFullYear(), today.getMonth(), day)
+                                if (nextDate < today) {
+                                  nextDate = new Date(today.getFullYear(), today.getMonth() + 1, day)
+                                }
+                                formattedDueDate = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}-${String(nextDate.getDate()).padStart(2, '0')}`
+                              }
+                            } else if (pt === 'Tahunan') {
+                              const parts = template.due_date.split('-')
+                              if (parts.length === 2) {
+                                const month = parseInt(parts[0])
+                                const day = parseInt(parts[1])
+                                let nextDate = new Date(today.getFullYear(), month - 1, day)
+                                if (nextDate < today) {
+                                  nextDate = new Date(today.getFullYear() + 1, month - 1, day)
+                                }
+                                formattedDueDate = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}-${String(nextDate.getDate()).padStart(2, '0')}`
+                              }
+                            } else if (pt === 'Mingguan') {
+                              const days = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu']
+                              const targetDay = days.indexOf(template.due_date)
+                              if (targetDay !== -1) {
+                                const nextDate = new Date(today)
+                                const diff = (targetDay + 7 - today.getDay()) % 7
+                                nextDate.setDate(today.getDate() + (diff === 0 ? 7 : diff))
+                                formattedDueDate = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}-${String(nextDate.getDate()).padStart(2, '0')}`
+                              }
+                            } else {
+                              try {
+                                const d = new Date(template.due_date)
+                                if (!isNaN(d.getTime())) {
+                                  formattedDueDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+                                }
+                              } catch (e) {}
+                            }
+                          }
+                          setNewBill({...newBill, title: val, amount: template ? Number(template.amount) || 0 : 0, due_date: formattedDueDate})
+                        }}
+                        placeholder="Pilih template iuran..."
+                      />
+                      {newBill.title && !templates.find(t => t.title === newBill.title) && (
+                        <input 
+                          type="text" 
+                          className="form-input mt-2" 
+                          value={newBill.title} 
+                          onChange={e => setNewBill({...newBill, title: e.target.value})} 
+                          placeholder="Atau ketik keterangan kustom..." 
+                        />
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Nominal (Rp)</label>
+                        <input required type="number" className="form-input bg-gray-50" value={newBill.amount || ''} onChange={e => setNewBill({...newBill, amount: Number(e.target.value)})} placeholder="50000" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Jatuh Tempo</label>
+                        <input required type="date" className="form-input" value={newBill.due_date} onChange={e => setNewBill({...newBill, due_date: e.target.value})} />
+                      </div>
+                    </div>
+                  </>
+                )}
+                <div className="pt-4 flex gap-3">
+                  <button type="button" onClick={closeFormModal} className="btn-secondary flex-1">Batal</button>
+                  <button type="submit" disabled={isSubmitting || isLoadingForm || !newBill.resident_name || !newBill.title} className="btn-primary flex-1 flex justify-center items-center">
+                    {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-5 h-5 mr-2" />}
+                    Simpan
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>,
         document.body
@@ -492,21 +534,20 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
                       }}
                       className="btn-primary flex items-center justify-center bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-sm py-2.5 px-4 font-semibold rounded-xl transition-all"
                     >
-                      <Check className="w-4 h-4 mr-2" /> Potong Utang
+                      {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
+                      Potong Utang
                     </button>
                   )}
                   <button 
                     disabled={isSubmitting}
                     onClick={async () => {
-                      const { success } = await spreadsheetApi.put('Bills', { id: selectedBill.id, status: 'paid' })
-                      setBills(bills.map(b => b.id === selectedBill.id ? {...b, status: 'paid'} : b))
+                      await handleMarkAsPaid(selectedBill)
                       setIsDetailModalOpen(false)
-                      setToastMessage(success ? 'Tagihan berhasil ditandai Lunas!' : 'Disimpan lokal (Gagal terhubung ke Sheets)')
-                      setTimeout(() => setToastMessage(''), 3000)
                     }}
                     className={`btn-primary flex items-center justify-center bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-sm py-2.5 px-4 font-semibold rounded-xl transition-all ${!debtInfo.hasDebt ? 'col-span-2' : ''}`}
                   >
-                    <Check className="w-4 h-4 mr-2" /> {debtInfo.hasDebt ? 'Lunas Manual' : 'Tandai Lunas'}
+                    {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
+                    {debtInfo.hasDebt ? 'Lunas Manual' : 'Tandai Lunas'}
                   </button>
                 </div>
               )}
@@ -523,6 +564,7 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
         variant={alertDialog.variant}
         showCancel={alertDialog.showCancel}
         confirmLabel={alertDialog.confirmLabel}
+        isLoading={isSubmitting || isBulkActioning}
         onClose={() => setAlertDialog(prev => ({ ...prev, isOpen: false }))}
         onConfirm={alertDialog.onConfirm}
       />

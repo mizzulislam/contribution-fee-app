@@ -1,5 +1,5 @@
 import { createPortal } from 'react-dom'
-import { AlertTriangle, Info, CheckCircle2 } from 'lucide-react'
+import { AlertTriangle, Info, CheckCircle2, Loader2 } from 'lucide-react'
 
 interface ConfirmDialogProps {
   isOpen: boolean
@@ -9,6 +9,7 @@ interface ConfirmDialogProps {
   cancelLabel?: string
   variant?: 'danger' | 'info' | 'success'
   showCancel?: boolean
+  isLoading?: boolean
   onClose: () => void
   onConfirm?: () => void
 }
@@ -21,6 +22,7 @@ export default function ConfirmDialog({
   cancelLabel = 'Batal',
   variant = 'danger',
   showCancel = true,
+  isLoading = false,
   onClose,
   onConfirm
 }: ConfirmDialogProps) {
@@ -53,7 +55,11 @@ export default function ConfirmDialog({
   return createPortal(
     <div
       className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in duration-200"
-      onMouseDown={onClose}
+      onMouseDown={() => {
+        if (!isLoading) {
+          onClose()
+        }
+      }}
     >
       <div
         className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200 p-6 text-center"
@@ -70,7 +76,8 @@ export default function ConfirmDialog({
           {showCancel && (
             <button
               onClick={onClose}
-              className="btn-secondary flex-1 py-2.5 font-medium"
+              disabled={isLoading}
+              className="btn-secondary flex-1 py-2.5 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {cancelLabel}
             </button>
@@ -83,7 +90,8 @@ export default function ConfirmDialog({
                 onClose()
               }
             }}
-            className={`flex-1 py-2.5 px-4 rounded-lg font-medium text-white transition-colors shadow-md ${
+            disabled={isLoading}
+            className={`flex-1 py-2.5 px-4 rounded-lg font-medium text-white transition-colors shadow-md flex items-center justify-center gap-2 disabled:opacity-75 disabled:cursor-not-allowed ${
               variant === 'danger'
                 ? 'bg-red-600 hover:bg-red-700 shadow-red-500/20'
                 : variant === 'success'
@@ -91,6 +99,7 @@ export default function ConfirmDialog({
                 : 'bg-primary hover:bg-primary-dark shadow-primary/20'
             }`}
           >
+            {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
             {confirmLabel}
           </button>
         </div>

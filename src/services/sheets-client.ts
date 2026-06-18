@@ -30,6 +30,25 @@ function buildHeaders() {
   }
 }
 
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 15000): Promise<Response> {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+    clearTimeout(id);
+    return response;
+  } catch (error: any) {
+    clearTimeout(id);
+    if (error.name === 'AbortError') {
+      throw new Error('Koneksi ke Google Sheets timeout (melebihi 15 detik). Silakan coba lagi.');
+    }
+    throw error;
+  }
+}
+
 interface RequesterContext {
   userEmail?: string
   userRole?: string
@@ -80,7 +99,7 @@ export const spreadsheetApi = {
       const roleParam = userRole ? `&userRole=${encodeURIComponent(userRole)}` : ''
       const tokenParam = SOEMATRA_API_TOKEN ? `&token=${encodeURIComponent(SOEMATRA_API_TOKEN)}` : ''
       
-      const response = await fetch(`${SPREADSHEET_API_URL}?action=get&sheet=${sheetName}${tokenParam}${emailParam}${roleParam}`, {
+      const response = await fetchWithTimeout(`${SPREADSHEET_API_URL}?action=get&sheet=${sheetName}${tokenParam}${emailParam}${roleParam}`, {
         credentials: 'omit'
       })
       if (!response.ok) throw new Error('Network response was not ok')
@@ -104,7 +123,7 @@ export const spreadsheetApi = {
       return { success: false, error: new Error('Spreadsheet API belum dikonfigurasi; data tidak disimpan.') }
     }
     try {
-      const response = await fetch(SPREADSHEET_API_URL, {
+      const response = await fetchWithTimeout(SPREADSHEET_API_URL, {
         method: 'POST',
         headers: buildHeaders(),
         body: JSON.stringify(withAuthContext({ action: 'post', sheet: sheetName, data })),
@@ -129,7 +148,7 @@ export const spreadsheetApi = {
       return { success: false, error: new Error('Spreadsheet API belum dikonfigurasi; data tidak diperbarui.') }
     }
     try {
-      const response = await fetch(SPREADSHEET_API_URL, {
+      const response = await fetchWithTimeout(SPREADSHEET_API_URL, {
         method: 'POST', // GAS usually uses POST for all mutations
         headers: buildHeaders(),
         body: JSON.stringify(withAuthContext({ action: 'put', sheet: sheetName, data })),
@@ -152,7 +171,7 @@ export const spreadsheetApi = {
       return { success: false, error: new Error('Spreadsheet API belum dikonfigurasi; data tidak dihapus.') }
     }
     try {
-      const response = await fetch(SPREADSHEET_API_URL, {
+      const response = await fetchWithTimeout(SPREADSHEET_API_URL, {
         method: 'POST', 
         headers: buildHeaders(),
         body: JSON.stringify(withAuthContext({ action: 'delete', sheet: sheetName, id })),
@@ -175,7 +194,7 @@ export const spreadsheetApi = {
       return { success: false, error: new Error('Spreadsheet API belum dikonfigurasi; data tidak dipulihkan.') }
     }
     try {
-      const response = await fetch(SPREADSHEET_API_URL, {
+      const response = await fetchWithTimeout(SPREADSHEET_API_URL, {
         method: 'POST', 
         headers: buildHeaders(),
         body: JSON.stringify(withAuthContext({ action: 'restore', sheet: sheetName, data })),

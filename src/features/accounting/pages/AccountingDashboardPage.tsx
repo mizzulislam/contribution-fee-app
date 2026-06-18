@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { BookOpen, ScrollText, Scale, FileBarChart, Loader2, CalendarDays, Filter, Sliders, Archive } from 'lucide-react'
 import { cn } from '@/utils/styles'
+import Select from '@/components/ui/Select'
 
 import { syncAccountingWithSheet } from '@/features/accounting'
 import { getPeriodLabel, getPresetPeriod, type PeriodFilter, type PeriodPreset } from '@/features/accounting/calculations/period'
@@ -75,9 +76,10 @@ export default function FinanceDashboard() {
   return (
     <div className="space-y-6">
       {/* Tab Navigation */}
-      <div className="bg-white rounded-[20px] p-2 flex flex-row items-center justify-between gap-4 shadow-sm border border-gray-100 overflow-hidden w-full">
+      <div className="bg-white rounded-[20px] p-2 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 shadow-sm border border-gray-100 w-full">
+        {/* Desktop Tab Navigation */}
         <div 
-          className="flex-1 flex items-center gap-2 overflow-x-auto no-scrollbar"
+          className="hidden lg:flex flex-1 items-center gap-2 overflow-x-auto no-scrollbar"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
           <style>{`.no-scrollbar::-webkit-scrollbar { display: none; }`}</style>
@@ -101,21 +103,38 @@ export default function FinanceDashboard() {
             )
           })}
         </div>
+
+        {/* Mobile Tab Dropdown */}
+        <div className="block lg:hidden w-full">
+          <Select
+            options={tabs.map(tab => ({
+              label: tab.label,
+              value: tab.id,
+              icon: <tab.icon className="w-4 h-4" />
+            }))}
+            value={activeTab}
+            onChange={handleTabChange}
+          />
+        </div>
         
-        <div ref={periodDropdownRef} className="flex-shrink-0 relative flex justify-end">
+        {/* Filter Button (w-full on mobile, auto on desktop) */}
+        <div ref={periodDropdownRef} className="relative w-full lg:w-auto flex lg:block">
           <button
             type="button"
             onClick={() => setIsPeriodOpen(prev => !prev)}
-            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
+            className="w-full lg:w-auto form-input flex items-center justify-between bg-white cursor-pointer hover:border-primary/50 transition-colors text-left"
           >
-            <Filter className="h-4 w-4 text-emerald-600" />
-            <span className="hidden sm:inline">Filter:</span>
-            <span>{getPeriodLabel(period)}</span>
-            <CalendarDays className="h-4 w-4 text-gray-400" />
+            <span className="flex items-center gap-2 truncate text-gray-900 font-medium">
+              <span className="flex-shrink-0">
+                <Filter className="h-4 w-4 text-emerald-600" />
+              </span>
+              Filter: {getPeriodLabel(period)}
+            </span>
+            <CalendarDays className="h-4 w-4 text-gray-400 flex-shrink-0 ml-2" />
           </button>
 
           {isPeriodOpen && (
-            <div className="absolute right-0 z-40 mt-2 w-[min(22rem,calc(100vw-2rem))] rounded-2xl border border-gray-100 bg-white p-4 shadow-xl shadow-gray-200/60">
+            <div className="absolute right-0 z-40 mt-2 w-full lg:w-[min(22rem,calc(100vw-2rem))] rounded-2xl border border-gray-100 bg-white p-4 shadow-xl shadow-gray-200/60">
               <div className="grid grid-cols-2 gap-2">
                 {[
                   { label: 'Semua', value: 'all' },

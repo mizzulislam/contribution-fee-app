@@ -84,11 +84,11 @@ export default function Reminders({ period = defaultPeriod }: RemindersProps) {
   return (
     <div className="w-full space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center">
-          <BellRing className="mr-3 text-primary w-8 h-8" />
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight flex items-center">
+          <BellRing className="mr-2 sm:mr-3 text-primary w-6 h-6 sm:w-8 sm:h-8" />
           Kirim Reminder Tagihan
         </h1>
-        <p className="text-text-secondary mt-1">Kirim peringatan otomatis tagihan jatuh tempo ke penghuni via sistem/WhatsApp.</p>
+        <p className="text-xs sm:text-sm text-text-secondary mt-1">Kirim peringatan otomatis tagihan jatuh tempo ke penghuni via sistem/WhatsApp.</p>
       </div>
 
       <div className="grid w-full grid-cols-1 gap-6 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.35fr)]">

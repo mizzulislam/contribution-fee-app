@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { spreadsheetApi } from '@/services/sheets-client'
-import { Plus, Users, AlertTriangle, Info } from 'lucide-react'
+import { Plus, Users } from 'lucide-react'
 import { WargaTable } from '@/features/residents/components/ResidentTable'
 import { WargaFormModal, type WargaFormData } from '@/features/residents/components/ResidentFormModal'
 import { generateSecureId } from '@/utils/id'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
 
 interface WargaUser extends WargaFormData {
   id: number | string
@@ -18,13 +19,25 @@ export default function ManajemenWarga() {
   const [roleFilter, setRoleFilter] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [editingId, setEditingId] = useState<number | string | null>(null)
-  const [alertDialog, setAlertDialog] = useState({
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean
+    idToDelete: number | string | null
+  }>({
+    isOpen: false,
+    idToDelete: null
+  })
+  const [successDialog, setSuccessDialog] = useState<{
+    isOpen: boolean
+    title: string
+    message: string
+    variant?: 'success' | 'danger'
+  }>({
     isOpen: false,
     title: '',
     message: '',
-    isConfirm: false,
-    onConfirm: () => {}
+    variant: 'success'
   })
   
   // Form State
@@ -83,22 +96,23 @@ export default function ManajemenWarga() {
       const updatedUser = { id: editingId, ...formData }
       const { success } = await spreadsheetApi.put('Users', updatedUser)
 
-      setUsers(users.map(u => u.id === editingId ? { ...u, ...formData } : u))
-      setIsModalOpen(false)
-      resetForm()
-      
-      if (!success) {
-        showAlertDialog(
-          'Gagal Menyimpan',
-          'Gagal memperbarui data pengguna ke sistem.',
-          false
-        )
+      if (success) {
+        setUsers(users.map(u => u.id === editingId ? { ...u, ...formData } : u))
+        setIsModalOpen(false)
+        resetForm()
+        setSuccessDialog({
+          isOpen: true,
+          title: 'Pembaruan Berhasil',
+          message: 'Data pengguna berhasil diperbarui dan disimpan.',
+          variant: 'success'
+        })
       } else {
-        showAlertDialog(
-          'Pembaruan Berhasil',
-          'Data pengguna berhasil diperbarui dan disimpan.',
-          false
-        )
+        setSuccessDialog({
+          isOpen: true,
+          title: 'Gagal Menyimpan',
+          message: 'Gagal memperbarui data pengguna ke Google Sheets. Silakan coba kembali.',
+          variant: 'danger'
+        })
       }
     } else {
       // Mode Tambah
@@ -106,22 +120,23 @@ export default function ManajemenWarga() {
       const newUser = { id: generatedId, ...formData }
       const { success } = await spreadsheetApi.post('Users', newUser)
       
-      setUsers([...users, newUser])
-      setIsModalOpen(false)
-      resetForm()
-
-      if (!success) {
-        showAlertDialog(
-          'Gagal Menyimpan',
-          'Gagal menambahkan pengguna baru ke sistem.',
-          false
-        )
+      if (success) {
+        setUsers([...users, newUser])
+        setIsModalOpen(false)
+        resetForm()
+        setSuccessDialog({
+          isOpen: true,
+          title: 'Berhasil Ditambahkan',
+          message: 'Data pengguna berhasil ditambahkan ke database.',
+          variant: 'success'
+        })
       } else {
-        showAlertDialog(
-          'Berhasil Ditambahkan',
-          'Data pengguna berhasil ditambahkan.',
-          false
-        )
+        setSuccessDialog({
+          isOpen: true,
+          title: 'Gagal Menyimpan',
+          message: 'Gagal menambahkan pengguna baru ke Google Sheets.',
+          variant: 'danger'
+        })
       }
     }
     setIsSubmitting(false)
@@ -143,29 +158,49 @@ export default function ManajemenWarga() {
   }
 
   const handleDelete = (id: number | string) => {
-    showAlertDialog(
-      'Hapus Pengguna',
-      'Apakah Anda yakin ingin menghapus pengguna ini? Tindakan ini tidak dapat dibatalkan.',
-      true,
-      async () => {
-        const { success } = await spreadsheetApi.del('Users', id)
+    setConfirmDialog({
+      isOpen: true,
+      idToDelete: id
+    })
+  }
+
+  const handleConfirmDelete = async () => {
+    const id = confirmDialog.idToDelete
+    if (id === null) return
+    
+    setIsDeleting(true)
+    try {
+      const { success } = await spreadsheetApi.del('Users', id)
+      if (success) {
         setUsers(users.filter(u => u.id !== id))
-        
-        if (!success) {
-          showAlertDialog(
-            'Gagal Menghapus',
-            'Gagal menghapus pengguna dari sistem. Terjadi kesalahan koneksi.',
-            false
-          )
-        } else {
-          showAlertDialog(
-            'Penghapusan Berhasil',
-            'Data pengguna telah permanen dihapus dari sistem.',
-            false
-          )
-        }
+        setConfirmDialog({ isOpen: false, idToDelete: null })
+        setSuccessDialog({
+          isOpen: true,
+          title: 'Penghapusan Berhasil',
+          message: 'Data pengguna telah permanen dihapus dari sistem.',
+          variant: 'success'
+        })
+      } else {
+        setConfirmDialog({ isOpen: false, idToDelete: null })
+        setSuccessDialog({
+          isOpen: true,
+          title: 'Gagal Menghapus',
+          message: 'Gagal menghapus pengguna dari sistem. Terjadi kesalahan koneksi.',
+          variant: 'danger'
+        })
       }
-    )
+    } catch (e) {
+      console.error(e)
+      setConfirmDialog({ isOpen: false, idToDelete: null })
+      setSuccessDialog({
+        isOpen: true,
+        title: 'Error',
+        message: 'Terjadi kesalahan sistem saat menghapus data.',
+        variant: 'danger'
+      })
+    } finally {
+      setIsDeleting(false)
+    }
   }
 
   const resetForm = () => {
@@ -174,19 +209,15 @@ export default function ManajemenWarga() {
     setEditingId(null)
   }
 
-  const showAlertDialog = (title: string, message: string, isConfirm: boolean, onConfirm: () => void = () => {}) => {
-    setAlertDialog({ isOpen: true, title, message, isConfirm, onConfirm })
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center">
-            <Users className="mr-3 text-primary w-8 h-8" />
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight flex items-center">
+            <Users className="mr-2 sm:mr-3 text-primary w-6 h-6 sm:w-8 sm:h-8" />
             Manajemen Warga
           </h1>
-          <p className="text-text-secondary mt-1">Daftar pengguna terpusat mencakup Warga, Bendahara, dan Super Admin.</p>
+          <p className="text-xs sm:text-sm text-text-secondary mt-1">Daftar pengguna terpusat mencakup Warga, Bendahara, dan Super Admin.</p>
         </div>
         <button 
           className="btn-primary flex items-center"
@@ -218,53 +249,27 @@ export default function ManajemenWarga() {
         setIsEmailEdited={setIsEmailEdited}
       />
 
-      {/* Custom Alert/Confirm Dialog */}
-      {alertDialog.isOpen && createPortal(
-        <div
-          className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm transition-opacity"
-          onMouseDown={() => setAlertDialog(prev => ({...prev, isOpen: false}))}
-        >
-          <div
-            className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden transform transition-all p-6 text-center"
-            onMouseDown={(event) => event.stopPropagation()}
-          >
-            <div className={`mx-auto w-14 h-14 flex items-center justify-center rounded-full mb-5 ${alertDialog.isConfirm ? 'bg-red-100 text-red-600' : 'bg-primary-100 text-primary-600'}`}>
-              {alertDialog.isConfirm ? <AlertTriangle className="w-7 h-7" /> : <Info className="w-7 h-7" />}
-            </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-3">{alertDialog.title}</h3>
-            <p className="text-sm text-gray-600 mb-8 whitespace-pre-line text-left leading-relaxed">
-              {alertDialog.message}
-            </p>
-            <div className="flex gap-3 justify-center">
-              {alertDialog.isConfirm && (
-                <button 
-                  onClick={() => setAlertDialog(prev => ({...prev, isOpen: false}))}
-                  className="btn-secondary flex-1 py-2.5 font-medium"
-                >
-                  Batal
-                </button>
-              )}
-              <button 
-                onClick={() => {
-                  if (alertDialog.isConfirm) {
-                    alertDialog.onConfirm()
-                  } else {
-                    setAlertDialog(prev => ({...prev, isOpen: false}))
-                  }
-                }}
-                className={`flex-1 py-2.5 px-4 rounded-lg font-medium text-white transition-colors shadow-md ${
-                  alertDialog.isConfirm 
-                    ? 'bg-red-600 hover:bg-red-700 shadow-red-500/20' 
-                    : 'bg-primary hover:bg-primary-dark shadow-primary/20'
-                }`}
-              >
-                {alertDialog.isConfirm ? 'Ya, Hapus' : 'Mengerti'}
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title="Konfirmasi Hapus"
+        message="Apakah Anda yakin ingin menghapus pengguna ini? Tindakan ini tidak dapat dibatalkan."
+        confirmLabel="Ya, Hapus"
+        cancelLabel="Batal"
+        variant="danger"
+        isLoading={isDeleting}
+        onClose={() => !isDeleting && setConfirmDialog({ isOpen: false, idToDelete: null })}
+        onConfirm={handleConfirmDelete}
+      />
+
+      <ConfirmDialog
+        isOpen={successDialog.isOpen}
+        title={successDialog.title}
+        message={successDialog.message}
+        variant={successDialog.variant || 'success'}
+        showCancel={false}
+        confirmLabel="Selesai"
+        onClose={() => setSuccessDialog(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   )
 }

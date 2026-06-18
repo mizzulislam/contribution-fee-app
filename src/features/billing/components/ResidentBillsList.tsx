@@ -82,17 +82,17 @@ export default function ResidentBillsList() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center">
-            <FileText className="mr-3 text-primary w-8 h-8" />
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight flex items-center">
+            <FileText className="mr-2 sm:mr-3 text-primary w-6 h-6 sm:w-8 sm:h-8" />
             Tagihan Saya
           </h1>
-          <p className="text-text-secondary mt-1">Daftar iuran yang menjadi tanggungan Anda.</p>
+          <p className="text-xs sm:text-sm text-text-secondary mt-1">Daftar iuran yang menjadi tanggungan Anda.</p>
         </div>
       </div>
 
       <div className="card-container p-0 overflow-hidden">
         <div className="overflow-x-auto w-full scrollbar-thin scrollbar-thumb-gray-200">
-          <table className="w-full text-left text-sm">
+          <table className="min-w-[650px] w-full text-left text-sm">
             <thead className="bg-[#F3F4F6] border-b border-border text-gray-600">
               <tr>
                 <th className="px-3 sm:px-6 py-3 font-semibold whitespace-nowrap text-left">Keterangan</th>

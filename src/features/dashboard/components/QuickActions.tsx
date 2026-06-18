@@ -65,17 +65,17 @@ interface QuickActionItem {
 
 function QuickActionCard({ icon: Icon, label, onClick, to, tone }: QuickActionItem) {
   const toneClass = actionToneClasses[tone]
-  const className = `group relative flex min-h-[128px] flex-col justify-between overflow-hidden rounded-2xl border ${toneClass.border} ${toneClass.background} p-5 text-left shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md`
+  const className = `group relative flex flex-col justify-between overflow-hidden rounded-2xl border ${toneClass.border} ${toneClass.background} p-3 sm:p-5 text-left shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md min-h-[90px] sm:min-h-[128px]`
   const content = (
     <>
-      <div className={`absolute right-0 top-0 h-20 w-20 ${toneClass.glow} blur-2xl`} />
-      <div className="relative flex items-start justify-between gap-3">
-        <p className={`text-xs font-bold uppercase tracking-wide ${toneClass.eyebrow}`}>Aksi Cepat</p>
-        <div className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl transition-colors ${toneClass.icon}`}>
-          <Icon className="h-5 w-5" />
+      <div className={`absolute right-0 top-0 h-16 w-16 sm:h-20 sm:w-20 ${toneClass.glow} blur-xl sm:blur-2xl`} />
+      <div className="relative flex items-center justify-between gap-1.5 sm:gap-3">
+        <p className={`text-[10px] sm:text-xs font-bold uppercase tracking-wide ${toneClass.eyebrow} hidden xs:block`}>Aksi Cepat</p>
+        <div className={`flex h-8 w-8 sm:h-11 sm:w-11 flex-shrink-0 items-center justify-center rounded-xl sm:rounded-2xl transition-colors ${toneClass.icon}`}>
+          <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
         </div>
       </div>
-      <span className="relative mt-6 text-base font-bold text-gray-900">{label}</span>
+      <span className="relative mt-2 sm:mt-6 text-xs sm:text-base font-bold text-gray-900 leading-tight">{label}</span>
     </>
   )
 
@@ -96,7 +96,7 @@ function QuickActionCard({ icon: Icon, label, onClick, to, tone }: QuickActionIt
 
 function QuickActionGrid({ actions }: { actions: QuickActionItem[] }) {
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 xl:grid-cols-4">
       {actions.map(action => (
         <QuickActionCard key={action.label} {...action} />
       ))}

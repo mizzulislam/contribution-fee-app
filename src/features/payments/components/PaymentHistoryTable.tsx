@@ -61,11 +61,11 @@ export default function PaymentHistory() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center">
-            <History className="mr-3 text-primary w-8 h-8" />
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight flex items-center">
+            <History className="mr-2 sm:mr-3 text-primary w-6 h-6 sm:w-8 sm:h-8" />
             Riwayat Pembayaran
           </h1>
-          <p className="text-text-secondary mt-1">Daftar pembayaran iuran Anda yang sudah lunas dan terverifikasi.</p>
+          <p className="text-xs sm:text-sm text-text-secondary mt-1">Daftar pembayaran iuran Anda yang sudah lunas dan terverifikasi.</p>
         </div>
       </div>
 
@@ -84,7 +84,7 @@ export default function PaymentHistory() {
         </div>
 
         <div className="overflow-x-auto w-full rounded-b-[20px] border-t border-border scrollbar-thin scrollbar-thumb-gray-200">
-          <table className="w-full text-left text-sm text-gray-600">
+          <table className="min-w-[700px] w-full text-left text-sm text-gray-600">
             <thead className="bg-[#F3F4F6] text-gray-700 text-xs uppercase font-semibold border-b border-border">
               <tr>
                 <th className="px-6 py-4">Keterangan</th>

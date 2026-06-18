@@ -28,6 +28,7 @@ export function useBillsManager(period: PeriodFilter = { preset: 'all' }) {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isFormSuccessOpen, setIsFormSuccessOpen] = useState(false)
   const [toastMessage, setToastMessage] = useState('')
   const [editingBillId, setEditingBillId] = useState<number | string | null>(null)
   const [isEditMode, setIsEditMode] = useState(false)
@@ -142,12 +143,15 @@ export function useBillsManager(period: PeriodFilter = { preset: 'all' }) {
       amount: 0
     })
     setEditingBillId(null)
+    setIsFormSuccessOpen(false)
     setIsAddModalOpen(true)
   }
 
   const closeAddModal = () => {
     setIsAddModalOpen(false)
     setEditingBillId(null)
+    setIsFormSuccessOpen(false)
+    setNewBill({ resident_name: '', title: '', due_date: buildDefaultDueDate(billingDueDay), amount: 0 })
   }
 
   const handleSelectTemplate = (templateId: string) => {
@@ -170,13 +174,13 @@ export function useBillsManager(period: PeriodFilter = { preset: 'all' }) {
       showCancel: true,
       confirmLabel: 'Ya, Hapus',
       onConfirm: () => {
-        setAlertDialog(prev => ({ ...prev, isOpen: false }))
         executeDelete(id)
       }
     })
   }
 
   const executeDelete = async (id: number | string) => {
+    setIsSubmitting(true)
     const originalBills = [...bills]
     const originalSelectedIds = [...selectedBillIds]
 
@@ -184,7 +188,10 @@ export function useBillsManager(period: PeriodFilter = { preset: 'all' }) {
     setSelectedBillIds(selectedBillIds.filter(selectedId => selectedId !== id))
 
     const targetBill = originalBills.find(b => b.id === id)
-    if (!targetBill) return
+    if (!targetBill) {
+      setIsSubmitting(false)
+      return
+    }
 
     let journalDate = new Date().toISOString().split('T')[0]
     try {
@@ -209,6 +216,7 @@ export function useBillsManager(period: PeriodFilter = { preset: 'all' }) {
         showCancel: false,
         confirmLabel: 'Mengerti'
       })
+      setIsSubmitting(false)
       return
     }
 
@@ -226,6 +234,7 @@ export function useBillsManager(period: PeriodFilter = { preset: 'all' }) {
       }
 
       showToast('Tagihan dan jurnal piutang berhasil dihapus.')
+      setAlertDialog(prev => ({ ...prev, isOpen: false }))
     } catch (err: any) {
       console.error(err)
       setBills(originalBills)
@@ -243,6 +252,8 @@ export function useBillsManager(period: PeriodFilter = { preset: 'all' }) {
         showCancel: false,
         confirmLabel: 'Mengerti'
       })
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -255,7 +266,6 @@ export function useBillsManager(period: PeriodFilter = { preset: 'all' }) {
       showCancel: true,
       confirmLabel: 'Ya, Hapus Semua',
       onConfirm: () => {
-        setAlertDialog(prev => ({ ...prev, isOpen: false }))
         executeBulkDelete()
       }
     })
@@ -341,6 +351,7 @@ export function useBillsManager(period: PeriodFilter = { preset: 'all' }) {
       setSelectedBillIds([])
       setIsEditMode(false)
       showToast(`${deletedBills.length} tagihan massal berhasil dihapus.`)
+      setAlertDialog(prev => ({ ...prev, isOpen: false }))
     } else {
       setBills(originalBills)
       setAlertDialog({
@@ -363,7 +374,6 @@ export function useBillsManager(period: PeriodFilter = { preset: 'all' }) {
       showCancel: true,
       confirmLabel: 'Ya, Tandai Lunas',
       onConfirm: () => {
-        setAlertDialog(prev => ({ ...prev, isOpen: false }))
         executeBulkLunas()
       }
     })
@@ -463,6 +473,7 @@ export function useBillsManager(period: PeriodFilter = { preset: 'all' }) {
       setSelectedBillIds([])
       setIsEditMode(false)
       showToast(`${paidBills.length} tagihan berhasil dilunasi dan kas masuk dicatat!`)
+      setAlertDialog(prev => ({ ...prev, isOpen: false }))
     } else {
       setBills(originalBills)
       setAlertDialog({
@@ -544,9 +555,7 @@ export function useBillsManager(period: PeriodFilter = { preset: 'all' }) {
           if (!resJ.success) throw new Error((resJ.error as any)?.message || 'Gagal memperbarui jurnal piutang.')
         }
 
-        setIsAddModalOpen(false)
-        setEditingBillId(null)
-        showToast('Tagihan dan jurnal piutang berhasil diperbarui!')
+        setIsFormSuccessOpen(true)
       } catch (err: any) {
         console.error(err)
         setBills(originalBills)
@@ -666,13 +675,7 @@ export function useBillsManager(period: PeriodFilter = { preset: 'all' }) {
     setIsSubmitting(false)
     if (transactionSuccess) {
       setBills(prev => [...billsToAdd, ...prev])
-      setIsAddModalOpen(false)
-      if (billsToAdd.length > 1) {
-        showToast(`${billsToAdd.length} tagihan massal dan jurnal piutang berhasil dibuat!`)
-      } else {
-        showToast('Tagihan dan jurnal piutang berhasil dibuat!')
-      }
-      setNewBill({ resident_name: '', title: '', due_date: buildDefaultDueDate(), amount: 0 })
+      setIsFormSuccessOpen(true)
     } else {
       setAlertDialog({
         isOpen: true,
@@ -800,6 +803,45 @@ export function useBillsManager(period: PeriodFilter = { preset: 'all' }) {
     }
   }
 
+  const handleMarkAsPaid = async (bill: Bill) => {
+    setIsSubmitting(true)
+    const originalBills = [...bills]
+
+    setBills(bills.map(b => b.id === bill.id ? { ...b, status: 'paid' } : b))
+
+    try {
+      const isLocked = await checkPeriodLock(new Date().toISOString().split('T')[0])
+      if (isLocked) {
+        throw new Error('Periode akuntansi bulan ini sudah ditutup (Locked).')
+      }
+
+      const res = await spreadsheetApi.put('Bills', { id: bill.id, status: 'paid' })
+      if (!res.success) throw new Error((res.error as any)?.message || 'Gagal menyimpan status lunas di Sheets.')
+
+      setAlertDialog({
+        isOpen: true,
+        title: 'Pembayaran Berhasil',
+        message: `Tagihan atas nama ${bill.resident_name} berhasil ditandai sebagai Lunas.`,
+        variant: 'success',
+        showCancel: false,
+        confirmLabel: 'Selesai'
+      })
+    } catch (err: any) {
+      console.error(err)
+      setBills(originalBills)
+      setAlertDialog({
+        isOpen: true,
+        title: 'Gagal Menandai Lunas',
+        message: `Gagal menandai lunas: ${err.message || err}. Perubahan dibatalkan.`,
+        variant: 'danger',
+        showCancel: false,
+        confirmLabel: 'Mengerti'
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   // Filter bills based on search query and period filter
   const filteredBills = bills.filter(bill => {
     const query = search.toLowerCase()
@@ -838,6 +880,7 @@ export function useBillsManager(period: PeriodFilter = { preset: 'all' }) {
     selectedBill,
     setSelectedBill,
     isSubmitting,
+    isFormSuccessOpen,
     toastMessage,
     setToastMessage,
     newBill,
@@ -863,6 +906,7 @@ export function useBillsManager(period: PeriodFilter = { preset: 'all' }) {
     handleCreateInvoice,
     handleEditClick,
     buildDefaultDueDate,
-    handleDebtCompensation
+    handleDebtCompensation,
+    handleMarkAsPaid
   }
 }

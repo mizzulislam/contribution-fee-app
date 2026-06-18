@@ -209,8 +209,8 @@ export default function PaymentConfirm() {
           <div className="w-20 h-20 bg-success/10 rounded-full flex items-center justify-center mb-6">
             <CheckCircle2 className="w-10 h-10 text-success" />
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Konfirmasi Berhasil Dikirim!</h2>
-          <p className="text-text-secondary mb-8">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Konfirmasi Berhasil Dikirim!</h2>
+          <p className="text-xs sm:text-sm text-text-secondary mb-8">
             Bukti pembayaran Anda telah kami terima dan sedang menunggu verifikasi dari Bendahara. 
             Proses verifikasi biasanya memakan waktu 1x24 jam.
           </p>
@@ -228,11 +228,11 @@ export default function PaymentConfirm() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center">
-          <UploadCloud className="mr-3 text-primary w-8 h-8" />
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight flex items-center">
+          <UploadCloud className="mr-2 sm:mr-3 text-primary w-6 h-6 sm:w-8 sm:h-8" />
           Konfirmasi Pembayaran
         </h1>
-        <p className="text-text-secondary mt-1">Unggah bukti transfer untuk ditinjau oleh Bendahara.</p>
+        <p className="text-xs sm:text-sm text-text-secondary mt-1">Unggah bukti transfer untuk ditinjau oleh Bendahara.</p>
       </div>
 
       <div className="card-container p-6 sm:p-8">

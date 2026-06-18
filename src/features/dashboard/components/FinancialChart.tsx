@@ -120,11 +120,17 @@ function buildBuckets(range: TimeRange): ChartPoint[] {
 }
 
 export function FinancialChart() {
+  const [chartMounted, setChartMounted] = useState(false)
   const [timeRange, setTimeRange] = useState<TimeRange>('bulanan')
   const [entries, setEntries] = useState<JournalEntryRow[]>([])
   const [accountTypes, setAccountTypes] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const timer = setTimeout(() => setChartMounted(true), 200)
+    return () => clearTimeout(timer)
+  }, [])
 
   useEffect(() => {
     let isMounted = true
@@ -206,8 +212,8 @@ export function FinancialChart() {
     <div className="card-container flex flex-col h-full min-h-[350px]">
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h3 className="text-lg font-bold text-gray-900">Arus Kas ({getTitle()})</h3>
-          <p className="text-sm text-gray-500">Dihitung dari jurnal akuntansi tersinkron.</p>
+          <h3 className="text-base sm:text-lg font-bold text-gray-900">Arus Kas ({getTitle()})</h3>
+          <p className="text-xs text-gray-500">Dihitung dari jurnal akuntansi tersinkron.</p>
         </div>
 
         <div className="flex items-center bg-gray-100 p-1 rounded-xl w-fit">
@@ -241,8 +247,8 @@ export function FinancialChart() {
           <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-gray-200 text-sm text-gray-500">
             Belum ada data jurnal pada periode ini.
           </div>
-        ) : (
-          <ResponsiveContainer width="100%" height="100%">
+        ) : chartMounted ? (
+          <ResponsiveContainer width="100%" height="100%" minWidth={0}>
             <AreaChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <defs>
                 <linearGradient id="colorPemasukan" x1="0" y1="0" x2="0" y2="1">
@@ -265,6 +271,8 @@ export function FinancialChart() {
               <Area type="monotone" dataKey="pengeluaran" name="Pengeluaran" stroke="#EF4444" strokeWidth={3} fillOpacity={1} fill="url(#colorPengeluaran)" />
             </AreaChart>
           </ResponsiveContainer>
+        ) : (
+          <div className="h-full w-full" />
         )}
       </div>
     </div>

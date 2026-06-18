@@ -169,11 +169,11 @@ export default function ProfileSettings() {
   return (
     <div className="space-y-6">
       <div className="relative">
-        <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center">
-          <User className="mr-3 text-primary w-8 h-8" />
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight flex items-center">
+          <User className="mr-2 sm:mr-3 text-primary w-6 h-6 sm:w-8 sm:h-8" />
           Profil Saya
         </h1>
-        <p className="text-text-secondary mt-1">Kelola data pribadi, informasi kontak, dan pengaturan keamanan akun Anda.</p>
+        <p className="text-xs sm:text-sm text-text-secondary mt-1">Kelola data pribadi, informasi kontak, dan pengaturan keamanan akun Anda.</p>
         
         {toastMessage && (
           <div className="absolute top-0 right-0 bg-green-50 text-green-700 px-4 py-2 rounded-lg border border-green-200 shadow-sm flex items-center animate-in fade-in slide-in-from-top-2">

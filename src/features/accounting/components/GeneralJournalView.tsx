@@ -18,6 +18,16 @@ export default function GeneralJournalView({ period }: GeneralJournalViewProps) 
   const [isSyncing, setIsSyncing] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [successDialog, setSuccessDialog] = useState<{
+    isOpen: boolean
+    title: string
+    message: string
+  }>({
+    isOpen: false,
+    title: '',
+    message: ''
+  })
   
   // Sorting and Edit States
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
@@ -44,8 +54,9 @@ export default function GeneralJournalView({ period }: GeneralJournalViewProps) 
   const handleDeleteSelected = async () => {
     if (selectedIds.length === 0) return
     
-    setIsSyncing(true)
+    setIsDeleting(true)
     try {
+      const count = selectedIds.length
       // Delete all selected from spreadsheet
       await Promise.all(selectedIds.map(id => spreadsheetApi.del('JournalEntries', id)))
       
@@ -57,10 +68,17 @@ export default function GeneralJournalView({ period }: GeneralJournalViewProps) 
       setIsEditMode(false)
       setIsDeleteDialogOpen(false)
       refreshData()
+
+      // Show success dialog
+      setSuccessDialog({
+        isOpen: true,
+        title: 'Penghapusan Berhasil',
+        message: `${count} entri jurnal umum berhasil dihapus secara permanen dari database.`
+      })
     } catch (err) {
       console.error("Gagal menghapus jurnal:", err)
     } finally {
-      setIsSyncing(false)
+      setIsDeleting(false)
     }
   }
 
@@ -135,11 +153,11 @@ export default function GeneralJournalView({ period }: GeneralJournalViewProps) 
     <div className="space-y-8 animate-in fade-in duration-500 pb-10">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center">
-            <ScrollText className="mr-3 text-primary w-8 h-8" />
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight flex items-center">
+            <ScrollText className="mr-2 sm:mr-3 text-primary w-6 h-6 sm:w-8 sm:h-8" />
             Riwayat Jurnal Umum
           </h1>
-          <p className="text-text-secondary mt-1">Daftar historis seluruh transaksi akuntansi.</p>
+          <p className="text-xs sm:text-sm text-text-secondary mt-1">Daftar historis seluruh transaksi akuntansi.</p>
         </div>
         <div className="flex items-center gap-3">
           <AccountingDownloadMenu
@@ -207,8 +225,8 @@ export default function GeneralJournalView({ period }: GeneralJournalViewProps) 
           </div>
         </div>
         
-        <div className="overflow-x-auto">
-          <table className="w-full table-fixed text-left text-sm">
+        <div className="overflow-x-auto w-full">
+          <table className="min-w-[850px] w-full table-fixed text-left text-sm">
             <colgroup>
               {isEditMode && <col className="w-12" />}
               <col className="w-[11%]" />
@@ -376,8 +394,18 @@ export default function GeneralJournalView({ period }: GeneralJournalViewProps) 
         title="Hapus Jurnal"
         message={`Apakah Anda yakin ingin menghapus ${selectedIds.length} jurnal terpilih?`}
         confirmLabel="Ya, Hapus"
+        isLoading={isDeleting}
         onClose={() => setIsDeleteDialogOpen(false)}
         onConfirm={handleDeleteSelected}
+      />
+      <ConfirmDialog
+        isOpen={successDialog.isOpen}
+        title={successDialog.title}
+        message={successDialog.message}
+        variant="success"
+        showCancel={false}
+        confirmLabel="Selesai"
+        onClose={() => setSuccessDialog(prev => ({ ...prev, isOpen: false }))}
       />
     </div>
   )

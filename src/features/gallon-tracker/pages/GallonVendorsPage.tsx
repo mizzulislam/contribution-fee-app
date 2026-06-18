@@ -43,11 +43,11 @@ export default function Vendors() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center">
-            <Store className="mr-3 text-primary w-8 h-8" />
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight flex items-center">
+            <Store className="mr-2 sm:mr-3 text-primary w-6 h-6 sm:w-8 sm:h-8" />
             Kios Galon
           </h1>
-          <p className="text-text-secondary mt-1">Kelola kontak toko penyedia galon untuk kemudahan pemesanan.</p>
+          <p className="text-xs sm:text-sm text-text-secondary mt-1">Kelola kontak toko penyedia galon untuk kemudahan pemesanan.</p>
         </div>
         <button onClick={() => setIsModalOpen(true)} className="btn-primary flex items-center shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all">
           <Plus className="w-5 h-5 mr-2" /> Tambah Kios

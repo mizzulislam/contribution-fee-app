@@ -77,11 +77,11 @@ export default function GeneralLedgerView({ period }: GeneralLedgerViewProps) {
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center">
-            <BookOpen className="mr-3 text-primary w-8 h-8" />
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight flex items-center">
+            <BookOpen className="mr-2 sm:mr-3 text-primary w-6 h-6 sm:w-8 sm:h-8" />
             Buku Besar
           </h1>
-          <p className="text-text-secondary mt-1">Melihat rincian mutasi (Debit/Kredit) dan Saldo Akhir per Akun tunggal.</p>
+          <p className="text-xs sm:text-sm text-text-secondary mt-1">Melihat rincian mutasi (Debit/Kredit) dan Saldo Akhir per Akun tunggal.</p>
         </div>
         <AccountingDownloadMenu
           fileName={`buku-besar-${isAllAccounts ? 'semua-akun' : selectedAccount}-${periodSlug}`}

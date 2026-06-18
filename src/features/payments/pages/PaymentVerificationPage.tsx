@@ -51,6 +51,7 @@ export default function Verification({ period = defaultPeriod }: VerificationPro
   const [search, setSearch] = useState('')
   const [toastMessage, setToastMessage] = useState('')
   const [previewPayment, setPreviewPayment] = useState<PaymentVerification | null>(null)
+  const [isActioning, setIsActioning] = useState(false)
   const [alertDialog, setAlertDialog] = useState<{
     isOpen: boolean
     title: string
@@ -173,6 +174,7 @@ export default function Verification({ period = defaultPeriod }: VerificationPro
       }
     }
 
+    setIsActioning(true)
     const newStatus = action === 'approve' ? 'paid' : 'rejected'
     const billStatus = action === 'approve' ? 'paid' : 'rejected'
     
@@ -191,38 +193,38 @@ export default function Verification({ period = defaultPeriod }: VerificationPro
     let billPayload: any = null
     let originalBill: any = null
 
-    if (targetBillId) {
-      try {
-        const { data: billsData } = await spreadsheetApi.get('Bills')
-        if (Array.isArray(billsData)) {
-          originalBill = billsData.find(b => String(b.id) === String(targetBillId))
-          if (originalBill) {
-            billPayload = {
-              ...originalBill,
-              status: billStatus,
-              updated_at: new Date().toISOString()
-            }
-          }
-        }
-      } catch (e) {
-        console.warn("Gagal fetch data Bill untuk backup:", e)
-      }
-    }
-
-    if (!billPayload && targetBillId) {
-      billPayload = {
-        id: targetBillId,
-        status: billStatus,
-        updated_at: new Date().toISOString()
-      }
-    }
-    
     let step1Success = false
     let step2Success = false
     let step3Success = false
     const journalId = `PAY-${item.id}`
 
     try {
+      if (targetBillId) {
+        try {
+          const { data: billsData } = await spreadsheetApi.get('Bills')
+          if (Array.isArray(billsData)) {
+            originalBill = billsData.find(b => String(b.id) === String(targetBillId))
+            if (originalBill) {
+              billPayload = {
+                ...originalBill,
+                status: billStatus,
+                updated_at: new Date().toISOString()
+              }
+            }
+          }
+        } catch (e) {
+          console.warn("Gagal fetch data Bill untuk backup:", e)
+        }
+      }
+
+      if (!billPayload && targetBillId) {
+        billPayload = {
+          id: targetBillId,
+          status: billStatus,
+          updated_at: new Date().toISOString()
+        }
+      }
+
       // Step 1: Update Payment
       const res1 = await spreadsheetApi.put('Payments', payload)
       if (!res1.success) throw new Error((res1.error as any)?.message || 'Gagal memperbarui status pembayaran di Sheets.')
@@ -283,6 +285,8 @@ export default function Verification({ period = defaultPeriod }: VerificationPro
         isConfirm: false,
         onConfirm: () => setAlertDialog(prev => ({ ...prev, isOpen: false }))
       })
+    } finally {
+      setIsActioning(false)
     }
   }
 
@@ -290,11 +294,11 @@ export default function Verification({ period = defaultPeriod }: VerificationPro
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center">
-            <SearchCheck className="mr-3 text-primary w-8 h-8" />
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight flex items-center">
+            <SearchCheck className="mr-2 sm:mr-3 text-primary w-6 h-6 sm:w-8 sm:h-8" />
             Verifikasi Pembayaran
           </h1>
-          <p className="text-text-secondary mt-1">Periksa dan setujui bukti transfer dari penghuni.</p>
+          <p className="text-xs sm:text-sm text-text-secondary mt-1">Periksa dan setujui bukti transfer dari penghuni.</p>
         </div>
       </div>
 
@@ -313,7 +317,7 @@ export default function Verification({ period = defaultPeriod }: VerificationPro
         </div>
 
         <div className="overflow-x-auto w-full rounded-b-[20px] border-t border-border scrollbar-thin scrollbar-thumb-gray-200">
-          <table className="w-full text-left text-sm text-gray-600">
+          <table className="min-w-[700px] w-full text-left text-sm text-gray-600">
             <thead className="bg-gray-50/80 text-gray-700 text-xs uppercase font-semibold border-b border-border">
               <tr>
                 <th className="px-6 py-4">Penghuni</th>
@@ -431,7 +435,8 @@ export default function Verification({ period = defaultPeriod }: VerificationPro
         showCancel={alertDialog.isConfirm}
         confirmLabel={alertDialog.isConfirm ? (alertDialog.title.includes('Tolak') ? 'Ya, Tolak' : 'Ya, Setujui') : 'Mengerti'}
         cancelLabel="Batal"
-        onClose={() => setAlertDialog(prev => ({ ...prev, isOpen: false }))}
+        isLoading={isActioning}
+        onClose={() => !isActioning && setAlertDialog(prev => ({ ...prev, isOpen: false }))}
         onConfirm={alertDialog.onConfirm}
       />
     </div>

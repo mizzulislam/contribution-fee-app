@@ -86,11 +86,17 @@ function buildBuckets(range: TimeRange) {
 }
 
 export function UserActivityChart() {
+  const [chartMounted, setChartMounted] = useState(false)
   const { profile } = useAuth()
   const [timeRange, setTimeRange] = useState<TimeRange>('bulanan')
   const [bills, setBills] = useState<BillRow[]>([])
   const [payments, setPayments] = useState<PaymentRow[]>([])
   const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const timer = setTimeout(() => setChartMounted(true), 200)
+    return () => clearTimeout(timer)
+  }, [])
 
   useEffect(() => {
     if (!profile?.id) return
@@ -153,8 +159,8 @@ export function UserActivityChart() {
     <div className="card-container flex flex-col h-full min-h-[350px]">
       <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h3 className="text-lg font-bold text-gray-900">Riwayat Tagihan & Pembayaran</h3>
-          <p className="text-sm text-gray-500">Data akun Anda untuk {getTitle()}.</p>
+          <h3 className="text-base sm:text-lg font-bold text-gray-900">Riwayat Tagihan & Pembayaran</h3>
+          <p className="text-xs text-gray-500">Data akun Anda untuk {getTitle()}.</p>
         </div>
 
         <div className="flex w-fit items-center rounded-xl bg-gray-100 p-1">
@@ -175,18 +181,18 @@ export function UserActivityChart() {
         </div>
       </div>
 
-      <div className="flex-1 w-full min-h-[250px]">
+      <div className="w-full h-[280px]">
         {loading ? (
-          <div className="flex h-full min-h-[250px] items-center justify-center text-emerald-700">
+          <div className="flex h-full items-center justify-center text-emerald-700">
             <Loader2 className="mr-2 h-5 w-5 animate-spin" />
             Memuat riwayat pembayaran...
           </div>
         ) : !hasData ? (
-          <div className="flex h-full min-h-[250px] items-center justify-center rounded-xl border border-dashed border-gray-200 text-sm text-gray-500">
+          <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-gray-200 text-sm text-gray-500">
             Belum ada tagihan atau pembayaran pada periode ini.
           </div>
-        ) : (
-          <ResponsiveContainer width="100%" height="100%">
+        ) : chartMounted ? (
+          <ResponsiveContainer width="100%" height="100%" minWidth={0}>
             <BarChart data={data} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
               <XAxis dataKey="name" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} dy={10} />
@@ -200,6 +206,8 @@ export function UserActivityChart() {
               <Bar dataKey="pembayaran" name="Pembayaran" fill="#3B82F6" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
+        ) : (
+          <div className="h-full w-full" />
         )}
       </div>
     </div>

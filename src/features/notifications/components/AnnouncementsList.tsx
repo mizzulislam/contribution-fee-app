@@ -60,13 +60,13 @@ export default function Announcements() {
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center">
-          <div className="w-10 h-10 rounded-xl bg-primary-soft text-primary flex items-center justify-center mr-3 shadow-sm">
-            <Megaphone className="w-6 h-6" />
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight flex items-center">
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-primary-soft text-primary flex items-center justify-center mr-2 sm:mr-3 shadow-sm">
+            <Megaphone className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
           Pengumuman Kos
         </h1>
-        <p className="text-text-secondary mt-1">Informasi umum terkini dari data pengumuman sistem.</p>
+        <p className="text-xs sm:text-sm text-text-secondary mt-1">Informasi umum terkini dari data pengumuman sistem.</p>
       </div>
 
       <div className="grid gap-4">

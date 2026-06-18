@@ -221,11 +221,11 @@ export default function CashReports() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="flex items-center text-3xl font-bold tracking-tight text-gray-900">
-            <PieChart className="mr-3 h-8 w-8 text-primary" />
+          <h1 className="flex items-center text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">
+            <PieChart className="mr-2 sm:mr-3 h-6 w-6 sm:h-8 sm:w-8 text-primary" />
             Transparansi Kas Kos
           </h1>
-          <p className="mt-1 text-text-secondary">
+          <p className="mt-1 text-xs sm:text-sm text-text-secondary">
             Data kas read-only dari Akuntansi & Pelaporan Admin yang aman dilihat penghuni.
           </p>
         </div>
@@ -248,40 +248,41 @@ export default function CashReports() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-        <div className="card-container flex min-h-[132px] flex-col justify-center bg-white p-6">
-          <div className="mb-2 flex items-center text-text-secondary">
-            <Wallet className="mr-2 h-5 w-5" />
-            <span className="font-medium">Saldo Kas Saat Ini</span>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-6">
+        <div className="card-container col-span-2 md:col-span-1 flex min-h-[96px] md:min-h-[132px] flex-col justify-center bg-white p-4 md:p-6">
+          <div className="mb-1.5 md:mb-2 flex items-center text-text-secondary text-xs md:text-sm font-semibold uppercase tracking-wide">
+            <Wallet className="mr-1.5 md:mr-2 h-4 w-4 md:h-5 md:w-5" />
+            <span className="truncate">Saldo Kas<span className="hidden sm:inline"> Saat Ini</span></span>
           </div>
-          <div className="text-3xl font-bold text-gray-900">
+          <div className="text-xl md:text-3xl font-bold text-gray-900 truncate">
             {loading ? '...' : formatCurrency(data?.summary.balance || 0)}
           </div>
         </div>
 
-        <div className="card-container flex min-h-[132px] flex-col justify-center bg-white p-6">
-          <div className="mb-2 flex items-center text-success">
-            <ArrowUpRight className="mr-2 h-5 w-5" />
-            <span className="font-medium">Uang Masuk Ditampilkan</span>
+        <div className="card-container col-span-1 flex min-h-[96px] md:min-h-[132px] flex-col justify-center bg-white p-4 md:p-6">
+          <div className="mb-1.5 md:mb-2 flex items-center text-success text-[10px] md:text-sm font-semibold uppercase tracking-wide">
+            <ArrowUpRight className="mr-1 md:mr-2 h-3.5 w-3.5 md:h-5 md:w-5" />
+            <span className="truncate">Uang Masuk<span className="hidden md:inline"> Ditampilkan</span></span>
           </div>
-          <div className="text-3xl font-bold text-gray-900">
+          <div className="text-base md:text-3xl font-bold text-gray-900 truncate">
             {loading ? '...' : formatCurrency(displayedTotals.incoming)}
           </div>
         </div>
 
-        <div className="card-container flex min-h-[132px] flex-col justify-center bg-white p-6">
-          <div className="mb-2 flex items-center text-danger">
-            <ArrowDownRight className="mr-2 h-5 w-5" />
-            <span className="font-medium">Uang Keluar Ditampilkan</span>
+        <div className="card-container col-span-1 flex min-h-[96px] md:min-h-[132px] flex-col justify-center bg-white p-4 md:p-6">
+          <div className="mb-1.5 md:mb-2 flex items-center text-danger text-[10px] md:text-sm font-semibold uppercase tracking-wide">
+            <ArrowDownRight className="mr-1 md:mr-2 h-3.5 w-3.5 md:h-5 md:w-5" />
+            <span className="truncate">Uang Keluar<span className="hidden md:inline"> Ditampilkan</span></span>
           </div>
-          <div className="text-3xl font-bold text-gray-900">
+          <div className="text-base md:text-3xl font-bold text-gray-900 truncate">
             {loading ? '...' : formatCurrency(displayedTotals.outgoing)}
           </div>
         </div>
       </div>
 
       <div className="rounded-[20px] border border-gray-100 bg-white p-2 shadow-sm">
-        <div className="flex items-center gap-2 overflow-x-auto">
+        {/* Desktop Tab Navigation */}
+        <div className="hidden lg:flex items-center gap-2 overflow-x-auto">
           {tabs.map(tab => {
             const Icon = tab.icon
             const isActive = activeTab === tab.id
@@ -301,6 +302,19 @@ export default function CashReports() {
               </button>
             )
           })}
+        </div>
+
+        {/* Mobile Tab Dropdown */}
+        <div className="block lg:hidden w-full">
+          <Select
+            options={tabs.map(tab => ({
+              label: tab.label,
+              value: tab.id,
+              icon: <tab.icon className="w-4 h-4 text-emerald-600" />
+            }))}
+            value={activeTab}
+            onChange={(val) => setActiveTab(val as any)}
+          />
         </div>
       </div>
 
@@ -355,16 +369,16 @@ export default function CashReports() {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[980px] text-left text-sm">
-              <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+            <table className="w-full min-w-[980px] text-left text-xs sm:text-sm">
+              <thead className="bg-gray-50 text-[10px] sm:text-xs uppercase tracking-wide text-gray-500">
                 <tr>
-                  <th className="px-5 py-4 text-left">Tanggal</th>
-                  <th className="px-5 py-4 text-left">Kategori</th>
-                  <th className="px-5 py-4 text-left">Keterangan</th>
-                  <th className="px-5 py-4 text-right">Uang Masuk</th>
-                  <th className="px-5 py-4 text-right">Uang Keluar</th>
-                  <th className="px-5 py-4 text-right">Saldo Setelah Transaksi</th>
-                  <th className="px-5 py-4 text-left">Status/Sumber Data</th>
+                  <th className="px-5 py-4 text-center sm:text-left whitespace-nowrap">Tanggal</th>
+                  <th className="px-5 py-4 text-center sm:text-left whitespace-nowrap">Kategori</th>
+                  <th className="px-5 py-4 text-center sm:text-left whitespace-nowrap">Keterangan</th>
+                  <th className="px-5 py-4 text-center sm:text-right whitespace-nowrap">Uang Masuk</th>
+                  <th className="px-5 py-4 text-center sm:text-right whitespace-nowrap">Uang Keluar</th>
+                  <th className="px-5 py-4 text-center sm:text-right whitespace-nowrap">Saldo Setelah Transaksi</th>
+                  <th className="px-5 py-4 text-center sm:text-left whitespace-nowrap">Status/Sumber Data</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -384,7 +398,7 @@ export default function CashReports() {
                     <tr key={mutation.id} className="bg-white transition-colors hover:bg-emerald-50/30">
                       <td className="whitespace-nowrap px-5 py-4 font-medium text-gray-700">{formatDate(mutation.date)}</td>
                       <td className="px-5 py-4">
-                        <span className="badge badge-success">{mutation.category}</span>
+                        <span className="badge badge-success px-3 py-1 whitespace-nowrap">{mutation.category}</span>
                       </td>
                       <td className="max-w-[320px] px-5 py-4 text-gray-700">
                         <span className="line-clamp-2">{mutation.description}</span>
@@ -497,13 +511,14 @@ export default function CashReports() {
           ) : (
             <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
               <div className="border-b border-gray-200 px-6 py-6 text-center">
-                <p className="text-sm font-semibold uppercase tracking-wide text-emerald-700">Soematra Kost</p>
-                <h2 className="mt-1 text-2xl font-bold text-gray-950">Laporan Keuangan</h2>
-                <p className="mt-1 text-sm text-gray-500">Periode: {statementPeriodLabel}</p>
+                <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide text-emerald-700">Soematra Kost</p>
+                <h2 className="mt-1 text-lg sm:text-2xl font-bold text-gray-950">Laporan Keuangan</h2>
+                <p className="mt-1 text-xs sm:text-sm text-gray-500">Periode: {statementPeriodLabel}</p>
               </div>
 
               <div className="border-b border-gray-200 bg-gray-50 p-3">
-                <div className="flex flex-wrap gap-2">
+                {/* Desktop sub-tabs */}
+                <div className="hidden lg:flex flex-wrap gap-2">
                   {statementSections.map(item => (
                     <button
                       key={item.id}
@@ -519,6 +534,18 @@ export default function CashReports() {
                       {item.label}
                     </button>
                   ))}
+                </div>
+
+                {/* Mobile sub-tabs select */}
+                <div className="block lg:hidden w-full">
+                  <Select
+                    options={statementSections.map(item => ({
+                      label: item.label,
+                      value: item.id
+                    }))}
+                    value={statementSection}
+                    onChange={(val) => setStatementSection(val as any)}
+                  />
                 </div>
               </div>
 

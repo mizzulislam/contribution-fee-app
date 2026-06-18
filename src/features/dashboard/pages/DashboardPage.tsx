@@ -114,39 +114,39 @@ function DashboardMetricCard({
   const toneClass = dashboardCardToneClasses[tone]
 
   return (
-    <div className={`relative min-h-[220px] overflow-hidden rounded-2xl border ${toneClass.border} ${toneClass.background} p-6 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md`}>
-      <div className={`absolute right-0 top-0 h-24 w-24 ${toneClass.glow} blur-2xl`} />
-      <div className="relative flex h-full flex-col justify-between gap-6">
-        <div className="flex items-start justify-between gap-4">
+    <div className={`relative min-h-[160px] sm:min-h-[220px] overflow-hidden rounded-2xl border ${toneClass.border} ${toneClass.background} p-4 sm:p-6 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md`}>
+      <div className={`absolute right-0 top-0 h-20 w-20 sm:h-24 sm:w-24 ${toneClass.glow} blur-2xl`} />
+      <div className="relative flex h-full flex-col justify-between gap-3 sm:gap-6">
+        <div className="flex items-start justify-between gap-2 sm:gap-4">
           <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <p className={`text-xs font-bold uppercase tracking-wide ${toneClass.eyebrow}`}>{eyebrow}</p>
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+              <p className={`text-[10px] sm:text-xs font-bold uppercase tracking-wide ${toneClass.eyebrow}`}>{eyebrow}</p>
               {badge && (
-                <span className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold ${toneClass.badge}`}>
+                <span className={`inline-flex rounded-full border px-1.5 py-0.5 text-[9px] sm:text-[11px] font-semibold ${toneClass.badge}`}>
                   {badge}
                 </span>
               )}
             </div>
-            <h4 className="mt-2 text-base font-semibold text-gray-900">{title}</h4>
+            <h4 className="mt-1 sm:mt-2 text-sm sm:text-base font-semibold text-gray-900 line-clamp-1">{title}</h4>
           </div>
-          <div className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl ${toneClass.icon}`}>
-            <Icon className="h-6 w-6" />
+          <div className={`flex h-9 w-9 sm:h-12 sm:w-12 flex-shrink-0 items-center justify-center rounded-xl sm:rounded-2xl ${toneClass.icon}`}>
+            <Icon className="h-4.5 w-4.5 sm:h-6 sm:w-6" />
           </div>
         </div>
         <div>
-          <p className="break-words text-3xl font-black tracking-tight text-gray-950 sm:text-4xl">
+          <p className="break-words text-2xl font-black tracking-tight text-gray-950 sm:text-4xl">
             {value}
           </p>
           {note ? (
-            <p className="mt-2 text-sm font-medium text-text-secondary">{note}</p>
+            <p className="mt-1 sm:mt-2 text-xs sm:text-sm font-medium text-text-secondary line-clamp-1">{note}</p>
           ) : (
-            <p className="mt-2 text-sm font-medium text-transparent select-none" aria-hidden="true">
+            <p className="mt-1 sm:mt-2 text-xs sm:text-sm font-medium text-transparent select-none" aria-hidden="true">
               &nbsp;
             </p>
           )}
-          <div className={`mt-8 border-t ${toneClass.divider} pt-5`}>
-            <Link to={actionTo} className={`inline-flex items-center text-sm font-bold text-gray-900 ${toneClass.action}`}>
-              {actionLabel} <ArrowRight className="ml-1 h-4 w-4" />
+          <div className={`mt-4 sm:mt-8 border-t ${toneClass.divider} pt-3 sm:pt-5`}>
+            <Link to={actionTo} className={`inline-flex items-center text-xs sm:text-sm font-bold text-gray-900 ${toneClass.action}`}>
+              {actionLabel} <ArrowRight className="ml-1 h-3.5 w-3.5" />
             </Link>
           </div>
         </div>
@@ -422,8 +422,8 @@ export default function Dashboard() {
       <section className="space-y-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h3 className="text-2xl font-bold text-gray-900 tracking-tight">Ringkasan Keuangan</h3>
-            <p className="text-sm text-text-secondary mt-1">Snapshot neraca dan laba rugi dari jurnal akuntansi tersinkron.</p>
+            <h3 className="text-lg sm:text-xl font-bold text-gray-900 tracking-tight">Ringkasan Keuangan</h3>
+            <p className="text-xs text-text-secondary mt-1">Snapshot neraca dan laba rugi dari jurnal akuntansi tersinkron.</p>
           </div>
           <span className={`inline-flex w-fit items-center rounded-full px-3 py-1.5 text-xs font-semibold ${accountingLoading ? 'bg-amber-50 text-amber-700 border border-amber-100' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'}`}>
             {accountingLoading ? 'Mensinkronisasi data' : 'Data terbaru'}
@@ -431,23 +431,23 @@ export default function Dashboard() {
         </div>
 
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-          <div className="relative min-h-[220px] overflow-hidden rounded-2xl border border-emerald-100 bg-gradient-to-br from-white via-white to-emerald-50/80 p-6 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
-            <div className="absolute right-0 top-0 h-24 w-24 bg-emerald-100/60 blur-2xl" />
-            <div className="relative flex h-full flex-col justify-between gap-6">
-              <div className="flex items-start justify-between gap-4">
+          <div className="relative min-h-[160px] sm:min-h-[220px] overflow-hidden rounded-2xl border border-emerald-100 bg-gradient-to-br from-white via-white to-emerald-50/80 p-4 sm:p-6 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
+            <div className="absolute right-0 top-0 h-20 w-20 sm:h-24 sm:w-24 bg-emerald-100/60 blur-2xl" />
+            <div className="relative flex h-full flex-col justify-between gap-3 sm:gap-6">
+              <div className="flex items-start justify-between gap-2 sm:gap-4">
                 <div className="min-w-0">
-                  <p className="text-xs font-bold uppercase tracking-wide text-emerald-700">Posisi Aset</p>
-                  <h4 className="mt-2 text-base font-semibold text-gray-900">Total Aset (Harta)</h4>
+                  <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wide text-emerald-700">Posisi Aset</p>
+                  <h4 className="mt-1 sm:mt-2 text-sm sm:text-base font-semibold text-gray-900">Total Aset (Harta)</h4>
                 </div>
-                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
-                  <Landmark className="h-6 w-6" />
+                <div className="flex h-9 w-9 sm:h-12 sm:w-12 flex-shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-emerald-100 text-emerald-700">
+                  <Landmark className="h-4.5 w-4.5 sm:h-6 sm:w-6" />
                 </div>
               </div>
               <div>
-                <p className="break-words text-3xl font-black tracking-tight text-gray-950 sm:text-4xl">
+                <p className="break-words text-2xl font-black tracking-tight text-gray-950 sm:text-4xl">
                   {formatFinancialValue(statements?.balanceSheet.assets.totalAssets)}
                 </p>
-                <div className="mt-7 grid grid-cols-2 gap-3 border-t border-emerald-100 pt-5 text-sm">
+                <div className="mt-4 sm:mt-7 grid grid-cols-2 gap-3 border-t border-emerald-100 pt-3 sm:pt-5 text-xs sm:text-sm">
                   <div>
                     <p className="text-text-secondary">Kas Lancar</p>
                     <p className="mt-1 font-bold text-gray-900">{formatFinancialValue(statements?.balanceSheet.assets.currentAssets)}</p>
@@ -461,23 +461,23 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="relative min-h-[220px] overflow-hidden rounded-2xl border border-blue-100 bg-gradient-to-br from-white via-white to-blue-50/80 p-6 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
-            <div className="absolute right-0 top-0 h-24 w-24 bg-blue-100/70 blur-2xl" />
-            <div className="relative flex h-full flex-col justify-between gap-6">
-              <div className="flex items-start justify-between gap-4">
+          <div className="relative min-h-[160px] sm:min-h-[220px] overflow-hidden rounded-2xl border border-blue-100 bg-gradient-to-br from-white via-white to-blue-50/80 p-4 sm:p-6 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
+            <div className="absolute right-0 top-0 h-20 w-20 sm:h-24 sm:w-24 bg-blue-100/70 blur-2xl" />
+            <div className="relative flex h-full flex-col justify-between gap-3 sm:gap-6">
+              <div className="flex items-start justify-between gap-2 sm:gap-4">
                 <div className="min-w-0">
-                  <p className="text-xs font-bold uppercase tracking-wide text-blue-700">Kinerja Periode</p>
-                  <h4 className="mt-2 text-base font-semibold text-gray-900">Laba Bersih</h4>
+                  <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wide text-blue-700">Kinerja Periode</p>
+                  <h4 className="mt-1 sm:mt-2 text-sm sm:text-base font-semibold text-gray-900">Laba Bersih</h4>
                 </div>
-                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-blue-100 text-blue-700">
-                  <ArrowUpRight className="h-6 w-6" />
+                <div className="flex h-9 w-9 sm:h-12 sm:w-12 flex-shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-blue-100 text-blue-700">
+                  <ArrowUpRight className="h-4.5 w-4.5 sm:h-6 sm:w-6" />
                 </div>
               </div>
               <div>
-                <p className="break-words text-3xl font-black tracking-tight text-gray-950 sm:text-4xl">
+                <p className="break-words text-2xl font-black tracking-tight text-gray-950 sm:text-4xl">
                   {formatFinancialValue(statements?.incomeStatement.netIncome)}
                 </p>
-                <div className="mt-8 grid grid-cols-2 gap-3 border-t border-blue-100 pt-5 text-sm">
+                <div className="mt-4 sm:mt-8 grid grid-cols-2 gap-3 border-t border-blue-100 pt-3 sm:pt-5 text-xs sm:text-sm">
                   <div>
                     <p className="text-text-secondary">Pendapatan</p>
                     <p className="mt-1 font-bold text-gray-900">{formatFinancialValue(statements?.incomeStatement.revenues)}</p>
@@ -491,23 +491,23 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="relative min-h-[220px] overflow-hidden rounded-2xl border border-orange-100 bg-gradient-to-br from-white via-white to-orange-50/80 p-6 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
-            <div className="absolute right-0 top-0 h-24 w-24 bg-orange-100/70 blur-2xl" />
-            <div className="relative flex h-full flex-col justify-between gap-6">
-              <div className="flex items-start justify-between gap-4">
+          <div className="relative min-h-[160px] sm:min-h-[220px] overflow-hidden rounded-2xl border border-orange-100 bg-gradient-to-br from-white via-white to-orange-50/80 p-4 sm:p-6 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
+            <div className="absolute right-0 top-0 h-20 w-20 sm:h-24 sm:w-24 bg-orange-100/70 blur-2xl" />
+            <div className="relative flex h-full flex-col justify-between gap-3 sm:gap-6">
+              <div className="flex items-start justify-between gap-2 sm:gap-4">
                 <div className="min-w-0">
-                  <p className="text-xs font-bold uppercase tracking-wide text-orange-700">Struktur Modal</p>
-                  <h4 className="mt-2 text-base font-semibold text-gray-900">Kewajiban & Ekuitas</h4>
+                  <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wide text-orange-700">Struktur Modal</p>
+                  <h4 className="mt-1 sm:mt-2 text-sm sm:text-base font-semibold text-gray-900">Kewajiban & Ekuitas</h4>
                 </div>
-                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-orange-100 text-orange-700">
-                  <Building2 className="h-6 w-6" />
+                <div className="flex h-9 w-9 sm:h-12 sm:w-12 flex-shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-orange-100 text-orange-700">
+                  <Building2 className="h-4.5 w-4.5 sm:h-6 sm:w-6" />
                 </div>
               </div>
               <div>
-                <p className="break-words text-3xl font-black tracking-tight text-gray-950 sm:text-4xl">
+                <p className="break-words text-2xl font-black tracking-tight text-gray-950 sm:text-4xl">
                   {formatFinancialValue(statements?.balanceSheet.totalLiabilitiesAndEquity)}
                 </p>
-                <div className="mt-8 grid grid-cols-2 gap-3 border-t border-orange-100 pt-5 text-sm">
+                <div className="mt-4 sm:mt-8 grid grid-cols-2 gap-3 border-t border-orange-100 pt-3 sm:pt-5 text-xs sm:text-sm">
                   <div>
                     <p className="text-text-secondary">Hutang</p>
                     <p className="mt-1 font-bold text-gray-900">{formatFinancialValue(statements?.balanceSheet.liabilities.totalLiabilities)}</p>
@@ -525,8 +525,8 @@ export default function Dashboard() {
         <div className="rounded-2xl border border-sky-100 bg-gradient-to-r from-sky-50 to-indigo-50 p-5 shadow-sm">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <h3 className="font-bold text-blue-950">Persamaan Dasar Akuntansi</h3>
-              <p className="mt-1 text-sm leading-relaxed text-blue-800">
+              <h3 className="text-xs sm:text-sm font-bold text-blue-950">Persamaan Dasar Akuntansi</h3>
+              <p className="mt-1 text-[11px] sm:text-xs leading-relaxed text-blue-800">
                 Total Aset {formatFinancialValue(statements?.balanceSheet.assets.totalAssets)} harus sama dengan Kewajiban & Modal {formatFinancialValue(statements?.balanceSheet.totalLiabilitiesAndEquity)}.
               </p>
             </div>
@@ -540,8 +540,8 @@ export default function Dashboard() {
       <section className="space-y-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h3 className="text-2xl font-bold text-gray-900 tracking-tight">Ringkasan Operasional</h3>
-            <p className="text-sm text-text-secondary mt-1">Pantauan cepat kas, penagihan, dan stok galon yang perlu ditindaklanjuti.</p>
+            <h3 className="text-lg sm:text-xl font-bold text-gray-900 tracking-tight">Ringkasan Operasional</h3>
+            <p className="text-xs text-text-secondary mt-1">Pantauan cepat kas, penagihan, dan stok galon yang perlu ditindaklanjuti.</p>
           </div>
           <span className="inline-flex w-fit items-center rounded-full border border-gray-100 bg-white px-3 py-1.5 text-xs font-semibold text-gray-600 shadow-sm">
             Operasional hari ini
@@ -549,75 +549,75 @@ export default function Dashboard() {
         </div>
 
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-          <div className="relative min-h-[220px] overflow-hidden rounded-2xl border border-emerald-100 bg-gradient-to-br from-white via-white to-emerald-50/80 p-6 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
-            <div className="absolute right-0 top-0 h-24 w-24 bg-emerald-100/60 blur-2xl" />
-            <div className="relative flex h-full flex-col justify-between gap-6">
-              <div className="flex items-start justify-between gap-4">
+          <div className="relative min-h-[160px] sm:min-h-[220px] overflow-hidden rounded-2xl border border-emerald-100 bg-gradient-to-br from-white via-white to-emerald-50/80 p-4 sm:p-6 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
+            <div className="absolute right-0 top-0 h-20 w-20 sm:h-24 sm:w-24 bg-emerald-100/60 blur-2xl" />
+            <div className="relative flex h-full flex-col justify-between gap-3 sm:gap-6">
+              <div className="flex items-start justify-between gap-2 sm:gap-4">
                 <div className="min-w-0">
-                  <p className="text-xs font-bold uppercase tracking-wide text-emerald-700">Kas Operasional</p>
-                  <h4 className="mt-2 text-base font-semibold text-gray-900">Saldo Kas Aktif</h4>
+                  <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wide text-emerald-700">Kas Operasional</p>
+                  <h4 className="mt-1 sm:mt-2 text-sm sm:text-base font-semibold text-gray-900">Saldo Kas Aktif</h4>
                 </div>
-                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
-                  <ArrowDownCircle className="h-6 w-6" />
+                <div className="flex h-9 w-9 sm:h-12 sm:w-12 flex-shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-emerald-100 text-emerald-700">
+                  <ArrowDownCircle className="h-4.5 w-4.5 sm:h-6 sm:w-6" />
                 </div>
               </div>
               <div>
-                <p className="break-words text-3xl font-black tracking-tight text-gray-950 sm:text-4xl">
+                <p className="break-words text-2xl font-black tracking-tight text-gray-950 sm:text-4xl">
                   {loading ? '...' : formatCurrency(cashBalance)}
                 </p>
-                <div className="mt-8 border-t border-emerald-100 pt-5">
-                  <Link to="/dashboard/finance" className="inline-flex items-center text-sm font-bold text-gray-900 hover:text-emerald-700">
-                    Cek Mutasi <ArrowRight className="ml-1 h-4 w-4" />
+                <div className="mt-4 sm:mt-8 border-t border-emerald-100 pt-3 sm:pt-5">
+                  <Link to="/dashboard/finance" className="inline-flex items-center text-xs sm:text-sm font-bold text-gray-900 hover:text-emerald-700">
+                    Cek Mutasi <ArrowRight className="ml-1 h-3.5 w-3.5" />
                   </Link>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="relative min-h-[220px] overflow-hidden rounded-2xl border border-rose-100 bg-gradient-to-br from-white via-white to-rose-50/80 p-6 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
-            <div className="absolute right-0 top-0 h-24 w-24 bg-rose-100/70 blur-2xl" />
-            <div className="relative flex h-full flex-col justify-between gap-6">
-              <div className="flex items-start justify-between gap-4">
+          <div className="relative min-h-[160px] sm:min-h-[220px] overflow-hidden rounded-2xl border border-rose-100 bg-gradient-to-br from-white via-white to-rose-50/80 p-4 sm:p-6 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
+            <div className="absolute right-0 top-0 h-20 w-20 sm:h-24 sm:w-24 bg-rose-100/70 blur-2xl" />
+            <div className="relative flex h-full flex-col justify-between gap-3 sm:gap-6">
+              <div className="flex items-start justify-between gap-2 sm:gap-4">
                 <div className="min-w-0">
-                  <p className="text-xs font-bold uppercase tracking-wide text-rose-700">Penagihan</p>
-                  <h4 className="mt-2 text-base font-semibold text-gray-900">Total Iuran Pending</h4>
+                  <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wide text-rose-700">Penagihan</p>
+                  <h4 className="mt-1 sm:mt-2 text-sm sm:text-base font-semibold text-gray-900">Total Iuran Pending</h4>
                 </div>
-                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-rose-100 text-rose-700">
-                  <ReceiptText className="h-6 w-6" />
+                <div className="flex h-9 w-9 sm:h-12 sm:w-12 flex-shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-rose-100 text-rose-700">
+                  <ReceiptText className="h-4.5 w-4.5 sm:h-6 sm:w-6" />
                 </div>
               </div>
               <div>
-                <p className="break-words text-3xl font-black tracking-tight text-gray-950 sm:text-4xl">
+                <p className="break-words text-2xl font-black tracking-tight text-gray-950 sm:text-4xl">
                   {loading ? '...' : formatCurrency(unpaidBills)}
                 </p>
-                <div className="mt-8 border-t border-rose-100 pt-5">
-                  <Link to="/dashboard/billing?tab=reminders" className="inline-flex items-center text-sm font-bold text-gray-900 hover:text-rose-700">
-                    Kirim Reminder <ArrowRight className="ml-1 h-4 w-4" />
+                <div className="mt-4 sm:mt-8 border-t border-rose-100 pt-3 sm:pt-5">
+                  <Link to="/dashboard/billing?tab=reminders" className="inline-flex items-center text-xs sm:text-sm font-bold text-gray-900 hover:text-rose-700">
+                    Kirim Reminder <ArrowRight className="ml-1 h-3.5 w-3.5" />
                   </Link>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="relative min-h-[220px] overflow-hidden rounded-2xl border border-blue-100 bg-gradient-to-br from-white via-white to-blue-50/80 p-6 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
-            <div className="absolute right-0 top-0 h-24 w-24 bg-blue-100/70 blur-2xl" />
-            <div className="relative flex h-full flex-col justify-between gap-6">
-              <div className="flex items-start justify-between gap-4">
+          <div className="relative min-h-[160px] sm:min-h-[220px] overflow-hidden rounded-2xl border border-blue-100 bg-gradient-to-br from-white via-white to-blue-50/80 p-4 sm:p-6 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
+            <div className="absolute right-0 top-0 h-20 w-20 sm:h-24 sm:w-24 bg-blue-100/70 blur-2xl" />
+            <div className="relative flex h-full flex-col justify-between gap-3 sm:gap-6">
+              <div className="flex items-start justify-between gap-2 sm:gap-4">
                 <div className="min-w-0">
-                  <p className="text-xs font-bold uppercase tracking-wide text-blue-700">Sistem Galon</p>
-                  <h4 className="mt-2 text-base font-semibold text-gray-900">Status Stok Galon</h4>
+                  <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wide text-blue-700">Sistem Galon</p>
+                  <h4 className="mt-1 sm:mt-2 text-sm sm:text-base font-semibold text-gray-900">Status Stok Galon</h4>
                 </div>
-                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-blue-100 text-blue-700">
-                  <Droplets className="h-6 w-6" />
+                <div className="flex h-9 w-9 sm:h-12 sm:w-12 flex-shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-blue-100 text-blue-700">
+                  <Droplets className="h-4.5 w-4.5 sm:h-6 sm:w-6" />
                 </div>
               </div>
               <div>
-                <p className="break-words text-3xl font-black tracking-tight text-gray-950 sm:text-4xl">
+                <p className="break-words text-2xl font-black tracking-tight text-gray-950 sm:text-4xl">
                   {loading ? '...' : `Sisa ${formatGallonQuantity(gallonStock)} Galon`}
                 </p>
-                <div className="mt-8 border-t border-blue-100 pt-5">
-                  <Link to="/dashboard/gallons-management" className="inline-flex items-center text-sm font-bold text-gray-900 hover:text-blue-700">
-                    Tracker Galon <ArrowRight className="ml-1 h-4 w-4" />
+                <div className="mt-4 sm:mt-8 border-t border-blue-100 pt-3 sm:pt-5">
+                  <Link to="/dashboard/gallons-management" className="inline-flex items-center text-xs sm:text-sm font-bold text-gray-900 hover:text-blue-700">
+                    Tracker Galon <ArrowRight className="ml-1 h-3.5 w-3.5" />
                   </Link>
                 </div>
               </div>
@@ -678,11 +678,11 @@ export default function Dashboard() {
     <div className="space-y-6">
       <div className="flex justify-between items-end">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center">
-            <LayoutDashboard className="mr-3 text-primary w-8 h-8" />
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight flex items-center">
+            <LayoutDashboard className="mr-2 sm:mr-3 text-primary w-6 h-6 sm:w-8 sm:h-8" />
             Dashboard
           </h1>
-          <p className="text-text-secondary mt-1">Ringkasan operasional dan keuangan kos hari ini.</p>
+          <p className="text-xs sm:text-sm text-text-secondary mt-1">Ringkasan operasional dan keuangan kos hari ini.</p>
         </div>
       </div>
       
@@ -725,10 +725,10 @@ export default function Dashboard() {
                 <Activity className="h-6 w-6" />
               </div>
 
-              <h2 id="welcome-modal-title" className="pr-8 text-2xl font-bold tracking-tight text-gray-950">
+              <h2 id="welcome-modal-title" className="pr-8 text-xl sm:text-2xl font-bold tracking-tight text-gray-950">
                 Selamat datang, {profile?.full_name || 'Pengguna'}!
               </h2>
-              <p className="mt-3 text-sm leading-6 text-gray-600">
+              <p className="mt-3 text-xs sm:text-sm leading-6 text-gray-600">
                 Anda login sebagai <span className="font-semibold text-emerald-700">{getRoleLabel()}</span>. {getWelcomeMessage()}
               </p>
             </div>

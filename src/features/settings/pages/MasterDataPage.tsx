@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 import { Database, Plus, Trash2, CreditCard } from 'lucide-react'
-import { createPortal } from 'react-dom'
 import { spreadsheetApi } from '@/services/sheets-client'
 import { mergeAccounts, type Account } from '@/features/accounting/data/chartOfAccounts'
 import { generateSecureId } from '@/utils/id'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
 
 import { CategoryTable } from '@/features/settings/components/CategoryTable'
 import { PaymentMethodTable, type PaymentMethod } from '@/features/settings/components/PaymentMethodTable'
@@ -33,13 +33,16 @@ export default function MasterData() {
     status: 'Aktif'
   })
 
-  const [alertDialog, setAlertDialog] = useState({
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean
+    idToDelete: string | number | null
+    type: 'category' | 'payment'
+  }>({
     isOpen: false,
-    title: '',
-    message: '',
-    isConfirm: false,
-    onConfirm: () => {}
+    idToDelete: null,
+    type: 'category'
   })
+  const [isDeleting, setIsDeleting] = useState(false)
 
   useEffect(() => {
     fetchCategories()
@@ -123,24 +126,33 @@ export default function MasterData() {
   }
 
   const handleDelete = (id: string | number, type: 'category' | 'payment' = 'category') => {
-    setAlertDialog({
+    setConfirmDialog({
       isOpen: true,
-      title: type === 'category' ? 'Hapus Kategori' : 'Hapus Metode Pembayaran',
-      message: 'Apakah Anda yakin ingin menghapus data ini?',
-      isConfirm: true,
-      onConfirm: async () => {
-        setIsLoading(true)
-        if (type === 'category') {
-          await spreadsheetApi.del('MasterData', id)
-          await fetchCategories()
-        } else {
-          await spreadsheetApi.del('PaymentMethods', id)
-          await fetchPaymentMethods()
-        }
-        setAlertDialog(prev => ({...prev, isOpen: false}))
-        setIsLoading(false)
-      }
+      idToDelete: id,
+      type
     })
+  }
+
+  const handleConfirmDelete = async () => {
+    const id = confirmDialog.idToDelete
+    const type = confirmDialog.type
+    if (id === null) return
+    
+    setIsDeleting(true)
+    try {
+      if (type === 'category') {
+        await spreadsheetApi.del('MasterData', id)
+        await fetchCategories()
+      } else {
+        await spreadsheetApi.del('PaymentMethods', id)
+        await fetchPaymentMethods()
+      }
+      setConfirmDialog({ isOpen: false, idToDelete: null, type: 'category' })
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setIsDeleting(false)
+    }
   }
 
   const handleOpenAddPayment = () => {
@@ -189,11 +201,11 @@ export default function MasterData() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center">
-            <Database className="mr-3 text-primary w-8 h-8" />
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight flex items-center">
+            <Database className="mr-2 sm:mr-3 text-primary w-6 h-6 sm:w-8 sm:h-8" />
             Data Master Kategori
           </h1>
-          <p className="text-text-secondary mt-1">Kelola kategori pencatatan keuangan, metode pembayaran, dsb.</p>
+          <p className="text-xs sm:text-sm text-text-secondary mt-1">Kelola kategori pencatatan keuangan, metode pembayaran, dsb.</p>
         </div>
         <button onClick={handleOpenAdd} className="btn-primary flex items-center">
           <Plus className="w-5 h-5 mr-2" />
@@ -210,11 +222,11 @@ export default function MasterData() {
 
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mt-8">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 tracking-tight flex items-center">
-            <CreditCard className="mr-3 text-primary w-6 h-6" />
+          <h2 className="text-lg sm:text-2xl font-bold text-gray-900 tracking-tight flex items-center">
+            <CreditCard className="mr-2 sm:mr-3 text-primary w-5 h-5 sm:w-6 sm:h-6" />
             Metode Pembayaran
           </h2>
-          <p className="text-text-secondary mt-1">Kelola rekening bank atau e-wallet untuk menerima pembayaran.</p>
+          <p className="text-xs sm:text-sm text-text-secondary mt-1">Kelola rekening bank atau e-wallet untuk menerima pembayaran.</p>
         </div>
         <button onClick={handleOpenAddPayment} className="btn-primary flex items-center">
           <Plus className="w-5 h-5 mr-2" />
@@ -250,41 +262,17 @@ export default function MasterData() {
         editingId={editingPaymentId}
       />
 
-      {/* Alert Dialog */}
-      {alertDialog.isOpen && createPortal(
-        <div
-          className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm animate-in fade-in duration-200"
-          onMouseDown={() => setAlertDialog(prev => ({...prev, isOpen: false}))}
-        >
-          <div
-            className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200 p-6 text-center"
-            onMouseDown={(event) => event.stopPropagation()}
-          >
-            <div className="mx-auto w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-4">
-              <Trash2 className="w-8 h-8 text-red-500" />
-            </div>
-            <h2 className="text-xl font-bold text-gray-900 mb-2">{alertDialog.title}</h2>
-            <p className="text-gray-500 mb-6 text-sm leading-relaxed">{alertDialog.message}</p>
-            <div className="flex space-x-3">
-              {alertDialog.isConfirm && (
-                <button 
-                  onClick={() => setAlertDialog(prev => ({...prev, isOpen: false}))}
-                  className="flex-1 py-2.5 px-4 bg-white border border-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
-                >
-                  Batal
-                </button>
-              )}
-              <button 
-                onClick={alertDialog.onConfirm}
-                className="flex-1 py-2.5 px-4 rounded-lg font-medium text-white transition-colors shadow-md bg-red-600 hover:bg-red-700 shadow-red-500/20"
-              >
-                Ya, Hapus
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.type === 'category' ? 'Hapus Kategori' : 'Hapus Metode Pembayaran'}
+        message="Apakah Anda yakin ingin menghapus data ini? Tindakan ini tidak dapat dibatalkan."
+        confirmLabel="Ya, Hapus"
+        cancelLabel="Batal"
+        variant="danger"
+        isLoading={isDeleting}
+        onClose={() => !isDeleting && setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={handleConfirmDelete}
+      />
     </div>
   )
 }

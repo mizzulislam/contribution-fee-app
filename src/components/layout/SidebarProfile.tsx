@@ -5,9 +5,14 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useSidebarStore } from '@/stores/sidebar-store'
 
-export function SidebarProfile() {
+interface SidebarProfileProps {
+  collapsed?: boolean
+}
+
+export function SidebarProfile({ collapsed }: SidebarProfileProps) {
   const { profile, signOut } = useAuth()
-  const { isCollapsed } = useSidebarStore()
+  const { isCollapsed: storeCollapsed } = useSidebarStore()
+  const isCollapsed = collapsed !== undefined ? collapsed : storeCollapsed
   const [isOpen, setIsOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const [photoUrl, setPhotoUrl] = useState<string | null>(() => {

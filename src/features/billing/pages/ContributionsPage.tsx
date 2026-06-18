@@ -15,6 +15,8 @@ export default function ContributionsList() {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
   const [selectedContribution, setSelectedContribution] = useState<any>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [isFormSuccessOpen, setIsFormSuccessOpen] = useState(false)
   const [toastMessage, setToastMessage] = useState('')
   const [newContribution, setNewContribution] = useState({ 
     title: '', category: 'Iuran Wajib', amount: '' as number | string, due_date: '', period_type: 'Bulanan',
@@ -30,6 +32,22 @@ export default function ContributionsList() {
   }>({
     isOpen: false,
     idToDelete: null
+  })
+  const [alertDialog, setAlertDialog] = useState<{
+    isOpen: boolean
+    title: string
+    message: string
+    variant: 'danger' | 'info' | 'success'
+    showCancel?: boolean
+    confirmLabel?: string
+    onConfirm?: () => void
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    variant: 'info',
+    showCancel: false,
+    confirmLabel: 'Mengerti'
   })
 
     const isGalon = newContribution.title.toLowerCase().includes('galon')
@@ -167,6 +185,19 @@ export default function ContributionsList() {
     return { name: contrib_types.name, period_type: contrib_types.period_type || 'Bulanan' }
   }
 
+  const closeAddModal = () => {
+    setIsAddModalOpen(false)
+    setIsFormSuccessOpen(false)
+    setIsSubmitting(false)
+    setEditingId(null)
+    setNewContribution({ 
+      title: '', category: 'Iuran Wajib', amount: '', due_date: '', period_type: 'Bulanan',
+      penghuni: 8, hargaGalon: 20000,
+      calcMode: 'intensity', intensitas: 19/24, ukuranGalon: 19, hariPerBulan: 30,
+      isEstimasiManual: false, manualEstimasiGalon: 10, useAutoCalc: false
+    })
+  }
+
   const handleAddContribution = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
@@ -185,13 +216,16 @@ export default function ContributionsList() {
       const { success } = await spreadsheetApi.put('Contributions', updated)
       if (success) {
         setContributions(contributions.map(c => c.id === editingId ? updated : c))
-        setToastMessage('Iuran berhasil diperbarui!')
+        setIsFormSuccessOpen(true)
       } else {
-        setToastMessage('Gagal memperbarui iuran.')
+        setAlertDialog({
+          isOpen: true,
+          title: 'Gagal Memperbarui',
+          message: 'Gagal memperbarui data iuran ke Google Sheets. Silakan coba kembali.',
+          variant: 'danger'
+        })
       }
-      setTimeout(() => setToastMessage(''), 3000)
       setIsSubmitting(false)
-      setIsAddModalOpen(false)
       return
     }
 
@@ -208,19 +242,18 @@ export default function ContributionsList() {
 
     const { success } = await spreadsheetApi.post('Contributions', added)
     
-    setContributions([added, ...contributions])
+    if (success) {
+      setContributions([added, ...contributions])
+      setIsFormSuccessOpen(true)
+    } else {
+      setAlertDialog({
+        isOpen: true,
+        title: 'Gagal Menyimpan',
+        message: 'Gagal menyimpan iuran baru ke Google Sheets. Periksa koneksi internet Anda.',
+        variant: 'danger'
+      })
+    }
     setIsSubmitting(false)
-    setIsAddModalOpen(false)
-    
-    setToastMessage(success ? 'Iuran berhasil dibuat dan disimpan!' : 'Disimpan lokal (Gagal terhubung ke Sheets)')
-    setTimeout(() => setToastMessage(''), 3000)
-    
-    setNewContribution({ 
-      title: '', category: 'Iuran Wajib', amount: '', due_date: '', period_type: 'Bulanan',
-      penghuni: 8, hargaGalon: 20000,
-      calcMode: 'intensity', intensitas: 19/24, ukuranGalon: 19, hariPerBulan: 30,
-      isEstimasiManual: false, manualEstimasiGalon: 10, useAutoCalc: false
-    })
   }
 
   const handleToggleStatus = async (contribution: any) => {
@@ -244,16 +277,40 @@ export default function ContributionsList() {
   const handleConfirmDelete = async () => {
     const id = confirmDialog.idToDelete
     if (id === null) return
-    setConfirmDialog({ isOpen: false, idToDelete: null })
     
-    const { success } = await spreadsheetApi.del('Contributions', id)
-    if (success) {
-      setContributions(contributions.filter(c => c.id !== id))
-      setToastMessage('Iuran berhasil dihapus.')
-    } else {
-      setToastMessage('Gagal menghapus iuran.')
+    setIsDeleting(true)
+    try {
+      const { success } = await spreadsheetApi.del('Contributions', id)
+      if (success) {
+        setContributions(contributions.filter(c => c.id !== id))
+        setConfirmDialog({ isOpen: false, idToDelete: null })
+        setAlertDialog({
+          isOpen: true,
+          title: 'Hapus Iuran Berhasil',
+          message: 'Data iuran berhasil dihapus secara permanen dari database.',
+          variant: 'success'
+        })
+      } else {
+        setConfirmDialog({ isOpen: false, idToDelete: null })
+        setAlertDialog({
+          isOpen: true,
+          title: 'Gagal Menghapus',
+          message: 'Gagal menghapus data iuran dari Google Sheets.',
+          variant: 'danger'
+        })
+      }
+    } catch (e) {
+      console.error(e)
+      setConfirmDialog({ isOpen: false, idToDelete: null })
+      setAlertDialog({
+        isOpen: true,
+        title: 'Error',
+        message: 'Terjadi kesalahan sistem saat menghapus data.',
+        variant: 'danger'
+      })
+    } finally {
+      setIsDeleting(false)
     }
-    setTimeout(() => setToastMessage(''), 3000)
   }
 
   const handleEdit = (contribution: any) => {
@@ -287,11 +344,11 @@ export default function ContributionsList() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center">
-            <FileText className="mr-3 text-primary w-8 h-8" />
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight flex items-center">
+            <FileText className="mr-2 sm:mr-3 text-primary w-6 h-6 sm:w-8 sm:h-8" />
             Manajemen Iuran
           </h1>
-          <p className="text-text-secondary mt-1">Kelola data tagihan dan iuran bulanan.</p>
+          <p className="text-xs sm:text-sm text-text-secondary mt-1">Kelola data tagihan dan iuran bulanan.</p>
         </div>
         <button onClick={openAddModal} className="btn-primary flex items-center">
           <Plus className="w-5 h-5 mr-2" /> Buat Iuran Baru
@@ -313,7 +370,7 @@ export default function ContributionsList() {
         </div>
         
         <div className="overflow-x-auto w-full rounded-b-[20px] border-t border-border scrollbar-thin scrollbar-thumb-gray-200">
-          <table className="w-full text-left text-sm">
+          <table className="min-w-[700px] w-full text-left text-sm">
             <thead className="bg-[#F3F4F6] border-b border-border text-gray-600">
               <tr>
                 <th className="px-6 py-3 font-semibold whitespace-nowrap">Judul</th>
@@ -396,7 +453,7 @@ export default function ContributionsList() {
       {isAddModalOpen && createPortal(
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm"
-          onMouseDown={() => setIsAddModalOpen(false)}
+          onMouseDown={() => !isSubmitting && closeAddModal()}
         >
           <div
             className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden max-h-[90vh] flex flex-col"
@@ -404,11 +461,64 @@ export default function ContributionsList() {
           >
             <div className="flex justify-between items-center p-6 border-b border-gray-100 bg-gray-50/50 shrink-0">
               <h2 className="text-xl font-bold text-gray-900">{editingId ? 'Edit Iuran' : 'Buat Iuran Baru'}</h2>
-              <button onClick={() => setIsAddModalOpen(false)} className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-200">
-                <X className="w-5 h-5" />
-              </button>
+              {!isSubmitting && (
+                <button onClick={closeAddModal} className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-200">
+                  <X className="w-5 h-5" />
+                </button>
+              )}
             </div>
-            <form onSubmit={handleAddContribution} className="p-6 space-y-4 overflow-y-auto">
+            {isFormSuccessOpen ? (
+              <div className="p-8 flex flex-col items-center justify-center text-center animate-in fade-in duration-300 min-h-[350px]">
+                <div className="mb-5 inline-flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100 shadow-sm animate-bounce">
+                  <CheckCircle2 className="h-8 w-8" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">
+                  {editingId ? 'Iuran Berhasil Diperbarui!' : 'Iuran Berhasil Dibuat!'}
+                </h3>
+                <p className="text-gray-500 max-w-sm mb-6 leading-relaxed text-xs">
+                  Iuran <span className="font-semibold text-gray-800">"{newContribution.title}"</span> telah berhasil dicatat ke sistem iuran master.
+                </p>
+                <div className="w-full bg-gray-50 border border-gray-100 rounded-xl p-4 mb-6 text-left space-y-2 text-xs shadow-sm">
+                  <div className="flex justify-between items-center pb-2 border-b border-gray-200/60">
+                    <span className="text-gray-500 font-medium">Judul Iuran</span>
+                    <span className="font-semibold text-gray-800">{newContribution.title}</span>
+                  </div>
+                  <div className="flex justify-between items-center pb-2 border-b border-gray-200/60">
+                    <span className="text-gray-500 font-medium">Kategori</span>
+                    <span className="font-medium text-gray-800">{newContribution.category}</span>
+                  </div>
+                  <div className="flex justify-between items-center pb-2 border-b border-gray-200/60">
+                    <span className="text-gray-500 font-medium">Siklus</span>
+                    <span className="font-medium text-gray-800">{newContribution.period_type}</span>
+                  </div>
+                  <div className="flex justify-between items-center pb-2 border-b border-gray-200/60">
+                    <span className="text-gray-500 font-medium">Nominal</span>
+                    <span className="font-bold text-emerald-600 text-sm">
+                      Rp {new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(newContribution.useAutoCalc ? autoNominal : (Number(newContribution.amount) || 0))}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-500 font-medium">Jatuh Tempo Default</span>
+                    <span className="font-medium text-gray-800">
+                      {newContribution.due_date ? (
+                        newContribution.period_type === 'Bulanan' ? `Tanggal ${newContribution.due_date} tiap bulan` :
+                        newContribution.period_type === 'Tahunan' ? `${newContribution.due_date.split('-')[1]} tiap tahun` :
+                        newContribution.period_type === 'Mingguan' ? `Tiap hari ${newContribution.due_date}` :
+                        new Date(newContribution.due_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+                      ) : '-'}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeAddModal}
+                  className="btn-primary w-full py-2.5 font-semibold text-sm shadow-md shadow-emerald-500/15 bg-emerald-600 hover:bg-emerald-700 hover:border-emerald-700 focus:outline-none"
+                >
+                  Selesai
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleAddContribution} className="p-6 space-y-4 overflow-y-auto">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Judul Iuran</label>
                 <input required type="text" className="form-input" value={newContribution.title} onChange={e => setNewContribution({...newContribution, title: e.target.value})} placeholder="Contoh: Iuran WiFi" />
@@ -661,12 +771,13 @@ export default function ContributionsList() {
                 </div>
               </div>
               <div className="pt-4 flex gap-3">
-                <button type="button" onClick={() => setIsAddModalOpen(false)} className="btn-secondary flex-1">Batal</button>
+                <button type="button" onClick={closeAddModal} className="btn-secondary flex-1">Batal</button>
                 <button type="submit" disabled={isSubmitting} className="btn-primary flex-1 flex justify-center items-center">
                   {isSubmitting ? 'Memproses...' : <><Save className="w-5 h-5 mr-2" /> Simpan</>}
                 </button>
               </div>
             </form>
+            )}
           </div>
         </div>,
         document.body
@@ -729,8 +840,19 @@ export default function ContributionsList() {
         confirmLabel="Ya, Hapus"
         cancelLabel="Batal"
         variant="danger"
-        onClose={() => setConfirmDialog({ isOpen: false, idToDelete: null })}
+        isLoading={isDeleting}
+        onClose={() => !isDeleting && setConfirmDialog({ isOpen: false, idToDelete: null })}
         onConfirm={handleConfirmDelete}
+      />
+      <ConfirmDialog
+        isOpen={alertDialog.isOpen}
+        title={alertDialog.title}
+        message={alertDialog.message}
+        variant={alertDialog.variant}
+        showCancel={alertDialog.showCancel ?? false}
+        confirmLabel={alertDialog.confirmLabel ?? 'Selesai'}
+        onClose={() => setAlertDialog(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={alertDialog.onConfirm ?? (() => setAlertDialog(prev => ({ ...prev, isOpen: false })))}
       />
     </div>
   )

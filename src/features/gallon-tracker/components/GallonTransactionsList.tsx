@@ -112,11 +112,11 @@ export default function GallonTracker() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center">
-            <Droplets className="mr-3 text-primary w-8 h-8" />
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight flex items-center">
+            <Droplets className="mr-2 sm:mr-3 text-primary w-6 h-6 sm:w-8 sm:h-8" />
             Tracker Air Galon
           </h1>
-          <p className="text-text-secondary mt-1">Pantau konsumsi dan manajemen wadah air.</p>
+          <p className="text-xs sm:text-sm text-text-secondary mt-1">Pantau konsumsi dan manajemen wadah air.</p>
         </div>
         <div className="flex bg-gray-100 p-1 rounded-lg">
           <button 
@@ -350,7 +350,7 @@ export default function GallonTracker() {
           </div>
         </div>
         <div className="overflow-x-auto w-full rounded-xl border border-gray-100 shadow-sm scrollbar-thin scrollbar-thumb-gray-200">
-          <table className="w-full text-left text-sm text-gray-600">
+          <table className="min-w-[700px] w-full text-left text-sm text-gray-600">
             <thead className="bg-gray-50/80 text-gray-700 text-xs uppercase font-semibold border-b border-border">
               <tr>
                 {isHistoryEditMode && (
@@ -461,11 +461,11 @@ export default function GallonTracker() {
       {prediction && (
         <div className="space-y-6">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900 tracking-tight flex items-center">
-              <Brain className="mr-3 text-primary w-7 h-7" />
+            <h2 className="text-lg sm:text-2xl font-bold text-gray-900 tracking-tight flex items-center">
+              <Brain className="mr-2 sm:mr-3 text-primary w-5 h-5 sm:w-7 sm:h-7" />
               Prediksi Kebutuhan Galon
             </h2>
-            <p className="text-text-secondary mt-1">Menggunakan riwayat penggunaan yang tersimpan untuk memprediksi stok dan pola konsumsi.</p>
+            <p className="text-xs sm:text-sm text-text-secondary mt-1">Menggunakan riwayat penggunaan yang tersimpan untuk memprediksi stok dan pola konsumsi.</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -551,7 +551,7 @@ export default function GallonTracker() {
             </button>
           </div>
           <div className="overflow-x-auto w-full rounded-xl border border-gray-100 shadow-sm scrollbar-thin scrollbar-thumb-gray-200">
-            <table className="w-full text-left text-sm text-gray-600">
+            <table className="min-w-[500px] w-full text-left text-sm text-gray-600">
               <thead className="bg-gray-50/80 text-gray-700 text-xs uppercase font-semibold border-b border-border text-center">
                 <tr>
                   <th className="px-4 py-3">Nama Wadah</th>

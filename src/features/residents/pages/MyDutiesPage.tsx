@@ -180,11 +180,11 @@ export default function MyDuties() {
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center">
-          <CalendarIcon className="mr-3 text-primary w-8 h-8" />
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight flex items-center">
+          <CalendarIcon className="mr-2 sm:mr-3 text-primary w-6 h-6 sm:w-8 sm:h-8" />
           Kalender Kos
         </h1>
-        <p className="text-text-secondary mt-1">Pantau jadwal iuran rutin, tagihan jatuh tempo, pengumuman, dan antrean tugas piket Anda.</p>
+        <p className="text-xs sm:text-sm text-text-secondary mt-1">Pantau jadwal iuran rutin, tagihan jatuh tempo, pengumuman, dan antrean tugas piket Anda.</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

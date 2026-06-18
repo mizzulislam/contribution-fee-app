@@ -454,11 +454,11 @@ export default function FinancialStatementsView({ period }: FinancialStatementsV
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center">
-            <Scale className="mr-3 text-primary w-8 h-8" />
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight flex items-center">
+            <Scale className="mr-2 sm:mr-3 text-primary w-6 h-6 sm:w-8 sm:h-8" />
             Laporan Keuangan
           </h1>
-          <p className="text-text-secondary mt-1">Laporan Laba/Rugi, Perubahan Ekuitas, Neraca, dan Arus Kas.</p>
+          <p className="text-xs sm:text-sm text-text-secondary mt-1">Laporan Laba/Rugi, Perubahan Ekuitas, Neraca, dan Arus Kas.</p>
         </div>
         <AccountingDownloadMenu
           fileName={`laporan-keuangan-${periodLabel.toLowerCase().replace(/[^a-z0-9]+/gi, '-').replace(/(^-|-$)/g, '') || 'semua-periode'}`}

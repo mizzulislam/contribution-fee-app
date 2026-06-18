@@ -17,8 +17,8 @@ export default function AuthLayout() {
       </div>
       
       {/* Kanan: Content / Form (All devices) */}
-      <div className="w-full md:w-1/2 flex items-center justify-center p-6 sm:p-12 bg-white">
-        <div className="w-full max-w-md">
+      <div className="w-full md:w-1/2 flex-1 flex items-center justify-center p-4 sm:p-6 md:p-12 bg-gradient-to-tr from-[#ECFDF5]/60 via-white to-[#ECFDF5]/30 md:bg-none md:bg-white">
+        <div className="w-full max-w-md bg-white/80 backdrop-blur-sm md:bg-transparent p-6 sm:p-8 md:p-0 rounded-2xl shadow-xl shadow-[#047857]/5 border border-[#D1FAE5]/60 md:border-none md:shadow-none">
           <Outlet />
         </div>
       </div>

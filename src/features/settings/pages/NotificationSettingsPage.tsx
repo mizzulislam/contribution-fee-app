@@ -77,11 +77,11 @@ export default function NotificationSettings() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center">
-          <BellRing className="mr-3 text-primary w-8 h-8" />
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight flex items-center">
+          <BellRing className="mr-2 sm:mr-3 text-primary w-6 h-6 sm:w-8 sm:h-8" />
           Pengaturan Notifikasi
         </h1>
-        <p className="text-text-secondary mt-1">Konfigurasi pesan notifikasi otomatis untuk penghuni dan admin.</p>
+        <p className="text-xs sm:text-sm text-text-secondary mt-1">Konfigurasi pesan notifikasi otomatis untuk penghuni dan admin.</p>
       </div>
 
       <div className="card-container p-6 sm:p-8 relative">
