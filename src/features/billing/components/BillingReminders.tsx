@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { BellRing, Send, CheckCircle2, X, Check, Loader2, Pencil, Save, RotateCcw } from 'lucide-react'
+import { BellRing, Send, SendHorizonal, CheckCircle2, X, Check, Loader2, Pencil, Save, RotateCcw } from 'lucide-react'
 import { spreadsheetApi } from '@/services/sheets-client'
 import { isDateInPeriod, type PeriodFilter } from '@/features/accounting/calculations/period'
 
@@ -102,6 +102,7 @@ export default function Reminders({ period = defaultPeriod }: RemindersProps) {
     }
   })
   const [draftTemplate, setDraftTemplate] = useState(templateText)
+  const [isSendingAll, setIsSendingAll] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   async function fetchData() {
@@ -286,6 +287,28 @@ export default function Reminders({ period = defaultPeriod }: RemindersProps) {
       window.open(`https://api.whatsapp.com/send/?phone=${formattedPhone}&text=${encodeURIComponent(msg)}`, '_blank')
       setSentStatus(prev => ({ ...prev, [res.residentName]: true }))
     }
+  }
+
+  const sendAllWA = async () => {
+    const unsent = unpaidResidents.filter(r => !sentStatus[r.residentName])
+    if (unsent.length === 0) return
+
+    setIsSendingAll(true)
+    let sentCount = 0
+
+    for (const res of unsent) {
+      await sendIndividualWA(res)
+      sentCount++
+      setToastMessage(`Mengirim ${sentCount}/${unsent.length}...`)
+      // Delay between sends to avoid rate limiting / browser blocking
+      if (sentCount < unsent.length) {
+        await new Promise(resolve => setTimeout(resolve, 1500))
+      }
+    }
+
+    setIsSendingAll(false)
+    setToastMessage(`Semua pesan berhasil dikirim! (${sentCount} orang)`)
+    setTimeout(() => setToastMessage(''), 4000)
   }
 
   /** Render the template preview with highlighted placeholders */
@@ -496,19 +519,39 @@ export default function Reminders({ period = defaultPeriod }: RemindersProps) {
               })}
             </div>
 
-            <div className="flex justify-between items-center border-t border-gray-100 bg-gray-50 px-6 py-4">
+            <div className="flex flex-wrap items-center gap-2 border-t border-gray-100 bg-gray-50 px-6 py-4">
               <button
                 type="button"
                 onClick={() => setSentStatus({})}
                 className="text-xs font-semibold text-gray-500 hover:text-gray-700 px-3 py-2 hover:bg-gray-200/50 rounded-lg transition-colors"
-                disabled={Object.keys(sentStatus).length === 0}
+                disabled={Object.keys(sentStatus).length === 0 || isSendingAll}
               >
                 Reset Status
+              </button>
+              <div className="flex-1" />
+              <button
+                type="button"
+                onClick={sendAllWA}
+                disabled={isSendingAll || unpaidResidents.every(r => sentStatus[r.residentName])}
+                className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-white shadow-sm transition-all hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isSendingAll ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    Mengirim...
+                  </>
+                ) : (
+                  <>
+                    <SendHorizonal className="h-3.5 w-3.5" />
+                    Kirim Semua
+                  </>
+                )}
               </button>
               <button
                 type="button"
                 onClick={() => setIsQueueOpen(false)}
                 className="btn-secondary text-xs px-4 py-2"
+                disabled={isSendingAll}
               >
                 Selesai
               </button>
