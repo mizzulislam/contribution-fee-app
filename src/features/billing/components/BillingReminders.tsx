@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { BellRing, Send, CheckCircle2, X, Check, Loader2 } from 'lucide-react'
+import { BellRing, Send, CheckCircle2, X, Check, Loader2, Pencil, Save, RotateCcw } from 'lucide-react'
 import { spreadsheetApi } from '@/services/sheets-client'
 import { isDateInPeriod, type PeriodFilter } from '@/features/accounting/calculations/period'
 
@@ -41,6 +41,20 @@ interface UnpaidResident {
 
 const defaultPeriod: PeriodFilter = { preset: 'all' }
 
+const DEFAULT_TEMPLATE = `Halo bang [Nama Penghuni]! \u{1F44B}
+
+Sekadar ngingetin nih, ada tagihan kos untuk bulan ini yang belum lunas:
+
+[Daftar Tagihan]
+Total Tagihan: *Rp [Total Nominal]*
+
+Boleh minta tolong diselesaikan pembayarannya dan upload buktinya lewat Portal Penghuni ya bang. Kalo ada kendala atau pertanyaan, kabarin aja!
+
+Makasih banyak kerjasamanya, sehat selalu! \u{1F64F}
+\u2014 Bendahara Soematra Kost`
+
+const TEMPLATE_STORAGE_KEY = 'soematra_reminder_template'
+
 const getContributionData = (contrib: any) => {
   if (typeof contrib === 'string') {
     try {
@@ -77,6 +91,18 @@ export default function Reminders({ period = defaultPeriod }: RemindersProps) {
     token: '',
     sender: ''
   })
+
+  // Template editing state
+  const [isEditingTemplate, setIsEditingTemplate] = useState(false)
+  const [templateText, setTemplateText] = useState(() => {
+    try {
+      return localStorage.getItem(TEMPLATE_STORAGE_KEY) || DEFAULT_TEMPLATE
+    } catch {
+      return DEFAULT_TEMPLATE
+    }
+  })
+  const [draftTemplate, setDraftTemplate] = useState(templateText)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   async function fetchData() {
     setLoadingData(true)
@@ -150,8 +176,48 @@ export default function Reminders({ period = defaultPeriod }: RemindersProps) {
     fetchData()
   }, [period])
 
+  // Auto-resize textarea when editing
+  useEffect(() => {
+    if (isEditingTemplate && textareaRef.current) {
+      textareaRef.current.style.height = 'auto'
+      textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px'
+      textareaRef.current.focus()
+    }
+  }, [isEditingTemplate])
+
   const handleSendReminders = () => {
     setIsQueueOpen(true)
+  }
+
+  const handleStartEdit = () => {
+    setDraftTemplate(templateText)
+    setIsEditingTemplate(true)
+  }
+
+  const handleSaveTemplate = () => {
+    setTemplateText(draftTemplate)
+    try {
+      localStorage.setItem(TEMPLATE_STORAGE_KEY, draftTemplate)
+    } catch { /* ignore storage errors */ }
+    setIsEditingTemplate(false)
+    setToastMessage('Template pesan berhasil disimpan!')
+    setTimeout(() => setToastMessage(''), 3000)
+  }
+
+  const handleCancelEdit = () => {
+    setDraftTemplate(templateText)
+    setIsEditingTemplate(false)
+  }
+
+  const handleResetTemplate = () => {
+    setDraftTemplate(DEFAULT_TEMPLATE)
+    setTemplateText(DEFAULT_TEMPLATE)
+    try {
+      localStorage.removeItem(TEMPLATE_STORAGE_KEY)
+    } catch { /* ignore storage errors */ }
+    setIsEditingTemplate(false)
+    setToastMessage('Template pesan direset ke default!')
+    setTimeout(() => setToastMessage(''), 3000)
   }
 
   const formatWAMessage = (res: UnpaidResident) => {
@@ -164,13 +230,19 @@ export default function Reminders({ period = defaultPeriod }: RemindersProps) {
       const dueDateStr = bill.dueDate 
         ? new Date(bill.dueDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) 
         : '-'
-      billsStr += `• *${bill.title}*: Rp ${amountStr} (Jatuh Tempo: ${dueDateStr})\n`
+      billsStr += `\u2022 *${bill.title}*: Rp ${amountStr} (Jatuh Tempo: ${dueDateStr})\n`
       totalAmount += bill.amount
     })
     
     const totalStr = new Intl.NumberFormat('id-ID').format(totalAmount)
     
-    return `Halo bang ${nickname}! \u{1F44B}\n\nSekadar ngingetin nih, ada tagihan kos untuk bulan ini yang belum lunas:\n\n${billsStr}\nTotal Tagihan: *Rp ${totalStr}*\n\nBoleh minta tolong diselesaikan pembayarannya dan upload buktinya lewat Portal Penghuni ya bang. Kalo ada kendala atau pertanyaan, kabarin aja!\n\nMakasih banyak kerjasamanya, sehat selalu! \u{1F64F}\n— Bendahara Soematra Kost`
+    // Replace placeholders in the user's custom template
+    let msg = templateText
+      .replace(/\[Nama Penghuni\]/g, nickname)
+      .replace(/\[Daftar Tagihan\]/g, billsStr.trimEnd())
+      .replace(/\[Total Nominal\]/g, totalStr)
+    
+    return msg
   }
 
   const sendIndividualWA = async (res: UnpaidResident) => {
@@ -214,6 +286,27 @@ export default function Reminders({ period = defaultPeriod }: RemindersProps) {
       window.open(`https://api.whatsapp.com/send/?phone=${formattedPhone}&text=${encodeURIComponent(msg)}`, '_blank')
       setSentStatus(prev => ({ ...prev, [res.residentName]: true }))
     }
+  }
+
+  /** Render the template preview with highlighted placeholders */
+  const renderTemplatePreview = () => {
+    const lines = templateText.split('\n')
+    return lines.map((line, i) => {
+      if (line.trim() === '') return <br key={i} />
+      
+      // Split by placeholders and highlight them
+      const parts = line.split(/(\[Nama Penghuni\]|\[Daftar Tagihan\]|\[Total Nominal\])/)
+      return (
+        <p key={i}>
+          {parts.map((part, j) => {
+            if (part === '[Nama Penghuni]' || part === '[Daftar Tagihan]' || part === '[Total Nominal]') {
+              return <span key={j} className="text-primary font-semibold">{part}</span>
+            }
+            return <span key={j}>{part}</span>
+          })}
+        </p>
+      )
+    })
   }
 
   return (
@@ -260,19 +353,77 @@ export default function Reminders({ period = defaultPeriod }: RemindersProps) {
         </div>
 
         <div className="card-container flex h-full min-h-[340px] flex-col bg-gradient-to-br from-white to-gray-50 p-4 sm:min-h-[420px] sm:p-6">
-          <h2 className="mb-4 text-base font-bold text-gray-900 sm:text-lg">Template Pesan Pengingat</h2>
-          <div className="relative flex-1 rounded-lg border border-gray-200 bg-white p-3 font-mono text-xs leading-relaxed text-gray-700 shadow-sm sm:p-4 sm:text-sm">
-            <p>Halo bang <span className="text-primary">[Nama Penghuni]</span>! 👋</p>
-            <br />
-            <p>Sekadar ngingetin nih, ada tagihan kos untuk bulan ini yang belum lunas:</p>
-            <p className="text-primary">• [Nama Iuran]: Rp [Nominal] (Jatuh Tempo: [Jatuh Tempo])</p>
-            <p>Total Tagihan: <strong>Rp <span className="text-primary">[Total Nominal]</span></strong></p>
-            <br />
-            <p>Boleh minta tolong diselesaikan pembayarannya dan <i>upload</i> buktinya lewat Portal Penghuni ya bang. Kalo ada kendala atau pertanyaan, kabarin aja!</p>
-            <br />
-            <p>Makasih banyak kerjasamanya, sehat selalu! 🙏</p>
-            <p>— Bendahara Soematra Kost</p>
+          {/* Template Header with Edit/Save/Reset buttons */}
+          <div className="mb-4 flex items-center justify-between gap-2">
+            <h2 className="text-base font-bold text-gray-900 sm:text-lg">Template Pesan Pengingat</h2>
+            <div className="flex items-center gap-1.5">
+              {isEditingTemplate ? (
+                <>
+                  <button
+                    onClick={handleResetTemplate}
+                    className="flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-gray-500 shadow-sm transition-all hover:border-orange-300 hover:bg-orange-50 hover:text-orange-600 sm:text-xs"
+                    title="Reset ke template default"
+                  >
+                    <RotateCcw className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                    <span className="hidden sm:inline">Reset</span>
+                  </button>
+                  <button
+                    onClick={handleCancelEdit}
+                    className="flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-gray-500 shadow-sm transition-all hover:border-red-300 hover:bg-red-50 hover:text-red-600 sm:text-xs"
+                  >
+                    <X className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                    <span className="hidden sm:inline">Batal</span>
+                  </button>
+                  <button
+                    onClick={handleSaveTemplate}
+                    className="flex items-center gap-1 rounded-lg bg-primary px-2.5 py-1.5 text-[11px] font-semibold text-white shadow-sm transition-all hover:bg-primary-dark sm:text-xs"
+                  >
+                    <Save className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                    <span className="hidden sm:inline">Simpan</span>
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={handleStartEdit}
+                  className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-gray-600 shadow-sm transition-all hover:border-primary/40 hover:bg-primary/5 hover:text-primary sm:text-xs"
+                >
+                  <Pencil className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                  Edit Template
+                </button>
+              )}
+            </div>
           </div>
+
+          {/* Editable Textarea or Preview */}
+          {isEditingTemplate ? (
+            <div className="flex flex-1 flex-col gap-3">
+              <textarea
+                ref={textareaRef}
+                value={draftTemplate}
+                onChange={(e) => {
+                  setDraftTemplate(e.target.value)
+                  // Auto-resize
+                  e.target.style.height = 'auto'
+                  e.target.style.height = e.target.scrollHeight + 'px'
+                }}
+                className="flex-1 resize-none rounded-lg border-2 border-primary/30 bg-white p-3 font-mono text-xs leading-relaxed text-gray-700 shadow-inner outline-none transition-colors focus:border-primary sm:p-4 sm:text-sm"
+                placeholder="Tulis template pesan pengingat..."
+                spellCheck={false}
+              />
+              <div className="rounded-lg border border-amber-200 bg-amber-50/60 px-3 py-2">
+                <p className="text-[10px] font-medium text-amber-700 sm:text-[11px]">
+                  <strong>Placeholder yang tersedia:</strong>{' '}
+                  <code className="rounded bg-amber-100 px-1 py-0.5 text-amber-800">[Nama Penghuni]</code>{' '}
+                  <code className="rounded bg-amber-100 px-1 py-0.5 text-amber-800">[Daftar Tagihan]</code>{' '}
+                  <code className="rounded bg-amber-100 px-1 py-0.5 text-amber-800">[Total Nominal]</code>
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="relative flex-1 overflow-y-auto rounded-lg border border-gray-200 bg-white p-3 font-mono text-xs leading-relaxed text-gray-700 shadow-sm sm:p-4 sm:text-sm custom-scrollbar">
+              {renderTemplatePreview()}
+            </div>
+          )}
         </div>
       </div>
 
