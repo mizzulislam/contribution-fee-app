@@ -288,6 +288,8 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
                               let formattedPhone = phone
                               if (phone.startsWith('0')) {
                                 formattedPhone = '62' + phone.slice(1)
+                              } else if (phone.startsWith('8')) {
+                                formattedPhone = '62' + phone
                               }
                               
                               if (!formattedPhone) {
@@ -301,7 +303,7 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
                               const dueDateStr = new Date(bill.due_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
                               const titleStr = getContributionData(bill.contributions).title || 'Iuran'
                               
-                              const msg = `Halo bang ${nickname}! 👋\n\nSekadar ngingetin nih, tagihan ${titleStr} sebesar *Rp ${amountStr}* udah mau jatuh tempo pada ${dueDateStr}.\n\nBoleh minta tolong diselesaikan pembayarannya dan upload buktinya lewat Portal Penghuni ya bang. Kalo ada kendala, kabarin aja!\n\nMakasih banyak kerjasamanya, sehat selalu! 🙏\n— Bendahara Soematra Kost`
+                              const msg = `Halo bang ${nickname}! \u{1F44B}\n\nSekadar ngingetin nih, tagihan ${titleStr} sebesar *Rp ${amountStr}* udah mau jatuh tempo pada ${dueDateStr}.\n\nBoleh minta tolong diselesaikan pembayarannya dan upload buktinya lewat Portal Penghuni ya bang. Kalo ada kendala, kabarin aja!\n\nMakasih banyak kerjasamanya, sehat selalu! \u{1F64F}\n— Bendahara Soematra Kost`
                               
                               if (whatsappSettings.provider === 'fonnte' && whatsappSettings.token) {
                                 setSendingStatus(prev => ({ ...prev, [bill.id]: true }))
@@ -323,7 +325,7 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
                                   setTimeout(() => setToastMessage(''), 4000)
                                 }
                               } else {
-                                window.open(`https://wa.me/${formattedPhone}?text=${encodeURIComponent(msg)}`, '_blank')
+                                window.open(`https://api.whatsapp.com/send/?phone=${formattedPhone}&text=${encodeURIComponent(msg)}`, '_blank')
                               }
                             }}
                             disabled={sendingStatus[bill.id]}

@@ -170,7 +170,7 @@ export default function Reminders({ period = defaultPeriod }: RemindersProps) {
     
     const totalStr = new Intl.NumberFormat('id-ID').format(totalAmount)
     
-    return `Halo bang ${nickname}! 👋\n\nSekadar ngingetin nih, ada tagihan kos untuk bulan ini yang belum lunas:\n\n${billsStr}\nTotal Tagihan: *Rp ${totalStr}*\n\nBoleh minta tolong diselesaikan pembayarannya dan upload buktinya lewat Portal Penghuni ya bang. Kalo ada kendala atau pertanyaan, kabarin aja!\n\nMakasih banyak kerjasamanya, sehat selalu! 🙏\n— Bendahara Soematra Kost`
+    return `Halo bang ${nickname}! \u{1F44B}\n\nSekadar ngingetin nih, ada tagihan kos untuk bulan ini yang belum lunas:\n\n${billsStr}\nTotal Tagihan: *Rp ${totalStr}*\n\nBoleh minta tolong diselesaikan pembayarannya dan upload buktinya lewat Portal Penghuni ya bang. Kalo ada kendala atau pertanyaan, kabarin aja!\n\nMakasih banyak kerjasamanya, sehat selalu! \u{1F64F}\n— Bendahara Soematra Kost`
   }
 
   const sendIndividualWA = async (res: UnpaidResident) => {
@@ -178,6 +178,8 @@ export default function Reminders({ period = defaultPeriod }: RemindersProps) {
     let formattedPhone = phone
     if (phone.startsWith('0')) {
       formattedPhone = '62' + phone.slice(1)
+    } else if (phone.startsWith('8')) {
+      formattedPhone = '62' + phone
     }
     
     if (!formattedPhone) {
@@ -209,7 +211,7 @@ export default function Reminders({ period = defaultPeriod }: RemindersProps) {
         setTimeout(() => setToastMessage(''), 4000)
       }
     } else {
-      window.open(`https://wa.me/${formattedPhone}?text=${encodeURIComponent(msg)}`, '_blank')
+      window.open(`https://api.whatsapp.com/send/?phone=${formattedPhone}&text=${encodeURIComponent(msg)}`, '_blank')
       setSentStatus(prev => ({ ...prev, [res.residentName]: true }))
     }
   }
