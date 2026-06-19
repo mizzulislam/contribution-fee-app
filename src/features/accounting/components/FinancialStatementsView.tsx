@@ -24,7 +24,7 @@ export default function FinancialStatementsView({ period }: FinancialStatementsV
     
     if (isNegative) {
       return (
-        <span className={`inline-flex justify-between items-center w-[130px] flex-shrink-0 ${colorClass || 'text-gray-900'} font-semibold`}>
+        <span className={`inline-flex justify-between items-center w-[130px] flex-shrink-0 pl-4 ${colorClass || 'text-gray-900'} font-semibold`}>
           <span className="text-gray-400 font-normal mr-1">(Rp</span>
           <span>
             {formatted}
@@ -35,7 +35,7 @@ export default function FinancialStatementsView({ period }: FinancialStatementsV
     }
 
     return (
-      <span className={`inline-flex justify-between items-center w-[130px] flex-shrink-0 ${colorClass || 'text-gray-900'} font-semibold`}>
+      <span className={`inline-flex justify-between items-center w-[130px] flex-shrink-0 pl-4 ${colorClass || 'text-gray-900'} font-semibold`}>
         <span className="text-gray-400 font-normal mr-2">Rp</span>
         <span>{formatted}</span>
       </span>
@@ -418,32 +418,34 @@ export default function FinancialStatementsView({ period }: FinancialStatementsV
         </div>
 
         <div className="space-y-3.5 text-xs">
-          <div className="flex justify-between items-center py-2 pl-1 border-b border-gray-100 hover:bg-gray-50/50">
-            <span className="text-gray-600 font-medium">Kas Bersih dari Aktivitas Operasi</span>
+          <div className="flex min-w-0 items-center gap-2 py-2 pl-1 border-b border-gray-100 hover:bg-gray-50/50">
+            <span className="min-w-0 flex-1 text-gray-600 font-medium">Kas Bersih dari Aktivitas Operasi</span>
             {formatCurrency(cash.operatingActivities, cash.operatingActivities < 0)}
           </div>
-          <div className="flex justify-between items-center py-2 pl-1 border-b border-gray-100 hover:bg-gray-50/50">
-            <span className="text-gray-600 font-medium">Kas Bersih dari Aktivitas Investasi</span>
+          <div className="flex min-w-0 items-center gap-2 py-2 pl-1 border-b border-gray-100 hover:bg-gray-50/50">
+            <span className="min-w-0 flex-1 text-gray-600 font-medium">Kas Bersih dari Aktivitas Investasi</span>
             {formatCurrency(cash.investingActivities, cash.investingActivities < 0)}
           </div>
-          <div className="flex justify-between items-center py-2 pl-1 border-b border-gray-100 hover:bg-gray-50/50">
-            <span className="text-gray-600 font-medium">Kas Bersih dari Aktivitas Pendanaan</span>
+          <div className="flex min-w-0 items-center gap-2 py-2 pl-1 border-b border-gray-100 hover:bg-gray-50/50">
+            <span className="min-w-0 flex-1 text-gray-600 font-medium">Kas Bersih dari Aktivitas Pendanaan</span>
             {formatCurrency(cash.financingActivities, cash.financingActivities < 0)}
           </div>
-          <div className="flex justify-between items-center py-2.5 pl-1 border-t border-gray-200 text-gray-900 font-bold">
-            <span className="uppercase tracking-wide">Kenaikan/Penurunan Bersih Kas</span>
+          <div className="flex min-w-0 items-center gap-3 py-2.5 pl-1 border-t border-gray-200 text-gray-900 font-bold">
+            <span className="min-w-0 flex-1 uppercase tracking-wide leading-snug">
+              Kenaikan/<br />Penurunan<br />Bersih Kas
+            </span>
             {formatCurrency(cash.netCashFlow, cash.netCashFlow < 0, 'text-xs font-bold text-gray-900')}
           </div>
         </div>
       </div>
 
       <div className="mt-6 space-y-2 border-t border-gray-200 pt-4 text-xs">
-        <div className="flex justify-between items-center py-1.5 pl-1">
-          <span className="font-medium text-gray-600">Saldo Kas Awal</span>
+        <div className="flex min-w-0 items-center gap-2 py-1.5 pl-1">
+          <span className="min-w-0 flex-1 font-medium text-gray-600">Saldo Kas Awal</span>
           {formatCurrency(cash.beginningCashBalance, cash.beginningCashBalance < 0)}
         </div>
-        <div className="flex justify-between items-center py-2.5 pl-1 border-t border-b-2 border-gray-200 text-gray-900">
-          <span className="font-bold uppercase tracking-wide">Saldo Kas Akhir</span>
+        <div className="flex min-w-0 items-center gap-2 py-2.5 pl-1 border-t border-b-2 border-gray-200 text-gray-900">
+          <span className="min-w-0 flex-1 font-bold uppercase tracking-wide">Saldo Kas Akhir</span>
           {formatCurrency(cash.endingCashBalance, cash.endingCashBalance < 0, 'text-xs font-bold text-gray-900')}
         </div>
       </div>

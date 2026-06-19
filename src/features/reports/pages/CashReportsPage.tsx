@@ -105,13 +105,13 @@ function StatementRow({
 
   return (
     <div className={cn(
-      'grid grid-cols-[1fr_auto] gap-4 border-b border-gray-100 px-4 py-3 text-sm last:border-b-0',
+      'flex w-full min-w-0 items-start gap-2 border-b border-gray-100 px-4 py-3 text-sm last:border-b-0',
       bold && 'bg-gray-50 font-bold text-gray-950'
     )}>
-      <span className={cn('text-gray-700', indent && 'pl-5', bold && 'text-gray-950')}>
+      <span className={cn('min-w-0 flex-1 break-words leading-snug text-gray-700', indent && 'pl-4 sm:pl-5', bold && 'text-gray-950')}>
         {label}
       </span>
-      <span className={cn('min-w-[150px] text-right font-medium tabular-nums text-gray-900', bold && 'font-bold', negative && 'text-rose-700')}>
+      <span className={cn('shrink-0 whitespace-nowrap text-right font-medium tabular-nums text-gray-900', bold && 'font-bold', negative && 'text-rose-700')}>
         {hasValue ? formatStatementAmount(value) : ''}
       </span>
     </div>

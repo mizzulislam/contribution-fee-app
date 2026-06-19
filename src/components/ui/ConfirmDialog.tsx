@@ -77,7 +77,7 @@ export default function ConfirmDialog({
             <button
               onClick={onClose}
               disabled={isLoading}
-              className="btn-secondary flex-1 py-2.5 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn-secondary flex-1 py-2.5 text-sm font-medium whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {cancelLabel}
             </button>
@@ -91,7 +91,7 @@ export default function ConfirmDialog({
               }
             }}
             disabled={isLoading}
-            className={`flex-1 py-2.5 px-4 rounded-lg font-medium text-white transition-colors shadow-md flex items-center justify-center gap-2 disabled:opacity-75 disabled:cursor-not-allowed ${
+            className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium text-white transition-colors shadow-md flex items-center justify-center gap-1.5 whitespace-nowrap disabled:opacity-75 disabled:cursor-not-allowed ${
               variant === 'danger'
                 ? 'bg-red-600 hover:bg-red-700 shadow-red-500/20'
                 : variant === 'success'
@@ -99,7 +99,7 @@ export default function ConfirmDialog({
                 : 'bg-primary hover:bg-primary-dark shadow-primary/20'
             }`}
           >
-            {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+            {isLoading && <Loader2 className="w-4 h-4 shrink-0 animate-spin" />}
             {confirmLabel}
           </button>
         </div>
