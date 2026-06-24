@@ -452,6 +452,31 @@ export default function FinancialStatementsView({ period }: FinancialStatementsV
     </div>
   )
 
+  const statementsPrintContent = (
+    <div className="space-y-6">
+      <div className="print-brand text-[11px] font-bold text-emerald-600 tracking-wider">SOEMATRA KOST</div>
+      <h1 className="text-2xl font-bold text-gray-900 mt-1">Laporan Keuangan</h1>
+      <div className="text-[11px] text-gray-600 border-b-2 border-emerald-500 pb-2 mb-6">
+        Periode: {periodLabel} | Dicetak: {new Date().toLocaleString('id-ID')}
+      </div>
+
+      <div className="space-y-12">
+        <div className="print-statement-card">
+          {incomeStatementCard}
+        </div>
+        <div className="print-statement-card page-break-before">
+          {retainedEarningsCard}
+        </div>
+        <div className="print-statement-card page-break-before">
+          {balanceSheetCard}
+        </div>
+        <div className="print-statement-card page-break-before">
+          {cashFlowCard}
+        </div>
+      </div>
+    </div>
+  )
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -470,6 +495,7 @@ export default function FinancialStatementsView({ period }: FinancialStatementsV
           rows={statementsExportRows}
           amountColumnIndexes={[2]}
           colWidths={['25%', '50%', '25%']}
+          printContent={statementsPrintContent}
         />
       </div>
 

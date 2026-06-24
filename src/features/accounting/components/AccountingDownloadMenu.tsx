@@ -13,6 +13,7 @@ interface AccountingDownloadMenuProps {
   amountColumnIndexes?: number[]
   emptyMessage?: string
   colWidths?: string[]
+  printContent?: React.ReactNode
 }
 
 export default function AccountingDownloadMenu({
@@ -24,6 +25,7 @@ export default function AccountingDownloadMenu({
   amountColumnIndexes = [],
   emptyMessage = 'Tidak ada data pada periode ini.',
   colWidths,
+  printContent,
 }: AccountingDownloadMenuProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -66,7 +68,6 @@ export default function AccountingDownloadMenu({
 
   const handlePrintPdf = () => {
     setIsOpen(false)
-    // Wait a brief tick to ensure dropdown closes and UI is ready
     setTimeout(() => {
       window.print()
     }, 50)
@@ -74,50 +75,56 @@ export default function AccountingDownloadMenu({
 
   const printAreaContent = (
     <div data-accounting-print-area={printAreaId} aria-hidden="true">
-      <div className="print-brand">SOEMATRA KOST</div>
-      <h1>{title}</h1>
-      <div className="print-meta">{meta}</div>
-      <table>
-        {colWidths && colWidths.length === headers.length && (
-          <colgroup>
-            {colWidths.map((width, idx) => (
-              <col key={idx} style={{ width }} />
-            ))}
-          </colgroup>
-        )}
-        <thead>
-          <tr>
-            {headers.map((header, headerIndex) => (
-              <th
-                key={header}
-                className={amountColumnIndexes.includes(headerIndex) ? 'print-amount' : undefined}
-              >
-                {header}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.length === 0 ? (
-            <tr>
-              <td colSpan={headers.length}>{emptyMessage}</td>
-            </tr>
-          ) : (
-            rows.map((row, rowIndex) => (
-              <tr key={rowIndex}>
-                {row.map((cell, cellIndex) => (
-                  <td
-                    key={`${rowIndex}-${cellIndex}`}
-                    className={amountColumnIndexes.includes(cellIndex) ? 'print-amount' : undefined}
+      {printContent ? (
+        printContent
+      ) : (
+        <>
+          <div className="print-brand">SOEMATRA KOST</div>
+          <h1>{title}</h1>
+          <div className="print-meta">{meta}</div>
+          <table>
+            {colWidths && colWidths.length === headers.length && (
+              <colgroup>
+                {colWidths.map((width, idx) => (
+                  <col key={idx} style={{ width }} />
+                ))}
+              </colgroup>
+            )}
+            <thead>
+              <tr>
+                {headers.map((header, headerIndex) => (
+                  <th
+                    key={header}
+                    className={amountColumnIndexes.includes(headerIndex) ? 'print-amount' : undefined}
                   >
-                    {cell}
-                  </td>
+                    {header}
+                  </th>
                 ))}
               </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+            </thead>
+            <tbody>
+              {rows.length === 0 ? (
+                <tr>
+                  <td colSpan={headers.length}>{emptyMessage}</td>
+                </tr>
+              ) : (
+                rows.map((row, rowIndex) => (
+                  <tr key={rowIndex}>
+                    {row.map((cell, cellIndex) => (
+                      <td
+                        key={`${rowIndex}-${cellIndex}`}
+                        className={amountColumnIndexes.includes(cellIndex) ? 'print-amount' : undefined}
+                      >
+                        {cell}
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </>
+      )}
     </div>
   )
 
@@ -163,6 +170,11 @@ export default function AccountingDownloadMenu({
           }
 
           @media print {
+            * {
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+
             @page {
               size: A4 portrait;
               margin: 15mm 20mm;
@@ -237,7 +249,6 @@ export default function AccountingDownloadMenu({
               vertical-align: top !important;
               word-break: break-word !important;
               color: #374151 !important;
-              white-space: pre-wrap !important;
             }
 
             [data-accounting-print-area="${printAreaId}"] tr:nth-child(even) td {
@@ -247,6 +258,15 @@ export default function AccountingDownloadMenu({
             [data-accounting-print-area="${printAreaId}"] .print-amount {
               text-align: right !important;
               white-space: nowrap !important;
+            }
+
+            .page-break-before {
+              page-break-before: always !important;
+              break-before: page !important;
+            }
+
+            .double-underline {
+              border-bottom: 4px double #1f2937 !important;
             }
           }
         `}

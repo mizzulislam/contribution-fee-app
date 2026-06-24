@@ -37,6 +37,68 @@ export default function TrialBalanceView({ period }: TrialBalanceViewProps) {
     ['Total Keseluruhan', '', formatAmountText(totalDebit), formatAmountText(totalCredit)],
   ]
 
+  const trialBalancePrintContent = (
+    <div className="space-y-6">
+      <div className="print-brand text-[11px] font-bold text-emerald-600 tracking-wider">SOEMATRA KOST</div>
+      <h1 className="text-2xl font-bold text-gray-900 mt-1">Neraca Saldo</h1>
+      <div className="text-[11px] text-gray-600 border-b-2 border-emerald-500 pb-2 mb-4">
+        Periode: {periodLabel} | Status: {isBalanced ? 'Seimbang' : 'Tidak Seimbang'} | Dicetak: {new Date().toLocaleString('id-ID')}
+      </div>
+
+      <div className={`p-3 rounded-lg border text-[11px] flex items-center mb-4 ${isBalanced ? 'bg-emerald-50 border-emerald-100 text-emerald-800' : 'bg-red-50 border-red-100 text-red-800'}`}>
+        <span className="font-semibold">{isBalanced ? '✓ Buku Kas Seimbang (Balanced)' : '⚠ Peringatan: Terdapat selisih antara Debit dan Kredit!'}</span>
+      </div>
+
+      <table className="w-full table-fixed text-left text-[11px] border border-gray-200 border-collapse">
+        <colgroup>
+          <col className="w-[15%]" />
+          <col className="w-[45%]" />
+          <col className="w-[20%]" />
+          <col className="w-[20%]" />
+        </colgroup>
+        <thead className="bg-[#F8FAFC] border-b border-gray-300 text-gray-700">
+          <tr>
+            <th className="px-3 py-2 border-r border-gray-200 font-bold">No. Akun</th>
+            <th className="px-3 py-2 border-r border-gray-200 font-bold">Nama Akun</th>
+            <th className="px-3 py-2 border-r border-gray-200 font-bold text-right">Debit</th>
+            <th className="px-3 py-2 font-bold text-right">Kredit</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-200 bg-white">
+          {items.length === 0 ? (
+            <tr>
+              <td colSpan={4} className="px-4 py-8 text-center text-gray-400">Belum ada data neraca saldo pada periode terpilih.</td>
+            </tr>
+          ) : (
+            items.map((item) => (
+              <tr key={item.accountNumber} className="border-b border-gray-200">
+                <td className="px-3 py-2 border-r border-gray-200 font-medium">{item.accountNumber}</td>
+                <td className="px-3 py-2 border-r border-gray-200">{item.accountName}</td>
+                <td className="px-3 py-2 border-r border-gray-200 text-right">
+                  {item.debit > 0 ? `Rp ${new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(item.debit)}` : '-'}
+                </td>
+                <td className="px-3 py-2 text-right">
+                  {item.credit > 0 ? `Rp ${new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(item.credit)}` : '-'}
+                </td>
+              </tr>
+            ))
+          )}
+        </tbody>
+        <tfoot className="bg-gray-50 border-t-2 border-gray-300">
+          <tr className="font-bold text-gray-900">
+            <td colSpan={2} className="px-3 py-2.5 border-r border-gray-200 text-right font-bold">Total Keseluruhan:</td>
+            <td className="px-3 py-2.5 border-r border-gray-200 text-right font-bold double-underline">
+              {totalDebit > 0 ? `Rp ${new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(totalDebit)}` : '-'}
+            </td>
+            <td className="px-3 py-2.5 text-right font-bold double-underline">
+              {totalCredit > 0 ? `Rp ${new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(totalCredit)}` : '-'}
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  )
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -55,6 +117,7 @@ export default function TrialBalanceView({ period }: TrialBalanceViewProps) {
           rows={trialBalanceExportRows}
           amountColumnIndexes={[2, 3]}
           colWidths={['15%', '45%', '20%', '20%']}
+          printContent={trialBalancePrintContent}
         />
       </div>
 

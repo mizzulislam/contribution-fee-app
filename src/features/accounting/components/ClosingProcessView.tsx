@@ -322,6 +322,119 @@ export default function ClosingProcessView({ period }: ClosingProcessViewProps) 
     )
   }
 
+  const closingPrintContent = (
+    <div className="space-y-6">
+      <div className="print-brand text-[11px] font-bold text-emerald-600 tracking-wider">SOEMATRA KOST</div>
+      <h1 className="text-2xl font-bold text-gray-900 mt-1">Jurnal Penutup</h1>
+      <div className="text-[11px] text-gray-600 border-b-2 border-emerald-500 pb-2 mb-4">
+        Periode: {periodLabel} | Dicetak: {new Date().toLocaleString('id-ID')}
+      </div>
+      
+      <table className="w-full table-fixed text-left text-[11.5px] border border-gray-200 border-collapse">
+        <colgroup>
+          <col className="w-[12%]" />
+          <col className="w-[13%]" />
+          <col className="w-[41%]" />
+          <col className="w-[10%]" />
+          <col className="w-[12%]" />
+          <col className="w-[12%]" />
+        </colgroup>
+        <thead className="bg-[#F8FAFC] border-b border-gray-300 text-gray-700">
+          <tr>
+            <th className="px-3 py-2 border-r border-gray-200 font-bold text-center">ID Jurnal</th>
+            <th className="px-3 py-2 border-r border-gray-200 font-bold text-center">Tanggal</th>
+            <th className="px-3 py-2 border-r border-gray-200 font-bold text-center">Deskripsi</th>
+            <th className="px-3 py-2 border-r border-gray-200 font-bold text-center">Ref</th>
+            <th className="px-3 py-2 border-r border-gray-200 font-bold text-center">Debit</th>
+            <th className="px-3 py-2 font-bold text-center">Kredit</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-200 text-gray-700 bg-white">
+          {sortedClosingEntries.length === 0 ? (
+            <tr>
+              <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
+                Belum ada jurnal penutup pada periode ini.
+              </td>
+            </tr>
+          ) : (
+            sortedClosingEntries.map((entry) => (
+              <tr key={entry.id} className="align-top border-b border-gray-200">
+                <td className="px-3 py-2 border-r border-gray-200 text-center font-mono">
+                  {formatJournalId(entry.id)}
+                </td>
+                <td className="px-3 py-2 border-r border-gray-200 text-center whitespace-nowrap">
+                  {formatDate(entry.date)}
+                </td>
+                <td className="px-3 py-2 border-r border-gray-200">
+                  <div className="space-y-1.5 text-[11px] leading-relaxed">
+                    {/* Debits */}
+                    {entry.debits.map((d: any, i: number) => (
+                      <div key={`d-${i}`} className="text-gray-900 font-semibold">{getAccountName(d.accountNumber)}</div>
+                    ))}
+                    {/* Credits (Indented) */}
+                    {entry.credits.map((c: any, i: number) => (
+                      <div key={`c-${i}`} className="text-gray-900 pl-4">{getAccountName(c.accountNumber)}</div>
+                    ))}
+                  </div>
+                  {/* Keterangan di baris paling bawah ayat jurnal */}
+                  <div className="mt-1 text-[10px] leading-normal text-[#047857] italic font-semibold">
+                    ({entry.description})
+                  </div>
+                </td>
+                <td className="px-3 py-2 border-r border-gray-200 text-center text-gray-500">
+                  <div className="space-y-1.5">
+                    {entry.debits.map((d: any, i: number) => (
+                      <div key={`dref-${i}`}>{d.accountNumber}</div>
+                    ))}
+                    {entry.credits.map((c: any, i: number) => (
+                      <div key={`cref-${i}`}>{c.accountNumber}</div>
+                    ))}
+                  </div>
+                </td>
+                <td className="px-3 py-2 border-r border-gray-200">
+                  <div className="space-y-1.5 text-right">
+                    {entry.debits.map((d: any, i: number) => {
+                      const { symbol, amount } = formatCurrencyParts(d.amount)
+                      return (
+                        <div key={`da-${i}`} className="text-gray-900 font-semibold flex justify-between w-full">
+                          <span className="text-gray-400 font-normal">{symbol}</span>
+                          <span>{amount}</span>
+                        </div>
+                      )
+                    })}
+                    {entry.credits.map((c: any, i: number) => (
+                      <div key={`ca-${i}`} className="text-transparent select-none flex justify-between w-full">
+                        <span>Rp</span><span>0</span>
+                      </div>
+                    ))}
+                  </div>
+                </td>
+                <td className="px-3 py-2">
+                  <div className="space-y-1.5 text-right">
+                    {entry.debits.map((d: any, i: number) => (
+                      <div key={`ds-${i}`} className="text-transparent select-none flex justify-between w-full">
+                        <span>Rp</span><span>0</span>
+                      </div>
+                    ))}
+                    {entry.credits.map((c: any, i: number) => {
+                      const { symbol, amount } = formatCurrencyParts(c.amount)
+                      return (
+                        <div key={`ca-${i}`} className="text-gray-900 font-semibold flex justify-between w-full">
+                          <span className="text-gray-400 font-normal">{symbol}</span>
+                          <span>{amount}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+    </div>
+  )
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -344,6 +457,7 @@ export default function ClosingProcessView({ period }: ClosingProcessViewProps) 
               rows={closingExportRows}
               amountColumnIndexes={[5, 6]}
               colWidths={['10%', '12%', '20%', '22%', '8%', '14%', '14%']}
+              printContent={closingPrintContent}
             />
           </div>
         )}

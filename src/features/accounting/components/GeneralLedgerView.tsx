@@ -73,6 +73,153 @@ export default function GeneralLedgerView({ period }: GeneralLedgerViewProps) {
     )
   }
 
+  const ledgerPrintContent = (
+    <div className="space-y-8">
+      <div className="print-brand text-[11px] font-bold text-emerald-600 tracking-wider">SOEMATRA KOST</div>
+      <h1 className="text-2xl font-bold text-gray-900 mt-1">Buku Besar</h1>
+      <div className="text-[11px] text-gray-600 border-b-2 border-emerald-500 pb-2 mb-6">
+        Akun: {selectedAccountLabel} | Periode: {periodLabel} | Dicetak: {new Date().toLocaleString('id-ID')}
+      </div>
+
+      {isAllAccounts ? (
+        periodEngine.ledger.getAllLedgers()
+          .filter(ledger => ledger.entries.length > 0)
+          .sort((a, b) => a.account.accountNumber.localeCompare(b.account.accountNumber))
+          .map((ledger, ledgerIdx) => {
+            const sortedEntries = [...ledger.entries].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+            return (
+              <div 
+                key={ledger.account.accountNumber} 
+                className={`border border-gray-300 rounded-xl p-4 bg-white ${ledgerIdx > 0 ? 'page-break-before' : ''}`}
+              >
+                <div className="flex justify-between items-end border-b pb-2 mb-3">
+                  <div>
+                    <h3 className="font-bold text-gray-900 text-base">
+                      {ledger.account.accountNumber} - {ledger.account.accountName}
+                    </h3>
+                    <p className="text-[10px] text-gray-500 mt-0.5">
+                      Tipe: {ledger.account.accountType} | Saldo Normal: {ledger.account.normalBalance}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[10px] font-semibold text-gray-500">Saldo Akhir</span>
+                    <div className="text-base font-bold text-emerald-700">
+                      Rp {new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(ledger.currentBalance)}
+                    </div>
+                  </div>
+                </div>
+
+                <table className="w-full table-fixed text-left text-[11px] border border-gray-200 border-collapse">
+                  <colgroup>
+                    <col className="w-[12%]" />
+                    <col className="w-[40%]" />
+                    <col className="w-[16%]" />
+                    <col className="w-[16%]" />
+                    <col className="w-[16%]" />
+                  </colgroup>
+                  <thead className="bg-[#F8FAFC] border-b border-gray-300 text-gray-700">
+                    <tr>
+                      <th className="px-3 py-2 border-r border-gray-200 font-bold text-center">Tanggal</th>
+                      <th className="px-3 py-2 border-r border-gray-200 font-bold text-center">Keterangan</th>
+                      <th className="px-3 py-2 border-r border-gray-200 font-bold text-right">Debit</th>
+                      <th className="px-3 py-2 border-r border-gray-200 font-bold text-right">Kredit</th>
+                      <th className="px-3 py-2 font-bold text-right">Saldo Berjalan</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 bg-white">
+                    {sortedEntries.map((entry, idx) => (
+                      <tr key={idx} className="border-b border-gray-200">
+                        <td className="px-3 py-2 border-r border-gray-200 text-center">
+                          {new Date(entry.date).toLocaleDateString('id-ID')}
+                        </td>
+                        <td className="px-3 py-2 border-r border-gray-200">{entry.description}</td>
+                        <td className="px-3 py-2 border-r border-gray-200 text-right">
+                          {entry.debit > 0 ? `Rp ${new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(entry.debit)}` : '-'}
+                        </td>
+                        <td className="px-3 py-2 border-r border-gray-200 text-right">
+                          {entry.credit > 0 ? `Rp ${new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(entry.credit)}` : '-'}
+                        </td>
+                        <td className="px-3 py-2 text-right font-medium">
+                          Rp {new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(entry.balance)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )
+          })
+      ) : ledgerData ? (
+        <div className="border border-gray-300 rounded-xl p-4 bg-white">
+          <div className="flex justify-between items-end border-b pb-2 mb-3">
+            <div>
+              <h3 className="font-bold text-gray-900 text-base">
+                {ledgerData.account.accountNumber} - {ledgerData.account.accountName}
+              </h3>
+              <p className="text-[10px] text-gray-500 mt-0.5">
+                Tipe: {ledgerData.account.accountType} | Saldo Normal: {ledgerData.account.normalBalance}
+              </p>
+            </div>
+            <div className="text-right">
+              <span className="text-[10px] font-semibold text-gray-500">Saldo Akhir</span>
+              <div className="text-base font-bold text-emerald-700">
+                Rp {new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(ledgerData.currentBalance)}
+              </div>
+            </div>
+          </div>
+
+          <table className="w-full table-fixed text-left text-[11px] border border-gray-200 border-collapse">
+            <colgroup>
+              <col className="w-[12%]" />
+              <col className="w-[40%]" />
+              <col className="w-[16%]" />
+              <col className="w-[16%]" />
+              <col className="w-[16%]" />
+            </colgroup>
+            <thead className="bg-[#F8FAFC] border-b border-gray-300 text-gray-700">
+              <tr>
+                <th className="px-3 py-2 border-r border-gray-200 font-bold text-center">Tanggal</th>
+                <th className="px-3 py-2 border-r border-gray-200 font-bold text-center">Keterangan</th>
+                <th className="px-3 py-2 border-r border-gray-200 font-bold text-right">Debit</th>
+                <th className="px-3 py-2 border-r border-gray-200 font-bold text-right">Kredit</th>
+                <th className="px-3 py-2 font-bold text-right">Saldo Berjalan</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200 bg-white">
+              {ledgerData.entries.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
+                    Belum ada mutasi untuk akun ini pada periode terpilih.
+                  </td>
+                </tr>
+              ) : (
+                [...ledgerData.entries]
+                  .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+                  .map((entry, idx) => (
+                    <tr key={idx} className="border-b border-gray-200">
+                      <td className="px-3 py-2 border-r border-gray-200 text-center">
+                        {new Date(entry.date).toLocaleDateString('id-ID')}
+                      </td>
+                      <td className="px-3 py-2 border-r border-gray-200">{entry.description}</td>
+                      <td className="px-3 py-2 border-r border-gray-200 text-right">
+                        {entry.debit > 0 ? `Rp ${new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(entry.debit)}` : '-'}
+                      </td>
+                      <td className="px-3 py-2 border-r border-gray-200 text-right">
+                        {entry.credit > 0 ? `Rp ${new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(entry.credit)}` : '-'}
+                      </td>
+                      <td className="px-3 py-2 text-right font-medium">
+                        Rp {new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(entry.balance)}
+                      </td>
+                    </tr>
+                  ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+    </div>
+  )
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -97,6 +244,7 @@ export default function GeneralLedgerView({ period }: GeneralLedgerViewProps) {
             ? ['12%', '18%', '28%', '14%', '14%', '14%']
             : ['15%', '37%', '16%', '16%', '16%']
           }
+          printContent={ledgerPrintContent}
         />
       </div>
 
