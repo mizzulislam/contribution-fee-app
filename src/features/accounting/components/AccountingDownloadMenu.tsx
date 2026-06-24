@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { ChevronDown, Download, FileSpreadsheet, Printer } from 'lucide-react'
 
 type CellValue = string | number
@@ -11,6 +12,7 @@ interface AccountingDownloadMenuProps {
   rows: CellValue[][]
   amountColumnIndexes?: number[]
   emptyMessage?: string
+  colWidths?: string[]
 }
 
 export default function AccountingDownloadMenu({
@@ -21,12 +23,15 @@ export default function AccountingDownloadMenu({
   rows,
   amountColumnIndexes = [],
   emptyMessage = 'Tidak ada data pada periode ini.',
+  colWidths,
 }: AccountingDownloadMenuProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const printAreaId = `accounting-print-${fileName.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`
 
   useEffect(() => {
+    setMounted(true)
     const handleClickOutside = (event: MouseEvent) => {
       if (!menuRef.current?.contains(event.target as Node)) {
         setIsOpen(false)
@@ -61,8 +66,60 @@ export default function AccountingDownloadMenu({
 
   const handlePrintPdf = () => {
     setIsOpen(false)
-    window.print()
+    // Wait a brief tick to ensure dropdown closes and UI is ready
+    setTimeout(() => {
+      window.print()
+    }, 50)
   }
+
+  const printAreaContent = (
+    <div data-accounting-print-area={printAreaId} aria-hidden="true">
+      <div className="print-brand">SOEMATRA KOST</div>
+      <h1>{title}</h1>
+      <div className="print-meta">{meta}</div>
+      <table>
+        {colWidths && colWidths.length === headers.length && (
+          <colgroup>
+            {colWidths.map((width, idx) => (
+              <col key={idx} style={{ width }} />
+            ))}
+          </colgroup>
+        )}
+        <thead>
+          <tr>
+            {headers.map((header, headerIndex) => (
+              <th
+                key={header}
+                className={amountColumnIndexes.includes(headerIndex) ? 'print-amount' : undefined}
+              >
+                {header}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.length === 0 ? (
+            <tr>
+              <td colSpan={headers.length}>{emptyMessage}</td>
+            </tr>
+          ) : (
+            rows.map((row, rowIndex) => (
+              <tr key={rowIndex}>
+                {row.map((cell, cellIndex) => (
+                  <td
+                    key={`${rowIndex}-${cellIndex}`}
+                    className={amountColumnIndexes.includes(cellIndex) ? 'print-amount' : undefined}
+                  >
+                    {cell}
+                  </td>
+                ))}
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+    </div>
+  )
 
   return (
     <div ref={menuRef} className="relative">
@@ -101,68 +158,90 @@ export default function AccountingDownloadMenu({
         {`
           @media screen {
             [data-accounting-print-area="${printAreaId}"] {
-              display: none;
+              display: none !important;
             }
           }
 
           @media print {
             @page {
-              size: auto;
-              margin: 12mm;
+              size: A4 portrait;
+              margin: 15mm 20mm;
             }
 
-            body * {
-              visibility: hidden !important;
+            body > :not([data-accounting-print-area="${printAreaId}"]) {
+              display: none !important;
             }
 
-            [data-accounting-print-area="${printAreaId}"],
-            [data-accounting-print-area="${printAreaId}"] * {
-              visibility: visible !important;
+            body {
+              background: #ffffff !important;
+              margin: 0 !important;
+              padding: 0 !important;
             }
 
             [data-accounting-print-area="${printAreaId}"] {
               display: block !important;
-              position: absolute !important;
-              inset: 0 auto auto 0 !important;
               width: 100% !important;
-              padding: 0 !important;
+              box-sizing: border-box !important;
               background: #ffffff !important;
-              color: #111827 !important;
-              font-family: Arial, sans-serif !important;
+              color: #1f2937 !important;
+              font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
+              line-height: 1.5 !important;
+            }
+
+            [data-accounting-print-area="${printAreaId}"] .print-brand {
+              font-size: 11px !important;
+              font-weight: 700 !important;
+              color: #059669 !important;
+              text-transform: uppercase !important;
+              letter-spacing: 0.05em !important;
+              margin: 0 0 4px 0 !important;
             }
 
             [data-accounting-print-area="${printAreaId}"] h1 {
               margin: 0 0 6px !important;
               font-size: 22px !important;
+              font-weight: 800 !important;
+              color: #111827 !important;
               line-height: 1.2 !important;
             }
 
             [data-accounting-print-area="${printAreaId}"] .print-meta {
-              margin-bottom: 18px !important;
+              margin-bottom: 20px !important;
               color: #4b5563 !important;
-              font-size: 12px !important;
+              font-size: 11px !important;
+              border-bottom: 2px solid #10b981 !important;
+              padding-bottom: 8px !important;
             }
 
             [data-accounting-print-area="${printAreaId}"] table {
               width: 100% !important;
               border-collapse: collapse !important;
               table-layout: fixed !important;
-              font-size: 11px !important;
+              font-size: 10.5px !important;
+              margin-top: 10px !important;
             }
 
             [data-accounting-print-area="${printAreaId}"] th {
               border: 1px solid #d1d5db !important;
               background: #f3f4f6 !important;
-              padding: 8px !important;
-              text-align: left !important;
+              color: #1f2937 !important;
+              padding: 8px 10px !important;
               font-weight: 700 !important;
+              font-size: 11px !important;
+              text-align: left !important;
             }
 
             [data-accounting-print-area="${printAreaId}"] td {
               border: 1px solid #e5e7eb !important;
-              padding: 7px 8px !important;
+              padding: 6px 10px !important;
               vertical-align: top !important;
               word-break: break-word !important;
+              color: #374151 !important;
+              white-space: pre-wrap !important;
+            }
+
+            [data-accounting-print-area="${printAreaId}"] tr:nth-child(even) td {
+              background-color: #fafafa !important;
             }
 
             [data-accounting-print-area="${printAreaId}"] .print-amount {
@@ -173,39 +252,11 @@ export default function AccountingDownloadMenu({
         `}
       </style>
 
-      <div data-accounting-print-area={printAreaId} aria-hidden="true">
-        <h1>{title}</h1>
-        <div className="print-meta">{meta}</div>
-        <table>
-          <thead>
-            <tr>
-              {headers.map(header => (
-                <th key={header}>{header}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.length === 0 ? (
-              <tr>
-                <td colSpan={headers.length}>{emptyMessage}</td>
-              </tr>
-            ) : (
-              rows.map((row, rowIndex) => (
-                <tr key={rowIndex}>
-                  {row.map((cell, cellIndex) => (
-                    <td
-                      key={`${rowIndex}-${cellIndex}`}
-                      className={amountColumnIndexes.includes(cellIndex) ? 'print-amount' : undefined}
-                    >
-                      {cell}
-                    </td>
-                  ))}
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+      {mounted && typeof document !== 'undefined' && createPortal(
+        printAreaContent,
+        document.body
+      )}
     </div>
   )
 }
+

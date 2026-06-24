@@ -469,6 +469,7 @@ export default function FinancialStatementsView({ period }: FinancialStatementsV
           headers={['Laporan', 'Pos', 'Nilai']}
           rows={statementsExportRows}
           amountColumnIndexes={[2]}
+          colWidths={['25%', '50%', '25%']}
         />
       </div>
 

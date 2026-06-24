@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo } from 'react'
 import { spreadsheetApi } from '@/services/sheets-client'
 import { defaultEngine, syncAccountingWithSheet, generateClosingEntries } from '@/features/accounting'
-import { filterJournalEntriesByPeriod, buildPeriodAccountingEngine, type PeriodFilter } from '@/features/accounting/calculations/period'
+import { filterJournalEntriesByPeriod, buildPeriodAccountingEngine, getPeriodLabel, type PeriodFilter } from '@/features/accounting/calculations/period'
 import JournalEntryModal from '@/features/accounting/components/JournalEntryModal'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import { Loader2, ShieldAlert, ListTodo, ArrowUpDown, Edit, Pencil } from 'lucide-react'
+import AccountingDownloadMenu from '@/features/accounting/components/AccountingDownloadMenu'
 
 interface ClosingProcessViewProps {
   period: PeriodFilter
@@ -222,6 +223,43 @@ export default function ClosingProcessView({ period }: ClosingProcessViewProps) 
     })
   }, [actualClosingEntries, sortOrder])
 
+  const periodLabel = getPeriodLabel(period)
+  const periodSlug = periodLabel.toLowerCase().replace(/[^a-z0-9]+/gi, '-').replace(/(^-|-$)/g, '') || 'semua-periode'
+
+  const closingExportRows = useMemo(() => {
+    const formatAmount = (val: number) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(val)
+    const exportRows = sortedClosingEntries.flatMap(entry => [
+      ...entry.debits.map((debit: any) => ({
+        id: formatJournalId(entry.id),
+        date: formatDate(entry.date),
+        description: entry.description,
+        accountName: getAccountName(debit.accountNumber),
+        ref: debit.accountNumber,
+        debit: debit.amount,
+        credit: '',
+      })),
+      ...entry.credits.map((credit: any) => ({
+        id: formatJournalId(entry.id),
+        date: formatDate(entry.date),
+        description: entry.description,
+        accountName: `    ${getAccountName(credit.accountNumber)}`,
+        ref: credit.accountNumber,
+        debit: '',
+        credit: credit.amount,
+      })),
+    ])
+
+    return exportRows.map(row => [
+      row.id,
+      row.date,
+      row.description,
+      row.accountName,
+      row.ref,
+      typeof row.debit === 'number' ? `Rp ${formatAmount(row.debit)}` : '',
+      typeof row.credit === 'number' ? `Rp ${formatAmount(row.credit)}` : '',
+    ])
+  }, [sortedClosingEntries])
+
   const handleDeleteSelected = async () => {
     if (selectedIds.length === 0) return
 
@@ -286,7 +324,7 @@ export default function ClosingProcessView({ period }: ClosingProcessViewProps) 
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      <div className="space-y-2">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight leading-tight flex items-center">
             <ShieldAlert className="mr-2 sm:mr-3 text-primary w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0" />
@@ -296,6 +334,19 @@ export default function ClosingProcessView({ period }: ClosingProcessViewProps) 
             Daftar jurnal penutup aktual yang tersimpan di sistem.
           </p>
         </div>
+        {sortedClosingEntries.length > 0 && (
+          <div className="flex items-center gap-3">
+            <AccountingDownloadMenu
+              fileName={`jurnal-penutup-${periodSlug}`}
+              title="Jurnal Penutup"
+              meta={`Periode: ${periodLabel} | Dicetak: ${new Date().toLocaleString('id-ID')}`}
+              headers={['ID Jurnal', 'Tanggal', 'Deskripsi', 'Akun', 'Ref', 'Debit', 'Kredit']}
+              rows={closingExportRows}
+              amountColumnIndexes={[5, 6]}
+              colWidths={['10%', '12%', '20%', '22%', '8%', '14%', '14%']}
+            />
+          </div>
+        )}
       </div>
 
       {/* closing explanation card */}

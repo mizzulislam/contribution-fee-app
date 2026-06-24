@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo } from 'react'
 import { spreadsheetApi } from '@/services/sheets-client'
 import { defaultEngine } from '@/features/accounting'
-import { filterJournalEntriesByPeriod, type PeriodFilter } from '@/features/accounting/calculations/period'
+import { filterJournalEntriesByPeriod, getPeriodLabel, type PeriodFilter } from '@/features/accounting/calculations/period'
 import JournalEntryModal from '@/features/accounting/components/JournalEntryModal'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import { Loader2, ArrowUpDown, Edit, Pencil, SlidersHorizontal } from 'lucide-react'
+import AccountingDownloadMenu from '@/features/accounting/components/AccountingDownloadMenu'
 
 interface AdjustingEntriesViewProps {
   period: PeriodFilter
@@ -97,6 +98,43 @@ export default function AdjustingEntriesView({ period }: AdjustingEntriesViewPro
     })
   }, [actualEntries, sortOrder])
 
+  const periodLabel = getPeriodLabel(period)
+  const periodSlug = periodLabel.toLowerCase().replace(/[^a-z0-9]+/gi, '-').replace(/(^-|-$)/g, '') || 'semua-periode'
+
+  const adjustingExportRows = useMemo(() => {
+    const formatAmount = (val: number) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(val)
+    const exportRows = sortedEntries.flatMap(entry => [
+      ...entry.debits.map((debit: any) => ({
+        id: formatJournalId(entry.id),
+        date: formatDate(entry.date),
+        description: entry.description,
+        accountName: getAccountName(debit.accountNumber),
+        ref: debit.accountNumber,
+        debit: debit.amount,
+        credit: '',
+      })),
+      ...entry.credits.map((credit: any) => ({
+        id: formatJournalId(entry.id),
+        date: formatDate(entry.date),
+        description: entry.description,
+        accountName: `    ${getAccountName(credit.accountNumber)}`,
+        ref: credit.accountNumber,
+        debit: '',
+        credit: credit.amount,
+      })),
+    ])
+
+    return exportRows.map(row => [
+      row.id,
+      row.date,
+      row.description,
+      row.accountName,
+      row.ref,
+      typeof row.debit === 'number' ? `Rp ${formatAmount(row.debit)}` : '',
+      typeof row.credit === 'number' ? `Rp ${formatAmount(row.credit)}` : '',
+    ])
+  }, [sortedEntries])
+
   const handleDeleteSelected = async () => {
     if (selectedIds.length === 0) return
 
@@ -158,7 +196,7 @@ export default function AdjustingEntriesView({ period }: AdjustingEntriesViewPro
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      <div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight leading-tight flex items-center">
             <SlidersHorizontal className="mr-2 sm:mr-3 text-primary w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0" />
@@ -167,6 +205,17 @@ export default function AdjustingEntriesView({ period }: AdjustingEntriesViewPro
           <p className="text-xs sm:text-sm text-text-secondary mt-1">
             Daftar jurnal penyesuaian aktual yang tersimpan di sistem.
           </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <AccountingDownloadMenu
+            fileName={`jurnal-penyesuaian-${periodSlug}`}
+            title="Jurnal Penyesuaian"
+            meta={`Periode: ${periodLabel} | Dicetak: ${new Date().toLocaleString('id-ID')}`}
+            headers={['ID Jurnal', 'Tanggal', 'Deskripsi', 'Akun', 'Ref', 'Debit', 'Kredit']}
+            rows={adjustingExportRows}
+            amountColumnIndexes={[5, 6]}
+            colWidths={['10%', '12%', '20%', '22%', '8%', '14%', '14%']}
+          />
         </div>
       </div>
 

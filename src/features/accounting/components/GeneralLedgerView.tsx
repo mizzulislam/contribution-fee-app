@@ -93,6 +93,10 @@ export default function GeneralLedgerView({ period }: GeneralLedgerViewProps) {
           }
           rows={ledgerExportRows}
           amountColumnIndexes={isAllAccounts ? [3, 4, 5] : [2, 3, 4]}
+          colWidths={isAllAccounts
+            ? ['12%', '18%', '28%', '14%', '14%', '14%']
+            : ['15%', '37%', '16%', '16%', '16%']
+          }
         />
       </div>
 

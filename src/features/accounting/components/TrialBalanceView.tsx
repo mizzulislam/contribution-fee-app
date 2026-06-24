@@ -54,6 +54,7 @@ export default function TrialBalanceView({ period }: TrialBalanceViewProps) {
           headers={['No. Akun', 'Nama Akun', 'Debit', 'Kredit']}
           rows={trialBalanceExportRows}
           amountColumnIndexes={[2, 3]}
+          colWidths={['15%', '45%', '20%', '20%']}
         />
       </div>
 

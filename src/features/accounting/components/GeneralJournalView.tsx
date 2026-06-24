@@ -129,7 +129,7 @@ export default function GeneralJournalView({ period }: GeneralJournalViewProps) 
       id: formatJournalId(entry.id),
       date: formatDate(entry.date),
       description: entry.description,
-      accountName: getAccountName(credit.accountNumber),
+      accountName: `    ${getAccountName(credit.accountNumber)}`, // Indent credit account
       ref: credit.accountNumber,
       debit: '',
       credit: credit.amount,
@@ -167,6 +167,7 @@ export default function GeneralJournalView({ period }: GeneralJournalViewProps) 
             headers={['ID Jurnal', 'Tanggal', 'Deskripsi', 'Akun', 'Ref', 'Debit', 'Kredit']}
             rows={journalExportRows}
             amountColumnIndexes={[5, 6]}
+            colWidths={['10%', '12%', '20%', '22%', '8%', '14%', '14%']}
           />
 
           <button 
