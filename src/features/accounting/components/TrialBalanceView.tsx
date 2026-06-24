@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import type { TrialBalanceItem } from '@/features/accounting'
 import { buildPeriodAccountingEngine, getPeriodLabel, type PeriodFilter } from '@/features/accounting/calculations/period'
 import AccountingDownloadMenu from '@/features/accounting/components/AccountingDownloadMenu'
@@ -9,7 +9,9 @@ interface TrialBalanceViewProps {
 }
 
 export default function TrialBalanceView({ period }: TrialBalanceViewProps) {
-  const periodEngine = useMemo(() => buildPeriodAccountingEngine(period), [period])
+  const [balanceType, setBalanceType] = useState<'unadjusted' | 'adjusted'>('adjusted')
+
+  const periodEngine = useMemo(() => buildPeriodAccountingEngine(period, balanceType === 'unadjusted'), [period, balanceType])
   const items = useMemo<TrialBalanceItem[]>(() => periodEngine.getTrialBalance(), [periodEngine])
   const isBalanced = periodEngine.trialBalance.verifyEquality(items)
 
@@ -27,6 +29,7 @@ export default function TrialBalanceView({ period }: TrialBalanceViewProps) {
   const totalCredit = items.reduce((sum, item) => sum + item.credit, 0)
   const periodLabel = getPeriodLabel(period)
   const formatAmountText = (val: number) => val === 0 ? '-' : `Rp ${new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(val)}`
+  
   const trialBalanceExportRows = [
     ...items.map(item => [
       item.accountNumber,
@@ -37,10 +40,13 @@ export default function TrialBalanceView({ period }: TrialBalanceViewProps) {
     ['Total Keseluruhan', '', formatAmountText(totalDebit), formatAmountText(totalCredit)],
   ]
 
+  const periodSlug = periodLabel.toLowerCase().replace(/[^a-z0-9]+/gi, '-').replace(/(^-|-$)/g, '') || 'semua-periode'
+  const titleText = `Neraca Saldo ${balanceType === 'unadjusted' ? 'Sebelum Penyesuaian' : 'Setelah Penyesuaian'}`
+
   const trialBalancePrintContent = (
     <div className="space-y-6">
       <div className="print-brand text-[11px] font-bold text-emerald-600 tracking-wider">SOEMATRA KOST</div>
-      <h1 className="text-2xl font-bold text-gray-900 mt-1">Neraca Saldo</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mt-1">{titleText}</h1>
       <div className="text-[11px] text-gray-600 border-b-2 border-emerald-500 pb-2 mb-4">
         Periode: {periodLabel} | Status: {isBalanced ? 'Seimbang' : 'Tidak Seimbang'} | Dicetak: {new Date().toLocaleString('id-ID')}
       </div>
@@ -110,8 +116,8 @@ export default function TrialBalanceView({ period }: TrialBalanceViewProps) {
           <p className="text-xs sm:text-sm text-text-secondary mt-1">Daftar seluruh saldo akhir akun untuk memastikan total Debit dan Kredit seimbang.</p>
         </div>
         <AccountingDownloadMenu
-          fileName={`neraca-saldo-${periodLabel.toLowerCase().replace(/[^a-z0-9]+/gi, '-').replace(/(^-|-$)/g, '') || 'semua-periode'}`}
-          title="Neraca Saldo"
+          fileName={`neraca-saldo-${balanceType}-${periodSlug}`}
+          title={titleText}
           meta={`Periode: ${periodLabel} | Status: ${isBalanced ? 'Seimbang' : 'Tidak Seimbang'} | Dicetak: ${new Date().toLocaleString('id-ID')}`}
           headers={['No. Akun', 'Nama Akun', 'Debit', 'Kredit']}
           rows={trialBalanceExportRows}
@@ -122,19 +128,47 @@ export default function TrialBalanceView({ period }: TrialBalanceViewProps) {
       </div>
 
       <div className="card-container p-0 overflow-hidden">
-        {/* Status Bar */}
-        <div className={`p-4 border-b flex items-center ${isBalanced ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
-          {isBalanced ? (
-            <>
-              <CheckCircle2 className="w-5 h-5 text-emerald-600 mr-2" />
-              <span className="text-emerald-800 font-medium">Buku Kas Seimbang (Balanced)</span>
-            </>
-          ) : (
-            <>
-              <AlertCircle className="w-5 h-5 text-red-600 mr-2" />
-              <span className="text-red-800 font-medium">Peringatan: Terdapat selisih antara Debit dan Kredit!</span>
-            </>
-          )}
+        {/* Status Bar & Toggle */}
+        <div className={`p-4 border-b flex flex-col md:flex-row md:items-center justify-between gap-4 ${isBalanced ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
+          <div className="flex items-center">
+            {isBalanced ? (
+              <>
+                <CheckCircle2 className="w-5 h-5 text-emerald-600 mr-2" />
+                <span className="text-emerald-800 font-semibold">Buku Kas Seimbang (Balanced)</span>
+              </>
+            ) : (
+              <>
+                <AlertCircle className="w-5 h-5 text-red-600 mr-2" />
+                <span className="text-red-800 font-semibold">Peringatan: Terdapat selisih antara Debit dan Kredit!</span>
+              </>
+            )}
+          </div>
+
+          {/* Unadjusted vs Adjusted Selector */}
+          <div className="flex bg-white p-0.5 rounded-lg border border-gray-200 shadow-sm text-xs font-semibold self-start md:self-auto">
+            <button
+              type="button"
+              onClick={() => setBalanceType('unadjusted')}
+              className={`px-3 py-1.5 rounded-md transition-all ${
+                balanceType === 'unadjusted'
+                  ? 'bg-gray-900 text-white shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              Sebelum Penyesuaian
+            </button>
+            <button
+              type="button"
+              onClick={() => setBalanceType('adjusted')}
+              className={`px-3 py-1.5 rounded-md transition-all ${
+                balanceType === 'adjusted'
+                  ? 'bg-gray-900 text-white shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              Setelah Penyesuaian
+            </button>
+          </div>
         </div>
 
         <div className="overflow-x-auto overscroll-x-contain">

@@ -18,7 +18,7 @@ import ClosingProcessView from '@/features/accounting/components/ClosingProcessV
 export default function FinanceDashboard() {
   const [searchParams, setSearchParams] = useSearchParams()
   const tabParam = searchParams.get('tab')
-  const activeTab = tabParam && ['journal', 'ledger', 'trial_balance', 'statements', 'adjusting', 'closing'].includes(tabParam) ? tabParam : 'journal'
+  const activeTab = tabParam && ['journal', 'ledger', 'trial_balance', 'adjusting', 'statements', 'closing'].includes(tabParam) ? tabParam : 'journal'
   const [isSyncing, setIsSyncing] = useState(true)
   const [isPeriodOpen, setIsPeriodOpen] = useState(false)
   const [period, setPeriod] = useState<PeriodFilter>({ preset: 'all' })
@@ -68,8 +68,8 @@ export default function FinanceDashboard() {
     { id: 'journal', label: 'Jurnal Umum', icon: BookOpen },
     { id: 'ledger', label: 'Buku Besar', icon: ScrollText },
     { id: 'trial_balance', label: 'Neraca Saldo', icon: Scale },
-    { id: 'statements', label: 'Laporan Keuangan', icon: FileBarChart },
     { id: 'adjusting', label: 'Penyesuaian', icon: Sliders },
+    { id: 'statements', label: 'Laporan Keuangan', icon: FileBarChart },
     { id: 'closing', label: 'Tutup Buku', icon: Archive },
   ]
 

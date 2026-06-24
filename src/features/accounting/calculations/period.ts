@@ -84,7 +84,7 @@ export function getPeriodLabel(period: PeriodFilter) {
   return `${format(period.startDate) || 'Awal'} - ${format(period.endDate) || 'Akhir'}`
 }
 
-export function buildPeriodAccountingEngine(period: PeriodFilter) {
+export function buildPeriodAccountingEngine(period: PeriodFilter, excludeAdjusting = false) {
   const engine = new AccountingEngine()
   engine.coa.clear()
   engine.reset()
@@ -97,6 +97,17 @@ export function buildPeriodAccountingEngine(period: PeriodFilter) {
   filterJournalEntriesByPeriod(defaultEngine.journal.getEntries(), period)
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
     .forEach(entry => {
+      if (excludeAdjusting) {
+        const id = String(entry.id || '').toLowerCase()
+        const description = String(entry.description || '').toLowerCase()
+        const source = String(entry.source || '').toLowerCase()
+        const isAdjusting = id.startsWith('adj') || 
+                            source.includes('adjust') || 
+                            source.includes('penyesuaian') || 
+                            description.includes('adjusting') || 
+                            description.includes('penyesuaian')
+        if (isAdjusting) return
+      }
       engine.recordTransaction(entry.date, entry.debits, entry.credits, entry.description, entry.id, entry.source, entry.source_id)
     })
 

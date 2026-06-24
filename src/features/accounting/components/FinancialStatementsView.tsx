@@ -1,20 +1,40 @@
 import { useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { buildPeriodAccountingEngine, getPeriodLabel, type PeriodFilter } from '@/features/accounting/calculations/period'
 import AccountingDownloadMenu from '@/features/accounting/components/AccountingDownloadMenu'
 import type { FinancialStatements } from '@/features/accounting'
-import { Scale, LayoutGrid, BookOpen } from 'lucide-react'
+import { Scale, LayoutGrid, BookOpen, AlertCircle } from 'lucide-react'
 
 interface FinancialStatementsViewProps {
   period: PeriodFilter
 }
 
 export default function FinancialStatementsView({ period }: FinancialStatementsViewProps) {
+  const [searchParams, setSearchParams] = useSearchParams()
   const periodEngine = useMemo(() => buildPeriodAccountingEngine(period), [period])
   const statements = useMemo<FinancialStatements>(() => periodEngine.getFinancialStatements(), [periodEngine])
   const items = useMemo(() => periodEngine.getTrialBalance(), [periodEngine])
 
   const [layoutMode, setLayoutMode] = useState<'grid' | 'single'>('grid')
   const [activeCardIndex, setActiveCardIndex] = useState<number>(0)
+
+  // Check if adjusting entries exist in the current period
+  const hasAdjustingEntries = useMemo(() => {
+    return periodEngine.journal.getEntries().some(entry => {
+      const id = String(entry.id || '').toLowerCase()
+      const description = String(entry.description || '').toLowerCase()
+      const source = String(entry.source || '').toLowerCase()
+      return id.startsWith('adj') || 
+             source.includes('adjust') || 
+             source.includes('penyesuaian') || 
+             description.includes('adjusting') || 
+             description.includes('penyesuaian')
+    })
+  }, [periodEngine])
+
+  const handleGoToAdjusting = () => {
+    setSearchParams({ tab: 'adjusting' }, { replace: true })
+  }
 
   // Helper to format currency values with standard accounting brackets for negative amounts (in black/gray format)
   const formatCurrency = (amount: number, forceNegativeStyle = false, colorClass = '') => {
@@ -498,6 +518,28 @@ export default function FinancialStatementsView({ period }: FinancialStatementsV
           printContent={statementsPrintContent}
         />
       </div>
+
+      {/* PSAK / IFRS Adjusting Entries Compliance Warning Banner */}
+      {!hasAdjustingEntries && period.preset !== 'all' && (
+        <div className="p-4 bg-amber-50 border border-amber-200 text-amber-900 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm animate-in fade-in duration-300">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+            <div>
+              <div className="text-sm font-bold">Peringatan Kepatuhan Pelaporan (IFRS & PSAK)</div>
+              <p className="text-xs mt-1 text-amber-850 leading-relaxed">
+                Jurnal penyesuaian untuk periode <strong>{periodLabel}</strong> belum dijalankan atau tidak terdeteksi. Laporan keuangan di bawah belum mencerminkan pengakuan pendapatan sewa kamar (deferrals) dan beban penyusutan peralatan kos (depreciation) secara akrual.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleGoToAdjusting}
+            className="text-xs font-semibold text-white bg-amber-600 hover:bg-amber-750 px-3.5 py-2 rounded-xl transition-all shadow-sm hover:shadow flex-shrink-0 self-start md:self-auto cursor-pointer"
+          >
+            Jalankan Jurnal Penyesuaian
+          </button>
+        </div>
+      )}
 
       <div className="bg-gray-50/50 border border-gray-200 rounded-3xl p-6 shadow-sm space-y-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between border-b border-gray-200/60 pb-5">
