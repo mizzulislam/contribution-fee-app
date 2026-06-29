@@ -103,12 +103,23 @@ export function useBillsManager(period: PeriodFilter = { preset: 'all' }) {
       setPayments(paymentRows)
 
       if (billsRes.data && Array.isArray(billsRes.data)) {
-        const { bills: syncedBills, syncedCount } = await syncBillsWithAccountingEntries({
+        let { bills: syncedBills, syncedCount } = await syncBillsWithAccountingEntries({
           bills: billsRes.data,
           journalEntries: journalRes.data && Array.isArray(journalRes.data) ? journalRes.data : [],
           users: userRows,
           persist: false,
         })
+
+        if (paymentRows && paymentRows.length > 0) {
+          syncedBills = syncedBills.map(bill => {
+            const hasPending = paymentRows.some(p => String(p.billId) === String(bill.id) && (p.status === 'pending_verification' || p.status === 'Menunggu Verifikasi'))
+            if (hasPending && (bill.status === 'unpaid' || bill.status === 'rejected')) {
+              return { ...bill, status: 'pending_verification' }
+            }
+            return bill
+          })
+        }
+
         setBills(syncedBills as Bill[])
         if (syncedCount > 0) {
           showToast(`${syncedCount} status tagihan tersinkron dari jurnal akuntansi.`)

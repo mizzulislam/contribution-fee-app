@@ -181,17 +181,9 @@ export default function PaymentConfirm() {
         created_at: new Date().toISOString()
       }
 
-      const [paymentRes, billRes] = await Promise.all([
-        spreadsheetApi.post('Payments', payload),
-        spreadsheetApi.put('Bills', {
-          ...selectedBill,
-          id: selectedBill.id,
-          status: 'pending_verification',
-          updated_at: new Date().toISOString(),
-        }),
-      ])
-      if (!paymentRes.success || !billRes.success) {
-        throw new Error('Gagal menyimpan konfirmasi pembayaran ke sumber data.')
+      const paymentRes = await spreadsheetApi.post('Payments', payload)
+      if (!paymentRes.success) {
+        throw new Error((paymentRes.error as any)?.message || 'Gagal menyimpan konfirmasi pembayaran ke sumber data.')
       }
       setIsSuccess(true)
     } catch (err) {

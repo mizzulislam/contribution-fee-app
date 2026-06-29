@@ -35,13 +35,27 @@ export default function ResidentBillsList() {
 
     async function fetchBills() {
       setLoading(true)
-      const { data } = await spreadsheetApi.get('Bills')
-      
-      if (data && Array.isArray(data)) {
-        // Filter tagihan milik user yang sedang login
-        setBills((data as ResidentBill[]).filter((b: ResidentBill) => b.resident_email === profile?.email || b.resident_name === profile?.full_name))
+      const [billsRes, paymentsRes] = await Promise.all([
+        spreadsheetApi.get('Bills'),
+        spreadsheetApi.get('Payments')
+      ])
+      const billsData = billsRes.data
+      const paymentsData = paymentsRes.data
+
+      if (billsData && Array.isArray(billsData)) {
+        let userBills = (billsData as ResidentBill[]).filter((b: ResidentBill) => b.resident_email === profile?.email || b.resident_name === profile?.full_name)
+
+        if (paymentsData && Array.isArray(paymentsData)) {
+          userBills = userBills.map(bill => {
+            const hasPending = paymentsData.some(p => String(p.billId) === String(bill.id) && (p.status === 'pending_verification' || p.status === 'Menunggu Verifikasi'))
+            if (hasPending && (bill.status === 'unpaid' || bill.status === 'rejected')) {
+              return { ...bill, status: 'pending_verification' }
+            }
+            return bill
+          })
+        }
+        setBills(userBills)
       } else {
-        // Jika terjadi error koneksi, kosongkan tampilan agar tidak menampilkan data non-sumber.
         setBills([])
       }
       setLoading(false)
@@ -52,8 +66,8 @@ export default function ResidentBillsList() {
     const handleSync = (e: Event) => {
       const customEvent = e as CustomEvent
       const { sheetName } = customEvent.detail
-      if (sheetName === 'Bills') {
-        console.log(`♻️ Menyegarkan tagihan warga secara real-time.`)
+      if (sheetName === 'Bills' || sheetName === 'Payments') {
+        console.log(`♻️ Menyegarkan tagihan warga secara real-time karena sheet ${sheetName} diperbarui.`)
         void fetchBills()
       }
     }
