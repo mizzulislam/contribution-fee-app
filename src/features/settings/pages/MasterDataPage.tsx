@@ -113,7 +113,7 @@ export default function MasterData() {
       const res = await spreadsheetApi.put('MasterData', payload)
       // Jika gagal karena ID tidak ditemukan (berarti ini akun default yang baru pertama kali diedit) atau karena tabel masih kosong
       const errMessage = res.error instanceof Error ? res.error.message : ''
-      if (!res.success && (errMessage.includes('not found') || errMessage.includes('No data'))) {
+      if (!res.success && (errMessage.includes('not found') || errMessage.includes('No data') || errMessage.includes('tidak ditemukan'))) {
         await spreadsheetApi.post('MasterData', { ...payload, created_at: new Date().toISOString() })
       }
     } else {
@@ -185,7 +185,7 @@ export default function MasterData() {
     if (editingPaymentId) {
       const res = await spreadsheetApi.put('PaymentMethods', payload)
       const errMessage = res.error instanceof Error ? res.error.message : ''
-      if (!res.success && (errMessage.includes('not found') || errMessage.includes('No data'))) {
+      if (!res.success && (errMessage.includes('not found') || errMessage.includes('No data') || errMessage.includes('tidak ditemukan'))) {
         await spreadsheetApi.post('PaymentMethods', { ...payload, created_at: new Date().toISOString() })
       }
     } else {

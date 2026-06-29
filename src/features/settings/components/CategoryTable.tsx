@@ -47,9 +47,11 @@ export function CategoryTable({ categories, loading, onEdit, onDelete }: Categor
                     <button onClick={() => onEdit(cat)} className="text-blue-600 hover:text-blue-900 p-1 bg-blue-50 hover:bg-blue-100 rounded">
                       <Edit className="w-4 h-4" />
                     </button>
-                    <button onClick={() => onDelete(cat.account_number)} className="text-red-600 hover:text-red-900 p-1 bg-red-50 hover:bg-red-100 rounded">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    {!cat.is_default && (
+                      <button onClick={() => onDelete(cat.account_number)} className="text-red-600 hover:text-red-900 p-1 bg-red-50 hover:bg-red-100 rounded">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))
