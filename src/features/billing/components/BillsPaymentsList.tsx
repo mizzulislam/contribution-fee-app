@@ -149,7 +149,7 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
   const getBillPaidAmount = useCallback((bill: any) => {
     if (bill.paid_amount !== undefined) return Number(bill.paid_amount) || 0
     if (bill.status === 'paid') return Number(bill.amount) || 0
-    const verifiedPayments = payments.filter(p => String(p.billId) === String(bill.id) && p.status === 'verified')
+    const verifiedPayments = payments.filter(p => String(p.billId) === String(bill.id) && (p.status === 'verified' || p.status === 'paid'))
     return verifiedPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
   }, [payments])
 

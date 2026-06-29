@@ -189,7 +189,6 @@ export default function Verification({ period = defaultPeriod }: VerificationPro
 
     setIsActioning(true)
     const newStatus = action === 'approve' ? 'paid' : 'rejected'
-    const billStatus = action === 'approve' ? 'paid' : 'rejected'
     
     // Backup for rollback
     const backupVerifications = [...verifications]
@@ -212,15 +211,23 @@ export default function Verification({ period = defaultPeriod }: VerificationPro
     const journalId = `PAY-${item.id}`
 
     try {
+      let computedBillStatus = action === 'approve' ? 'paid' : 'rejected'
+
       if (targetBillId) {
         try {
           const { data: billsData } = await spreadsheetApi.get('Bills')
           if (Array.isArray(billsData)) {
             originalBill = billsData.find(b => String(b.id) === String(targetBillId))
             if (originalBill) {
+              const paymentAmount = Number(item.amount) || 0
+              const billAmount = Number(originalBill.amount) || 0
+              computedBillStatus = action === 'approve'
+                ? (paymentAmount >= billAmount ? 'paid' : 'partially_paid')
+                : 'rejected'
+
               billPayload = {
                 ...originalBill,
-                status: billStatus,
+                status: computedBillStatus,
                 updated_at: new Date().toISOString()
               }
             }
@@ -233,7 +240,7 @@ export default function Verification({ period = defaultPeriod }: VerificationPro
       if (!billPayload && targetBillId) {
         billPayload = {
           id: targetBillId,
-          status: billStatus,
+          status: computedBillStatus,
           updated_at: new Date().toISOString()
         }
       }
