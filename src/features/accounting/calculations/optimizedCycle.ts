@@ -18,7 +18,7 @@ export function parseTargetMonths(
   paymentDateStr?: string, 
   defaultYear?: number
 ): { year: number; month: number }[] {
-  const cleanStr = (monthStr || '').toLowerCase().trim()
+  const cleanStr = String(monthStr || '').toLowerCase().trim()
   const currentYear = defaultYear || new Date().getFullYear()
 
   // Match 4-digit years in the string

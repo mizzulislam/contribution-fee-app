@@ -25,6 +25,10 @@ export interface Bill {
   category?: string;
   month?: string;
   contributions?: string; // Relation or title
+  payment_source?: string;
+  accounting_journal_id?: string | number;
+  paid_at?: string;
+  updated_at?: string;
 }
 
 export interface Payment {

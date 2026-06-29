@@ -3,11 +3,12 @@ import { createPortal } from 'react-dom'
 import { ArrowUpDown, CheckCircle2, Clock, XCircle, FileText, Search, Bell, Plus, X, Save, Check, Pencil, Trash2, Edit, Loader2 } from 'lucide-react'
 import { TableLoader } from '@/components/ui/TableLoader'
 import Select from '@/components/ui/Select'
-import { type PeriodFilter } from '@/features/accounting/calculations/period'
+import { getPeriodLabel, type PeriodFilter } from '@/features/accounting/calculations/period'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import { useBillsManager } from '@/features/billing/hooks/useBillsManager'
 import { spreadsheetApi } from '@/services/sheets-client'
 import { defaultEngine } from '@/features/accounting'
+import AccountingDownloadMenu from '@/features/accounting/components/AccountingDownloadMenu'
 
 interface BillsPaymentsProps {
   period?: PeriodFilter
@@ -94,6 +95,167 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
       return sortOrder === 'asc' ? dateA - dateB : dateB - dateA
     })
   }, [filteredBills, sortOrder])
+
+  const groupedBills = useMemo(() => {
+    const groups: Record<string, typeof sortedBills> = {}
+    sortedBills.forEach(bill => {
+      const name = bill.resident_name || 'Tanpa Nama'
+      if (!groups[name]) {
+        groups[name] = []
+      }
+      groups[name].push(bill)
+    })
+    return groups
+  }, [sortedBills])
+
+  const billingExportRows = useMemo(() => {
+    const rows: (string | number)[][] = []
+    const formatAmount = (val: number) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(val)
+    const formatDateStr = (dateStr: string) => {
+      try {
+        return new Date(dateStr).toLocaleDateString('id-ID')
+      } catch {
+        return dateStr
+      }
+    }
+    const getStatusLabel = (status: string) => {
+      if (status === 'paid') return 'Lunas'
+      if (status === 'unpaid') return 'Belum Bayar'
+      if (status === 'pending') return 'Menunggu Konfirmasi'
+      return status
+    }
+
+    Object.entries(groupedBills).forEach(([residentName, residentBills]) => {
+      const roomNum = residentBills[0]?.room_number || '-'
+      // Header for this occupant
+      rows.push([`PENGHUNI: ${residentName} (Kamar ${roomNum})`, '', '', '', '', ''])
+      // Table headers for this occupant
+      rows.push(['ID Tagihan', 'Jatuh Tempo', 'Keterangan', 'Nominal', 'Status', 'Metode Bayar'])
+      
+      let totalAmount = 0
+      let paidAmount = 0
+      let unpaidAmount = 0
+
+      residentBills.forEach(bill => {
+        const amt = Number(bill.amount) || 0
+        totalAmount += amt
+        if (bill.status === 'paid') {
+          paidAmount += amt
+        } else {
+          unpaidAmount += amt
+        }
+
+        rows.push([
+          String(bill.id || ''),
+          formatDateStr(bill.due_date),
+          getBillTitle(bill) + (getBillSubtitle(bill) ? ` - ${getBillSubtitle(bill)}` : ''),
+          `Rp ${formatAmount(amt)}`,
+          getStatusLabel(bill.status),
+          bill.payment_source === 'accounting_journal' ? 'Kompensasi Utang' : (bill.payment_source || '-')
+        ])
+      })
+
+      // Summary rows for this occupant
+      rows.push(['', '', 'Total Tagihan:', `Rp ${formatAmount(totalAmount)}`, '', ''])
+      rows.push(['', '', 'Total Lunas:', `Rp ${formatAmount(paidAmount)}`, '', ''])
+      rows.push(['', '', 'Total Belum Bayar:', `Rp ${formatAmount(unpaidAmount)}`, '', ''])
+      // Blank row separation
+      rows.push(['', '', '', '', '', ''])
+    })
+
+    return rows
+  }, [groupedBills])
+
+  const billingPrintContent = (
+    <div className="space-y-8 text-[11px] text-gray-700 bg-white">
+      <div className="print-brand text-[11px] font-bold text-emerald-600 tracking-wider">SOEMATRA KOST</div>
+      <h1 className="text-2xl font-bold text-gray-900 mt-1">Laporan Buku Besar Tagihan Penghuni</h1>
+      <div className="text-[11px] text-gray-600 border-b-2 border-emerald-500 pb-2 mb-6">
+        Periode: {period ? getPeriodLabel(period) : 'Semua Periode'} | Dicetak: {new Date().toLocaleString('id-ID')}
+      </div>
+
+      {Object.keys(groupedBills).length === 0 ? (
+        <div className="text-center py-10 text-gray-400">Tidak ada tagihan pada periode ini.</div>
+      ) : (
+        Object.entries(groupedBills).map(([residentName, residentBills]) => {
+          const roomNum = residentBills[0]?.room_number || '-'
+          const totalAmount = residentBills.reduce((sum, b) => sum + (Number(b.amount) || 0), 0)
+          const paidAmount = residentBills.filter(b => b.status === 'paid').reduce((sum, b) => sum + (Number(b.amount) || 0), 0)
+          const unpaidAmount = totalAmount - paidAmount
+
+          return (
+            <div key={residentName} className="mb-8 border border-gray-200 rounded-xl p-4 bg-white shadow-sm" style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
+              <div className="flex justify-between items-center bg-gray-50 border-b border-gray-200 px-4 py-2.5 rounded-t-xl mb-3">
+                <span className="font-bold text-gray-800 text-sm">
+                  Nama Penghuni: <span className="text-emerald-700">{residentName}</span>
+                </span>
+                <span className="font-semibold text-gray-500 text-xs">
+                  Kamar: <span className="text-gray-800 font-bold">{roomNum}</span>
+                </span>
+              </div>
+
+              <table className="w-full text-left text-[11px] border-collapse">
+                <thead>
+                  <tr className="border-b border-gray-300 text-gray-500 font-semibold bg-gray-50/50">
+                    <th className="py-2 px-2 text-center w-[15%]">ID Tagihan</th>
+                    <th className="py-2 px-2 text-center w-[15%]">Jatuh Tempo</th>
+                    <th className="py-2 px-2 w-[40%]">Keterangan</th>
+                    <th className="py-2 px-2 text-right w-[15%]">Nominal</th>
+                    <th className="py-2 px-2 text-center w-[15%]">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-150 text-gray-700">
+                  {residentBills.map((bill) => (
+                    <tr key={bill.id} className="align-middle">
+                      <td className="py-2 px-2 text-center font-mono text-[10px] text-gray-500">{bill.id}</td>
+                      <td className="py-2 px-2 text-center whitespace-nowrap">
+                        {new Date(bill.due_date).toLocaleDateString('id-ID')}
+                      </td>
+                      <td className="py-2 px-2">
+                        <div className="font-semibold text-gray-900">{getBillTitle(bill)}</div>
+                        {getBillSubtitle(bill) && (
+                          <div className="text-[10px] text-gray-500 italic mt-0.5">({getBillSubtitle(bill)})</div>
+                        )}
+                      </td>
+                      <td className="py-2 px-2 text-right font-semibold text-gray-900">
+                        Rp {new Intl.NumberFormat('id-ID').format(bill.amount)}
+                      </td>
+                      <td className="py-2 px-2 text-center">
+                        <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                          bill.status === 'paid'
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                            : bill.status === 'unpaid'
+                              ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                              : 'bg-blue-50 text-blue-700 border border-blue-200'
+                        }`}>
+                          {bill.status === 'paid' ? 'Lunas' : bill.status === 'unpaid' ? 'Belum Bayar' : bill.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              <div className="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-dashed border-gray-200 text-xs font-semibold text-gray-700">
+                <div className="flex justify-between px-2 bg-gray-50 py-1.5 rounded-lg border border-gray-100">
+                  <span>Total Tagihan:</span>
+                  <span className="text-gray-900">Rp {new Intl.NumberFormat('id-ID').format(totalAmount)}</span>
+                </div>
+                <div className="flex justify-between px-2 bg-emerald-50/50 py-1.5 rounded-lg border border-emerald-100 text-emerald-800">
+                  <span>Total Lunas:</span>
+                  <span className="font-bold text-emerald-700">Rp {new Intl.NumberFormat('id-ID').format(paidAmount)}</span>
+                </div>
+                <div className="flex justify-between px-2 bg-amber-50/50 py-1.5 rounded-lg border border-amber-100 text-amber-800">
+                  <span>Belum Bayar:</span>
+                  <span className="font-bold text-amber-700">Rp {new Intl.NumberFormat('id-ID').format(unpaidAmount)}</span>
+                </div>
+              </div>
+            </div>
+          )
+        })
+      )}
+    </div>
+  )
 
   useEffect(() => {
     try {
@@ -245,6 +407,15 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
                 <ArrowUpDown className="w-4 h-4 text-gray-500" />
                 <span>Urutkan: {sortOrder === 'asc' ? 'Terlama' : 'Terbaru'}</span>
               </button>
+
+              <AccountingDownloadMenu
+                fileName={`buku-besar-tagihan-${period?.preset || 'all'}`}
+                title="Buku Besar Tagihan"
+                meta={`Periode: ${period ? getPeriodLabel(period) : 'Semua Periode'} | Dicetak: ${new Date().toLocaleString('id-ID')}`}
+                headers={['Data Tagihan', '', '', '', '', '']}
+                rows={billingExportRows}
+                printContent={billingPrintContent}
+              />
 
               {!isEditMode ? (
                 <button

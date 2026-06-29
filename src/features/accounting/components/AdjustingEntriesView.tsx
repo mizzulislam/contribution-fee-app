@@ -343,9 +343,16 @@ export default function AdjustingEntriesView({ period }: AdjustingEntriesViewPro
   }
 
   const formatDate = (dateString: string) => {
+    if (!dateString) return '-'
     const date = new Date(dateString)
+    if (Number.isNaN(date.getTime())) return dateString || '-'
     const day = date.getDate().toString().padStart(2, '0')
-    const month = date.toLocaleString('id-ID', { month: 'short' })
+    let month = ''
+    try {
+      month = date.toLocaleString('id-ID', { month: 'short' })
+    } catch {
+      month = String(date.getMonth() + 1).padStart(2, '0')
+    }
     const year = date.getFullYear()
     return `${day}/${month}/${year}`
   }

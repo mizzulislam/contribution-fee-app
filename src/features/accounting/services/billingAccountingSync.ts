@@ -131,7 +131,7 @@ function isGallonBill(bill: BillRow) {
 function isOfficialPaymentSource(source: string) {
   const normalized = normalizeText(source)
   if (!normalized) return false
-  const isManualSource = ['manual_journal', 'manual_adjusting', 'manual_closing'].some(keyword => normalized.includes(keyword))
+  const isManualSource = ['manual_journal', 'manual_adjusting', 'manual_closing', 'manual_reversing'].some(keyword => normalized.includes(keyword))
   if (isManualSource) return false
   return normalized.includes('payment') || normalized.includes('verifikasi')
 }

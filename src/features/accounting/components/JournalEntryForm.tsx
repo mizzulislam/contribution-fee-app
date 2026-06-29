@@ -49,6 +49,22 @@ export default function JournalEntryForm({ onSuccess, editingEntry }: JournalEnt
   const [description, setDescription] = useState(() => {
     return editingEntry ? editingEntry.description : ''
   })
+  const [journalType, setJournalType] = useState(() => {
+    if (editingEntry?.source) {
+      const src = editingEntry.source
+      if (['manual_journal', 'manual_adjusting', 'manual_closing', 'manual_reversing'].includes(src)) {
+        return src
+      }
+      if (['depreciation', 'unearned_rent', 'adjusting_entry'].includes(src)) {
+        return 'manual_adjusting'
+      }
+      if (['closing_entry'].includes(src)) {
+        return 'manual_closing'
+      }
+    }
+    return 'manual_journal'
+  })
+  const [isManualTypeSelection, setIsManualTypeSelection] = useState(false)
   const [error, setError] = useState('')
   const [isSuccessOpen, setIsSuccessOpen] = useState(false)
 
@@ -286,6 +302,12 @@ export default function JournalEntryForm({ onSuccess, editingEntry }: JournalEnt
     }
   })()
 
+  useEffect(() => {
+    if (!editingEntry && !isManualTypeSelection) {
+      setJournalType(journalClassification.source)
+    }
+  }, [journalClassification.source, isManualTypeSelection, editingEntry])
+
   const handleRecord = async () => {
     setError('')
     try {
@@ -296,6 +318,10 @@ export default function JournalEntryForm({ onSuccess, editingEntry }: JournalEnt
 
       if (!description.trim()) {
         throw new Error('Keterangan transaksi wajib diisi.')
+      }
+
+      if (!['manual_journal', 'manual_adjusting', 'manual_closing', 'manual_reversing'].includes(journalType)) {
+        throw new Error('Jenis jurnal tidak valid.')
       }
 
       const parsedDebits = parsedDebitsPreview
@@ -319,7 +345,7 @@ export default function JournalEntryForm({ onSuccess, editingEntry }: JournalEnt
         description: description,
         debits: JSON.stringify(parsedDebits),
         credits: JSON.stringify(parsedCredits),
-        source: editingEntry?.source || journalClassification.source,
+        source: journalType,
         source_id: editingEntry?.source_id,
       }
 
@@ -437,10 +463,27 @@ export default function JournalEntryForm({ onSuccess, editingEntry }: JournalEnt
       )}
 
       <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Tanggal Transaksi</label>
             <input type="date" className="form-input w-full" value={date} onChange={(e) => setDate(e.target.value)} disabled={isSyncing} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Jenis Jurnal</label>
+            <Select 
+              className="w-full font-medium"
+              options={[
+                { label: 'Jurnal Umum', value: 'manual_journal' },
+                { label: 'Jurnal Penyesuaian', value: 'manual_adjusting' },
+                { label: 'Jurnal Penutup', value: 'manual_closing' },
+                { label: 'Jurnal Pembalik', value: 'manual_reversing' },
+              ]}
+              value={journalType}
+              onChange={(val) => {
+                setJournalType(val)
+                setIsManualTypeSelection(true)
+              }}
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Keterangan Transaksi</label>
