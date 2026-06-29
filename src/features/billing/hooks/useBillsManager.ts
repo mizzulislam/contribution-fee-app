@@ -844,9 +844,17 @@ export function useBillsManager(period: PeriodFilter = { preset: 'all' }) {
       const resJournal = await spreadsheetApi.post('JournalEntries', journalPayload)
       if (!resJournal.success) throw new Error((resJournal.error as any)?.message || 'Gagal mencatat jurnal kompensasi utang.')
 
-      await syncAccountingWithSheet()
-      await fetchBills()
-      showToast('Kompensasi utang berhasil dilakukan dan jurnal dicatat!')
+      try {
+        await syncAccountingWithSheet()
+        await fetchBills()
+        showToast(nextStatus === 'paid' 
+          ? 'Kompensasi utang berhasil dilakukan dan tagihan lunas!' 
+          : `Kompensasi sebagian sebesar Rp ${new Intl.NumberFormat('id-ID').format(compensationAmount)} berhasil dilakukan, tagihan menjadi Belum Lunas!`
+        )
+      } catch (syncErr) {
+        console.warn('Sync/Fetch after compensation failed, but writes were committed:', syncErr)
+        showToast('Kompensasi utang berhasil dicatat! (Gagal memuat ulang data otomatis, silakan segarkan halaman manual)')
+      }
     } catch (err: any) {
       console.error(err)
       setBills(originalBills)

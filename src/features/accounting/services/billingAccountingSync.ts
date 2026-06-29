@@ -200,6 +200,31 @@ function findMatchingJournalEntry(bill: BillRow, journalEntries: JournalEntryRow
   }) || null
 }
 
+function findPartialMatchingJournalEntry(bill: BillRow, journalEntries: JournalEntryRow[], users: UserRow[]) {
+  const aliases = getResidentAliases(bill, users)
+  if (aliases.length === 0) return null
+
+  const billAmount = parseAmount(bill.amount)
+  if (billAmount <= 0) return null
+
+  const contribution = getContributionData(bill)
+  const billTitle = normalizeText(contribution.title || bill.title || bill.description || '')
+
+  return journalEntries.find(entry => {
+    if (!isDebtCompensationJournal(entry)) return false
+    if (!isSameAccountingPeriod(bill.due_date, entry.date)) return false
+
+    const description = normalizeText(entry.description)
+    const hasResidentName = aliases.some(alias => containsPhrase(description, alias))
+    if (!hasResidentName) return false
+
+    if (billTitle && !description.includes(billTitle)) return false
+
+    const journalAmount = getJournalAmount(entry)
+    return journalAmount > 0 && journalAmount < billAmount
+  }) || null
+}
+
 export async function syncBillsWithAccountingEntries({
   bills,
   journalEntries,
@@ -215,22 +240,56 @@ export async function syncBillsWithAccountingEntries({
   const updates: BillRow[] = []
 
   const syncedBills = (Array.isArray(bills) ? bills : []).map(bill => {
-    if (!bill.id || !isOpenBillStatus(bill.status)) return bill
+    if (!bill.id) return bill
 
+    // 1. Check for full match
     const matchingEntry = findMatchingJournalEntry(bill, journalEntries, users)
-    if (!matchingEntry) return bill
-
-    syncedCount += 1
-    const updatedBill = {
-      ...bill,
-      status: 'paid',
-      payment_source: 'accounting_journal',
-      accounting_journal_id: matchingEntry.id || '',
-      paid_at: matchingEntry.date || new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+    if (matchingEntry) {
+      if (bill.status === 'paid') {
+        return {
+          ...bill,
+          paid_amount: parseAmount(bill.amount)
+        }
+      }
+      syncedCount += 1
+      const updatedBill = {
+        ...bill,
+        status: 'paid',
+        payment_source: 'accounting_journal',
+        accounting_journal_id: matchingEntry.id || '',
+        paid_at: matchingEntry.date || new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        paid_amount: parseAmount(bill.amount)
+      }
+      updates.push(updatedBill)
+      return updatedBill
     }
-    updates.push(updatedBill)
-    return updatedBill
+
+    // 2. Check for partial match
+    const matchingPartialEntry = findPartialMatchingJournalEntry(bill, journalEntries, users)
+    if (matchingPartialEntry) {
+      const journalAmount = getJournalAmount(matchingPartialEntry)
+      if (bill.status === 'partially_paid' && (bill as any).paid_amount === journalAmount) {
+        return {
+          ...bill,
+          paid_amount: journalAmount
+        }
+      }
+      syncedCount += 1
+      const updatedBill = {
+        ...bill,
+        status: 'partially_paid',
+        payment_source: 'accounting_journal',
+        accounting_journal_id: matchingPartialEntry.id || '',
+        paid_at: matchingPartialEntry.date || new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        paid_amount: journalAmount
+      }
+      updates.push(updatedBill)
+      return updatedBill
+    }
+
+    return bill
   })
 
   if (persist && updates.length > 0) {
