@@ -86,6 +86,43 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
     handleMarkAsPaid
   } = useBillsManager(period)
 
+  const getContributionData = (contrib: any) => {
+    if (!contrib) return { title: '', contribution_types: { name: '' } }
+    if (typeof contrib === 'string') {
+      try {
+        return JSON.parse(contrib)
+      } catch {
+        const titleMatch = contrib.match(/title=([^,}]+)/)
+        const typeMatch = contrib.match(/contribution_types\s*=\s*\{[^}]*name=([^,}]+)/)
+        const nameMatch = typeMatch || contrib.match(/\bname=([^,}]+)/)
+        const parsedTitle = titleMatch ? titleMatch[1].trim() : ''
+        const parsedName = nameMatch ? nameMatch[1].trim() : ''
+        return {
+          title: parsedTitle,
+          contribution_types: { name: parsedName || '' }
+        }
+      }
+    }
+    return contrib || { title: '', contribution_types: { name: '' } }
+  }
+
+  const getBillTitle = (bill: any) => {
+    const contributionData = getContributionData(bill.contributions)
+    return contributionData.title || bill.title || bill.description || contributionData.contribution_types?.name || bill.category || 'Tagihan'
+  }
+
+  const getBillSubtitle = (bill: any) => {
+    const contributionData = getContributionData(bill.contributions)
+    const titleText = getBillTitle(bill)
+    if (contributionData.contribution_types?.name && contributionData.contribution_types.name !== titleText) {
+      return contributionData.contribution_types.name
+    }
+    if (bill.category && bill.category !== titleText) {
+      return bill.category
+    }
+    return bill.month || 'Tagihan Penghuni'
+  }
+
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
 
   const sortedBills = useMemo(() => {
@@ -327,42 +364,7 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
     }
   }
 
-  const getContributionData = (contrib: any) => {
-    if (!contrib) return { title: '', contribution_types: { name: '' } }
-    if (typeof contrib === 'string') {
-      try {
-        return JSON.parse(contrib)
-      } catch {
-        const titleMatch = contrib.match(/title=([^,}]+)/)
-        const typeMatch = contrib.match(/contribution_types\s*=\s*\{[^}]*name=([^,}]+)/)
-        const nameMatch = typeMatch || contrib.match(/\bname=([^,}]+)/)
-        const parsedTitle = titleMatch ? titleMatch[1].trim() : ''
-        const parsedName = nameMatch ? nameMatch[1].trim() : ''
-        return {
-          title: parsedTitle,
-          contribution_types: { name: parsedName || '' }
-        }
-      }
-    }
-    return contrib || { title: '', contribution_types: { name: '' } }
-  }
 
-  const getBillTitle = (bill: any) => {
-    const contributionData = getContributionData(bill.contributions)
-    return contributionData.title || bill.title || bill.description || contributionData.contribution_types?.name || bill.category || 'Tagihan'
-  }
-
-  const getBillSubtitle = (bill: any) => {
-    const contributionData = getContributionData(bill.contributions)
-    const titleText = getBillTitle(bill)
-    if (contributionData.contribution_types?.name && contributionData.contribution_types.name !== titleText) {
-      return contributionData.contribution_types.name
-    }
-    if (bill.category && bill.category !== titleText) {
-      return bill.category
-    }
-    return bill.month || 'Tagihan Penghuni'
-  }
 
   return (
     <div className="space-y-6">
