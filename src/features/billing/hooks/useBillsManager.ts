@@ -21,6 +21,7 @@ export function useBillsManager(period: PeriodFilter = { preset: 'all' }) {
   const [bills, setBills] = useState<Bill[]>([])
   const [users, setUsers] = useState<User[]>([])
   const [templates, setTemplates] = useState<any[]>([])
+  const [payments, setPayments] = useState<Payment[]>([])
   const [loading, setLoading] = useState(true)
   const [isLoadingForm, setIsLoadingForm] = useState(false)
   const [search, setSearch] = useState('')
@@ -74,15 +75,19 @@ export function useBillsManager(period: PeriodFilter = { preset: 'all' }) {
   const fetchBills = async () => {
     setLoading(true)
     try {
-      const [billsRes, usersRes, settingsRes, journalRes] = await Promise.all([
+      const [billsRes, usersRes, settingsRes, journalRes, paymentsRes] = await Promise.all([
         billingService.getBills(),
         spreadsheetApi.get('Users'),
         spreadsheetApi.get('Settings'),
-        spreadsheetApi.get('JournalEntries')
+        spreadsheetApi.get('JournalEntries'),
+        billingService.getPayments()
       ])
 
       const userRows = (usersRes.data && Array.isArray(usersRes.data) ? usersRes.data : []) as User[]
       setUsers(userRows)
+
+      const paymentRows = (paymentsRes.data && Array.isArray(paymentsRes.data) ? paymentsRes.data : []) as Payment[]
+      setPayments(paymentRows)
 
       if (billsRes.data && Array.isArray(billsRes.data)) {
         const { bills: syncedBills, syncedCount } = await syncBillsWithAccountingEntries({
@@ -751,8 +756,25 @@ export function useBillsManager(period: PeriodFilter = { preset: 'all' }) {
     setIsSubmitting(true)
     const originalBills = [...bills]
 
+    const currentBalance = defaultEngine.ledger.getLedger(debtAccountNumber)?.currentBalance || 0
+    if (currentBalance <= 0) {
+      setAlertDialog({
+        isOpen: true,
+        title: 'Saldo Kompensasi Kosong',
+        message: 'Saldo piutang/titipan penghuni ini bernilai 0 atau tidak ditemukan, sehingga tidak bisa memotong hutang.',
+        variant: 'danger',
+        showCancel: false,
+        confirmLabel: 'Mengerti'
+      })
+      setIsSubmitting(false)
+      return
+    }
+
+    const compensationAmount = Math.min(currentBalance, Number(bill.amount))
+    const nextStatus = compensationAmount >= Number(bill.amount) ? 'paid' : 'partially_paid'
+
     // Local update
-    setBills(bills.map(b => b.id === bill.id ? { ...b, status: 'paid' } : b))
+    setBills(bills.map(b => b.id === bill.id ? { ...b, status: nextStatus } : b))
 
     const isLocked = await checkPeriodLock(new Date().toISOString().split('T')[0])
     if (isLocked) {
@@ -775,7 +797,7 @@ export function useBillsManager(period: PeriodFilter = { preset: 'all' }) {
 
     try {
       // 1. Update bill status in sheet
-      const resBill = await billingService.updateBill({ ...bill, status: 'paid' })
+      const resBill = await billingService.updateBill({ ...bill, status: nextStatus })
       if (!resBill.success) throw new Error(resBill.error?.message || 'Gagal memperbarui status tagihan.')
       step1Success = true
 
@@ -785,7 +807,7 @@ export function useBillsManager(period: PeriodFilter = { preset: 'all' }) {
         resident_name: bill.resident_name,
         resident_email: bill.resident_email,
         room_number: bill.room_number,
-        amount: bill.amount,
+        amount: compensationAmount,
         date: new Date().toISOString().split('T')[0],
         date_submitted: new Date().toISOString(),
         status: 'verified',
@@ -806,11 +828,13 @@ export function useBillsManager(period: PeriodFilter = { preset: 'all' }) {
       const journalPayload = {
         id: journalId,
         date: new Date().toISOString().split('T')[0],
-        description: `Kompensasi Utang-Piutang: Pelunasan ${titleVal} - ${bill.resident_name} via potongan Utang Bendahara`,
-        debits: JSON.stringify([{ accountNumber: debtAccountNumber, amount: Number(bill.amount) }]),
+        description: nextStatus === 'paid'
+          ? `Kompensasi Utang-Piutang: Pelunasan ${titleVal} - ${bill.resident_name} via potongan Utang Bendahara`
+          : `Kompensasi Utang-Piutang: Pelunasan sebagian ${titleVal} - ${bill.resident_name} via potongan Utang Bendahara`,
+        debits: JSON.stringify([{ accountNumber: debtAccountNumber, amount: Number(compensationAmount) }]),
         credits: JSON.stringify([{
           accountNumber: findReceivableAccount(bill.resident_name)?.accountNumber || '1104',
-          amount: Number(bill.amount)
+          amount: Number(compensationAmount)
         }]),
         source: 'debt_compensation',
         source_id: paymentId,
@@ -912,6 +936,7 @@ export function useBillsManager(period: PeriodFilter = { preset: 'all' }) {
     filteredBills,
     users,
     templates,
+    payments,
     loading,
     isLoadingForm,
     search,

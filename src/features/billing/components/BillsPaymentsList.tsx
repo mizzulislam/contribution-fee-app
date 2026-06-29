@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { ArrowUpDown, CheckCircle2, Clock, XCircle, FileText, Search, Bell, Plus, X, Save, Check, Pencil, Trash2, Edit, Loader2 } from 'lucide-react'
 import { TableLoader } from '@/components/ui/TableLoader'
@@ -83,7 +83,8 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
     handleEditClick: handleEdit,
     buildDefaultDueDate,
     handleDebtCompensation,
-    handleMarkAsPaid
+    handleMarkAsPaid,
+    payments
   } = useBillsManager(period)
 
   const getContributionData = (contrib: any) => {
@@ -145,6 +146,13 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
     return groups
   }, [sortedBills])
 
+  const getBillPaidAmount = useCallback((bill: any) => {
+    if (bill.status === 'paid') return Number(bill.amount) || 0
+    if (bill.status === 'unpaid') return 0
+    const verifiedPayments = payments.filter(p => String(p.billId) === String(bill.id) && p.status === 'verified')
+    return verifiedPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
+  }, [payments])
+
   const billingExportRows = useMemo(() => {
     const rows: (string | number)[][] = []
     const formatAmount = (val: number) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(val)
@@ -157,6 +165,7 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
     }
     const getStatusLabel = (status: string) => {
       if (status === 'paid') return 'Lunas'
+      if (status === 'partially_paid') return 'Belum Lunas'
       if (status === 'unpaid') return 'Belum Bayar'
       if (status === 'pending') return 'Menunggu Konfirmasi'
       return status
@@ -175,12 +184,10 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
 
       residentBills.forEach(bill => {
         const amt = Number(bill.amount) || 0
+        const pAmt = getBillPaidAmount(bill)
         totalAmount += amt
-        if (bill.status === 'paid') {
-          paidAmount += amt
-        } else {
-          unpaidAmount += amt
-        }
+        paidAmount += pAmt
+        unpaidAmount += (amt - pAmt)
 
         rows.push([
           String(bill.id || ''),
@@ -201,7 +208,7 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
     })
 
     return rows
-  }, [groupedBills])
+  }, [groupedBills, getBillPaidAmount])
 
   const billingPrintContent = (
     <div className="space-y-8 text-[11px] text-gray-700 bg-white">
@@ -217,7 +224,7 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
         Object.entries(groupedBills).map(([residentName, residentBills]) => {
           const roomNum = residentBills[0]?.room_number || '-'
           const totalAmount = residentBills.reduce((sum, b) => sum + (Number(b.amount) || 0), 0)
-          const paidAmount = residentBills.filter(b => b.status === 'paid').reduce((sum, b) => sum + (Number(b.amount) || 0), 0)
+          const paidAmount = residentBills.reduce((sum, b) => sum + getBillPaidAmount(b), 0)
           const unpaidAmount = totalAmount - paidAmount
 
           return (
@@ -273,10 +280,14 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
                         <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full border shadow-sm ${
                           bill.status === 'paid'
                             ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
-                            : 'bg-rose-50 text-rose-600 border-rose-200'
+                            : bill.status === 'partially_paid'
+                              ? 'bg-orange-50 text-orange-600 border-orange-200'
+                              : 'bg-rose-50 text-rose-600 border-rose-200'
                         }`}>
                           {bill.status === 'paid' ? (
                             <CheckCircle2 className="w-3.5 h-3.5" />
+                          ) : bill.status === 'partially_paid' ? (
+                            <Clock className="w-3.5 h-3.5" />
                           ) : (
                             <XCircle className="w-3.5 h-3.5" />
                           )}
@@ -305,7 +316,10 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
               <div className="flex items-center gap-4 mt-4 pt-2.5 border-t border-gray-100 text-[10px] text-gray-500 font-medium px-2">
                 <span className="font-bold text-gray-700">Keterangan Status:</span>
                 <span className="flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Lunas / Terbayar
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Lunas
+                </span>
+                <span className="flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5 text-orange-600" /> Belum Lunas
                 </span>
                 <span className="flex items-center gap-1">
                   <XCircle className="w-3.5 h-3.5 text-rose-600" /> Belum Bayar
@@ -379,6 +393,8 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
     switch (status) {
       case 'paid':
         return <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-emerald-200 bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-700"><CheckCircle2 className="h-3.5 w-3.5" /> Lunas</span>
+      case 'partially_paid':
+        return <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-orange-200 bg-orange-100 px-3 py-1 text-xs font-medium text-orange-700"><Clock className="h-3.5 w-3.5" /> Belum Lunas</span>
       case 'unpaid':
         return <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-amber-200 bg-amber-100 px-3 py-1 text-xs font-medium text-amber-700"><XCircle className="h-3.5 w-3.5" /> Belum Bayar</span>
       case 'pending':
