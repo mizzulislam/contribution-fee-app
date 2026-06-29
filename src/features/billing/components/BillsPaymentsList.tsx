@@ -206,7 +206,7 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
   const billingPrintContent = (
     <div className="space-y-8 text-[11px] text-gray-700 bg-white">
       <div className="print-brand text-[11px] font-bold text-emerald-600 tracking-wider">SOEMATRA KOST</div>
-      <h1 className="text-2xl font-bold text-gray-900 mt-1">Laporan Buku Besar Tagihan Penghuni</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mt-1">Daftar Tagihan Warga</h1>
       <div className="text-[11px] text-gray-600 border-b-2 border-emerald-500 pb-2 mb-6">
         Periode: {period ? getPeriodLabel(period) : 'Semua Periode'} | Dicetak: {new Date().toLocaleString('id-ID')}
       </div>
@@ -236,8 +236,8 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
                   <tr className="border-b border-gray-300 text-gray-500 font-semibold bg-gray-50/50">
                     <th className="py-2 px-2 text-center w-[15%]">ID Tagihan</th>
                     <th className="py-2 px-2 text-center w-[15%]">Jatuh Tempo</th>
-                    <th className="py-2 px-2 w-[40%]">Keterangan</th>
-                    <th className="py-2 px-2 text-right w-[15%]">Nominal</th>
+                    <th className="py-2 px-2 text-center w-[40%]">Keterangan</th>
+                    <th className="py-2 px-2 text-center w-[15%]">Nominal</th>
                     <th className="py-2 px-2 text-center w-[15%]">Status</th>
                   </tr>
                 </thead>
@@ -258,14 +258,12 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
                         Rp {new Intl.NumberFormat('id-ID').format(bill.amount)}
                       </td>
                       <td className="py-2 px-2 text-center">
-                        <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                        <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full font-bold text-xs border ${
                           bill.status === 'paid'
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                            : bill.status === 'unpaid'
-                              ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                              : 'bg-blue-50 text-blue-700 border border-blue-200'
+                            ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
+                            : 'bg-rose-50 text-rose-600 border-rose-200'
                         }`}>
-                          {bill.status === 'paid' ? 'Lunas' : bill.status === 'unpaid' ? 'Belum Bayar' : bill.status}
+                          {bill.status === 'paid' ? '✔' : '✘'}
                         </span>
                       </td>
                     </tr>
