@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { BookOpen, ScrollText, Scale, FileBarChart, Loader2, CalendarDays, Filter, Sliders, Archive } from 'lucide-react'
+import { BookOpen, ScrollText, Scale, FileBarChart, Loader2, CalendarDays, Filter, Archive } from 'lucide-react'
 import { cn } from '@/utils/styles'
 import Select from '@/components/ui/Select'
 
@@ -12,13 +12,12 @@ import GeneralJournalView from '@/features/accounting/components/GeneralJournalV
 import GeneralLedgerView from '@/features/accounting/components/GeneralLedgerView'
 import TrialBalanceView from '@/features/accounting/components/TrialBalanceView'
 import FinancialStatementsView from '@/features/accounting/components/FinancialStatementsView'
-import AdjustingEntriesView from '@/features/accounting/components/AdjustingEntriesView'
 import ClosingProcessView from '@/features/accounting/components/ClosingProcessView'
 
 export default function FinanceDashboard() {
   const [searchParams, setSearchParams] = useSearchParams()
   const tabParam = searchParams.get('tab')
-  const activeTab = tabParam && ['journal', 'ledger', 'trial_balance', 'adjusting', 'statements', 'closing'].includes(tabParam) ? tabParam : 'journal'
+  const activeTab = tabParam && ['journal', 'ledger', 'trial_balance', 'statements', 'closing'].includes(tabParam) ? tabParam : 'journal'
   const [isSyncing, setIsSyncing] = useState(true)
   const [isPeriodOpen, setIsPeriodOpen] = useState(false)
   const [period, setPeriod] = useState<PeriodFilter>({ preset: 'all' })
@@ -88,7 +87,6 @@ export default function FinanceDashboard() {
     { id: 'journal', label: 'Jurnal Umum', icon: BookOpen },
     { id: 'ledger', label: 'Buku Besar', icon: ScrollText },
     { id: 'trial_balance', label: 'Neraca Saldo', icon: Scale },
-    { id: 'adjusting', label: 'Penyesuaian', icon: Sliders },
     { id: 'statements', label: 'Laporan Keuangan', icon: FileBarChart },
     { id: 'closing', label: 'Tutup Buku', icon: Archive },
   ]
@@ -225,7 +223,6 @@ export default function FinanceDashboard() {
             {activeTab === 'ledger' && <GeneralLedgerView period={period} />}
             {activeTab === 'trial_balance' && <TrialBalanceView period={period} />}
             {activeTab === 'statements' && <FinancialStatementsView period={period} />}
-            {activeTab === 'adjusting' && <AdjustingEntriesView period={period} />}
             {activeTab === 'closing' && <ClosingProcessView period={period} />}
           </>
         )}
