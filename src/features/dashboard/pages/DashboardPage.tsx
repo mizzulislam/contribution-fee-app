@@ -190,20 +190,50 @@ export default function Dashboard() {
       }
 
       const fetchBills = async () => {
-        const { data: billsData } = await spreadsheetApi.get('Bills')
+        const [billsRes, paymentsRes] = await Promise.all([
+          spreadsheetApi.get('Bills'),
+          spreadsheetApi.get('Payments')
+        ])
+        const billsData = billsRes.data
+        const paymentsList = Array.isArray(paymentsRes.data) ? paymentsRes.data : []
+
         if (billsData && Array.isArray(billsData)) {
           if (activeRole === 'admin' || activeRole === 'super admin') {
             const unpaid = billsData.filter(b => {
               const status = String(b.status || '').toLowerCase()
-              return ['unpaid', 'pending', 'rejected', 'belum bayar'].includes(status)
+              return ['unpaid', 'pending', 'rejected', 'belum bayar', 'partially_paid'].includes(status)
             })
-            const totalUnpaid = unpaid.reduce((sum, b) => sum + (Number(b.amount) || 0), 0)
+            const totalUnpaid = unpaid.reduce((sum, b) => {
+              let amount = Number(b.amount) || 0
+              if (b.status === 'partially_paid') {
+                const verified = paymentsList.filter(
+                  p => String(p.billId) === String(b.id) && (p.status === 'verified' || p.status === 'paid' || p.status === 'Terverifikasi' || p.status === 'Lunas')
+                )
+                const paidAmount = verified.reduce((s, p) => s + (Number(p.amount) || 0), 0)
+                amount = Math.max(0, amount - paidAmount)
+              }
+              return sum + amount
+            }, 0)
             setUnpaidBills(totalUnpaid)
             setTotalUnpaidBills(unpaid.length)
           }
           if (activeRole === 'user') {
-            const myUnpaid = billsData.filter(b => (b.resident_email === profile?.email || b.resident_name === profile?.full_name) && b.status === 'unpaid')
-            const myTotal = myUnpaid.reduce((sum, b) => sum + (Number(b.amount) || 0), 0)
+            const myUnpaid = billsData.filter(b => {
+              const belongs = b.resident_email === profile?.email || b.resident_name === profile?.full_name
+              const status = String(b.status || '').toLowerCase()
+              return belongs && ['unpaid', 'rejected', 'partially_paid'].includes(status)
+            })
+            const myTotal = myUnpaid.reduce((sum, b) => {
+              let amount = Number(b.amount) || 0
+              if (b.status === 'partially_paid') {
+                const verified = paymentsList.filter(
+                  p => String(p.billId) === String(b.id) && (p.status === 'verified' || p.status === 'paid' || p.status === 'Terverifikasi' || p.status === 'Lunas')
+                )
+                const paidAmount = verified.reduce((s, p) => s + (Number(p.amount) || 0), 0)
+                amount = Math.max(0, amount - paidAmount)
+              }
+              return sum + amount
+            }, 0)
             setMyUnpaidAmount(myTotal)
           }
         }

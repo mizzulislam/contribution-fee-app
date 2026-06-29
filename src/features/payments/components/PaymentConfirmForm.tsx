@@ -31,6 +31,7 @@ interface Bill {
       name?: string
     }
   }
+  remainingAmount?: number
 }
 
 export default function PaymentConfirm() {
@@ -56,13 +57,32 @@ export default function PaymentConfirm() {
 
   const fetchBills = useCallback(async () => {
     setIsLoadingBills(true)
-    const { data } = await spreadsheetApi.get('Bills')
+    const [billsRes, paymentsRes] = await Promise.all([
+      spreadsheetApi.get('Bills'),
+      spreadsheetApi.get('Payments')
+    ])
+    const data = billsRes.data
+    const paymentsData = paymentsRes.data
 
     if (Array.isArray(data)) {
+      const paymentsList = Array.isArray(paymentsData) ? paymentsData : []
       const residentBills = (data as Bill[]).filter((bill: Bill) => {
         const belongsToUser = bill.resident_email === profile?.email || bill.resident_name === profile?.full_name
-        const canBePaid = bill.status === 'unpaid' || bill.status === 'rejected'
+        const canBePaid = bill.status === 'unpaid' || bill.status === 'rejected' || bill.status === 'partially_paid'
         return belongsToUser && canBePaid
+      }).map((bill: Bill) => {
+        let remainingAmount = Number(bill.amount) || 0
+        if (bill.status === 'partially_paid') {
+          const verified = paymentsList.filter(
+            p => String(p.billId) === String(bill.id) && (p.status === 'verified' || p.status === 'paid' || p.status === 'Terverifikasi' || p.status === 'Lunas')
+          )
+          const paidAmount = verified.reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
+          remainingAmount = Math.max(0, remainingAmount - paidAmount)
+        }
+        return {
+          ...bill,
+          remainingAmount
+        }
       })
 
       setBills(residentBills)
@@ -70,7 +90,7 @@ export default function PaymentConfirm() {
       const selectedBill = residentBills.find((bill: Bill) => String(bill.id) === String(selectedBillId))
       if (selectedBill) {
         setBillId(String(selectedBill.id))
-        setAmount(String(selectedBill.amount || ''))
+        setAmount(String(selectedBill.remainingAmount !== undefined ? selectedBill.remainingAmount : selectedBill.amount))
       }
     } else {
       setBills([])
@@ -108,7 +128,7 @@ export default function PaymentConfirm() {
       const selectedBill = bills.find((bill: Bill) => String(bill.id) === String(urlBillId))
       if (selectedBill) {
         setBillId(String(selectedBill.id))
-        setAmount(String(selectedBill.amount || ''))
+        setAmount(String(selectedBill.remainingAmount !== undefined ? selectedBill.remainingAmount : selectedBill.amount))
       }
     }
   }, [searchParams, bills])
@@ -116,7 +136,9 @@ export default function PaymentConfirm() {
   const handleBillChange = (selectedBillId: string) => {
     setBillId(selectedBillId)
     const selectedBill = bills.find(bill => String(bill.id) === String(selectedBillId))
-    if (selectedBill) setAmount(String(selectedBill.amount || ''))
+    if (selectedBill) {
+      setAmount(String(selectedBill.remainingAmount !== undefined ? selectedBill.remainingAmount : selectedBill.amount))
+    }
   }
 
   const handleFileChange = (selectedFile?: File) => {
@@ -242,10 +264,15 @@ export default function PaymentConfirm() {
                 placeholder="-- Pilih Tagihan yang Dibayar --"
                 value={billId}
                 onChange={handleBillChange}
-                options={bills.map(bill => ({
-                  label: `${getBillTitle(bill)}${bill.month ? ` - ${bill.month}` : ''} (${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(Number(bill.amount) || 0)})`,
-                  value: String(bill.id),
-                }))}
+                options={bills.map(bill => {
+                  const displayAmount = bill.remainingAmount !== undefined ? bill.remainingAmount : bill.amount
+                  const isPartial = bill.status === 'partially_paid'
+                  const suffix = isPartial ? ' (Sisa)' : ''
+                  return {
+                    label: `${getBillTitle(bill)}${bill.month ? ` - ${bill.month}` : ''} (${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(Number(displayAmount) || 0)}${suffix})`,
+                    value: String(bill.id),
+                  }
+                })}
               />
               {!isLoadingBills && bills.length === 0 && (
                 <p className="mt-2 text-xs text-text-muted">Tidak ada tagihan yang bisa dikonfirmasi saat ini.</p>
