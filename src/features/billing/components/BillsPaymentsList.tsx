@@ -276,7 +276,11 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
                       <td className="py-2 px-2">
                         <div className="flex justify-between items-center w-full px-1 font-semibold text-gray-900">
                           <span>Rp</span>
-                          <span>{new Intl.NumberFormat('id-ID').format(bill.amount)}</span>
+                          <span>{new Intl.NumberFormat('id-ID').format(
+                            bill.status === 'partially_paid'
+                              ? Math.max(0, (Number(bill.amount) || 0) - getBillPaidAmount(bill))
+                              : bill.amount
+                          )}</span>
                         </div>
                       </td>
                       <td className="py-2 px-2 text-center">
@@ -557,7 +561,11 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
                       <div className="text-xs text-text-secondary mt-0.5">{getBillSubtitle(bill)}</div>
                     </td>
                     <td className="px-6 py-4 text-center text-text-secondary hidden md:table-cell">{new Date(bill.due_date).toLocaleDateString('id-ID')}</td>
-                    <td className="px-6 py-4 font-semibold">{formatCurrency(bill.amount)}</td>
+                    <td className="px-6 py-4 font-semibold">
+                      {bill.status === 'partially_paid'
+                        ? formatCurrency(Math.max(0, (Number(bill.amount) || 0) - getBillPaidAmount(bill)))
+                        : formatCurrency(bill.amount)}
+                    </td>
                     <td className="px-6 py-4 text-center">{getStatusBadge(bill.status)}</td>
                     <td className="px-6 py-4">
                       <div className="flex justify-center gap-1.5">

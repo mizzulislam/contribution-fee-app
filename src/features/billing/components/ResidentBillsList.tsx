@@ -28,6 +28,7 @@ export default function ResidentBillsList() {
   const { profile } = useAuth()
   const navigate = useNavigate()
   const [bills, setBills] = useState<ResidentBill[]>([])
+  const [payments, setPayments] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -46,6 +47,7 @@ export default function ResidentBillsList() {
         let userBills = (billsData as ResidentBill[]).filter((b: ResidentBill) => b.resident_email === profile?.email || b.resident_name === profile?.full_name)
 
         if (paymentsData && Array.isArray(paymentsData)) {
+          setPayments(paymentsData)
           userBills = userBills.map(bill => {
             const hasPending = paymentsData.some(p => String(p.billId) === String(bill.id) && (p.status === 'pending_verification' || p.status === 'Menunggu Verifikasi'))
             if (hasPending && (bill.status === 'unpaid' || bill.status === 'rejected')) {
@@ -78,6 +80,19 @@ export default function ResidentBillsList() {
 
   const handlePayNow = (billId: number | string) => {
     navigate(`/dashboard/billing-user?tab=confirm&billId=${encodeURIComponent(String(billId))}`)
+  }
+
+  const getBillPaidAmount = (bill: ResidentBill) => {
+    if (bill.status === 'paid') return Number(bill.amount) || 0
+    const verified = payments.filter(
+      p => String(p.billId) === String(bill.id) && (p.status === 'verified' || p.status === 'paid')
+    )
+    return verified.reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
+  }
+
+  const getRemainingAmount = (bill: ResidentBill) => {
+    if (bill.status !== 'partially_paid') return Number(bill.amount) || 0
+    return Math.max(0, (Number(bill.amount) || 0) - getBillPaidAmount(bill))
   }
 
   const formatCurrency = (amount: number) => {
@@ -128,6 +143,8 @@ export default function ResidentBillsList() {
     switch (status) {
       case 'paid':
         return <span className="badge badge-success"><CheckCircle2 className="w-3.5 h-3.5 mr-1.5" /> Lunas</span>
+      case 'partially_paid':
+        return <span className="badge" style={{ backgroundColor: '#fff7ed', color: '#c2410c', borderColor: '#fed7aa', border: '1px solid' }}><Clock className="w-3.5 h-3.5 mr-1.5" /> Belum Lunas</span>
       case 'unpaid':
         return <span className="badge badge-warning"><XCircle className="w-3.5 h-3.5 mr-1.5" /> Belum Bayar</span>
       case 'pending_verification':
@@ -181,12 +198,16 @@ export default function ResidentBillsList() {
                       <div className="text-xs text-text-secondary mt-0.5">{getBillSubtitle(bill)}</div>
                     </td>
                     <td className="px-3 sm:px-6 py-4 text-text-secondary">{new Date(bill.due_date).toLocaleDateString('id-ID')}</td>
-                    <td className="px-3 sm:px-6 py-4 font-semibold">{formatCurrency(bill.amount)}</td>
+                    <td className="px-3 sm:px-6 py-4 font-semibold">{formatCurrency(getRemainingAmount(bill))}</td>
                     <td className="px-3 sm:px-6 py-4">{getStatusBadge(bill.status)}</td>
                     <td className="px-3 sm:px-6 py-4 text-center">
                       {bill.status === 'unpaid' || bill.status === 'rejected' ? (
                         <button onClick={() => handlePayNow(bill.id)} className="btn-primary py-1.5 px-3 sm:px-4 text-xs">
                           Bayar Sekarang
+                        </button>
+                      ) : bill.status === 'partially_paid' ? (
+                        <button onClick={() => handlePayNow(bill.id)} className="btn-primary py-1.5 px-3 sm:px-4 text-xs" style={{ backgroundColor: '#ea580c', borderColor: '#ea580c' }}>
+                          Lunasi Sekarang
                         </button>
                       ) : (
                         <button className="btn-secondary py-1.5 px-3 text-xs inline-flex items-center">
