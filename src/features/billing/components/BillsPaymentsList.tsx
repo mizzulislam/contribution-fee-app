@@ -262,7 +262,7 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
                   {residentBills.map((bill) => (
                     <tr key={bill.id} className="align-middle">
                       <td className="py-2 px-2 text-center font-mono text-[10px] text-gray-500">
-                        {bill.id ? bill.id.slice(0, 16) : ''}
+                        {bill.id ? bill.id.slice(0, 8) : ''}
                       </td>
                       <td className="py-2 px-2 text-center whitespace-nowrap">
                         {new Date(bill.due_date).toLocaleDateString('id-ID')}
@@ -273,8 +273,11 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
                           <div className="text-[10px] text-gray-500 italic mt-0.5">({getBillSubtitle(bill)})</div>
                         )}
                       </td>
-                      <td className="py-2 px-2 text-right font-semibold text-gray-900">
-                        Rp {new Intl.NumberFormat('id-ID').format(bill.amount)}
+                      <td className="py-2 px-2">
+                        <div className="flex justify-between items-center w-full px-1 font-semibold text-gray-900">
+                          <span>Rp</span>
+                          <span>{new Intl.NumberFormat('id-ID').format(bill.amount)}</span>
+                        </div>
                       </td>
                       <td className="py-2 px-2 text-center">
                         <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full border shadow-sm ${
