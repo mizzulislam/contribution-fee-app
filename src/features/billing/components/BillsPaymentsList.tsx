@@ -234,11 +234,21 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
               <table className="w-full text-left text-[11px] border-collapse">
                 <thead>
                   <tr className="border-b border-gray-300 text-gray-500 font-semibold bg-gray-50/50">
-                    <th className="py-2 px-2 w-[15%]" style={{ textAlign: 'center' }}>ID Tagihan</th>
-                    <th className="py-2 px-2 w-[15%]" style={{ textAlign: 'center' }}>Jatuh Tempo</th>
-                    <th className="py-2 px-2 w-[40%]" style={{ textAlign: 'center' }}>Keterangan</th>
-                    <th className="py-2 px-2 w-[15%]" style={{ textAlign: 'center' }}>Nominal</th>
-                    <th className="py-2 px-2 w-[15%]" style={{ textAlign: 'center' }}>Status</th>
+                    <th className="py-2 px-2 w-[15%]">
+                      <div className="w-full text-center" style={{ textAlign: 'center' }}>ID Tagihan</div>
+                    </th>
+                    <th className="py-2 px-2 w-[15%]">
+                      <div className="w-full text-center" style={{ textAlign: 'center' }}>Jatuh Tempo</div>
+                    </th>
+                    <th className="py-2 px-2 w-[40%]">
+                      <div className="w-full text-center" style={{ textAlign: 'center' }}>Keterangan</div>
+                    </th>
+                    <th className="py-2 px-2 w-[15%]">
+                      <div className="w-full text-center" style={{ textAlign: 'center' }}>Nominal</div>
+                    </th>
+                    <th className="py-2 px-2 w-[15%]">
+                      <div className="w-full text-center" style={{ textAlign: 'center' }}>Status</div>
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-150 text-gray-700">
