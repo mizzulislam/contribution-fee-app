@@ -158,8 +158,8 @@ interface RequesterContext {
 
 function getRequesterContext() {
   try {
-    const sessionStr = localStorage.getItem('soematra_session')
-    const activeRole = localStorage.getItem('soematra_active_role')
+    const sessionStr = sessionStorage.getItem('soematra_session')
+    const activeRole = sessionStorage.getItem('soematra_active_role')
     
     if (sessionStr) {
       const parsed = JSON.parse(sessionStr)

@@ -96,9 +96,9 @@ export const useAuth = create<AuthState>((set, get) => ({
   isLoading: true,
   setProfile: (profile) => {
     if (profile) {
-      localStorage.setItem(SESSION_KEY, encodeSession(profile))
+      sessionStorage.setItem(SESSION_KEY, encodeSession(profile))
       
-      const savedActiveRole = localStorage.getItem(ACTIVE_ROLE_KEY) as Role | null
+      const savedActiveRole = sessionStorage.getItem(ACTIVE_ROLE_KEY) as Role | null
       const availableRoles = getAvailableRoles(profile)
       
       if (savedActiveRole && availableRoles.includes(savedActiveRole)) {
@@ -109,12 +109,12 @@ export const useAuth = create<AuthState>((set, get) => ({
         else if (availableRoles.includes('admin')) defaultRole = 'admin'
         else if (availableRoles.length > 0) defaultRole = availableRoles[0] as Role
         
-        localStorage.setItem(ACTIVE_ROLE_KEY, defaultRole)
+        sessionStorage.setItem(ACTIVE_ROLE_KEY, defaultRole)
         set({ profile, activeRole: defaultRole })
       }
     } else {
-      localStorage.removeItem(SESSION_KEY)
-      localStorage.removeItem(ACTIVE_ROLE_KEY)
+      sessionStorage.removeItem(SESSION_KEY)
+      sessionStorage.removeItem(ACTIVE_ROLE_KEY)
       set({ profile: null, activeRole: null })
     }
   },
@@ -122,30 +122,30 @@ export const useAuth = create<AuthState>((set, get) => ({
     const profile = get().profile
     if (!profile || !getAvailableRoles(profile).includes(role)) return
 
-    localStorage.setItem(ACTIVE_ROLE_KEY, role)
+    sessionStorage.setItem(ACTIVE_ROLE_KEY, role)
     set({ activeRole: role })
   },
   signOut: async () => {
-    localStorage.removeItem(SESSION_KEY)
-    localStorage.removeItem(ACTIVE_ROLE_KEY)
+    sessionStorage.removeItem(SESSION_KEY)
+    sessionStorage.removeItem(ACTIVE_ROLE_KEY)
     set({ profile: null, activeRole: null })
     window.location.href = '/login'
   },
   loadUser: async () => {
     set({ isLoading: true })
-    const session = localStorage.getItem(SESSION_KEY)
+    const session = sessionStorage.getItem(SESSION_KEY)
     if (session) {
       try {
         const profile = decodeSession(session)
         if (profile) {
           get().setProfile(profile)
         } else {
-          localStorage.removeItem(SESSION_KEY)
-          localStorage.removeItem(ACTIVE_ROLE_KEY)
+          sessionStorage.removeItem(SESSION_KEY)
+          sessionStorage.removeItem(ACTIVE_ROLE_KEY)
         }
       } catch {
-        localStorage.removeItem(SESSION_KEY)
-        localStorage.removeItem(ACTIVE_ROLE_KEY)
+        sessionStorage.removeItem(SESSION_KEY)
+        sessionStorage.removeItem(ACTIVE_ROLE_KEY)
       }
     }
     set({ isLoading: false })
