@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { createPortal } from 'react-dom'
 import { spreadsheetApi } from '@/services/sheets-client'
 import { useAuth } from '@/features/auth/hooks/useAuth'
-import { CheckCircle2, Clock, XCircle, FileText } from 'lucide-react'
+import { CheckCircle2, Clock, XCircle, FileText, X, CreditCard, CalendarDays, Hash } from 'lucide-react'
 import { TableLoader } from '@/components/ui/TableLoader'
 
 interface ResidentBill {
@@ -30,6 +31,7 @@ export default function ResidentBillsList() {
   const [bills, setBills] = useState<ResidentBill[]>([])
   const [payments, setPayments] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [selectedBill, setSelectedBill] = useState<ResidentBill | null>(null)
 
   useEffect(() => {
     if (!profile?.id) return
@@ -104,6 +106,9 @@ export default function ResidentBillsList() {
     )
   }
 
+  const formatCurrencyInline = (amount: number) =>
+    `Rp ${new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(amount)}`
+
   const getContributionData = (contrib: any) => {
     if (!contrib) return { title: '', contribution_types: { name: '' } }
     if (typeof contrib === 'string') {
@@ -153,6 +158,17 @@ export default function ResidentBillsList() {
         return <span className="badge badge-danger"><XCircle className="w-3.5 h-3.5 mr-1.5" /> Ditolak</span>
       default:
         return <span className="badge bg-gray-100 text-gray-700">{status}</span>
+    }
+  }
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'paid': return 'Lunas'
+      case 'partially_paid': return 'Belum Lunas'
+      case 'unpaid': return 'Belum Bayar'
+      case 'pending_verification': return 'Menunggu Verifikasi'
+      case 'rejected': return 'Ditolak'
+      default: return status
     }
   }
 
@@ -210,7 +226,10 @@ export default function ResidentBillsList() {
                           Lunasi Sekarang
                         </button>
                       ) : (
-                        <button className="btn-secondary py-1.5 px-3 text-xs inline-flex items-center">
+                        <button
+                          onClick={() => setSelectedBill(bill)}
+                          className="btn-secondary py-1.5 px-3 text-xs inline-flex items-center"
+                        >
                           <FileText className="w-3.5 h-3.5 mr-1.5" /> Detail
                         </button>
                       )}
@@ -222,6 +241,127 @@ export default function ResidentBillsList() {
           </table>
         </div>
       </div>
+
+      {/* Bill Detail Modal */}
+      {selectedBill && createPortal(
+        <div
+          className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in duration-200"
+          onMouseDown={() => setSelectedBill(null)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200"
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-emerald-50">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-gray-900">Detail Tagihan</h2>
+                  <p className="text-xs text-emerald-600 font-medium">Tagihan Lunas</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedBill(null)}
+                className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-4">
+              {/* Bill Title */}
+              <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                <div className="text-lg font-bold text-gray-900">{getBillTitle(selectedBill)}</div>
+                <div className="text-sm text-gray-500 mt-0.5">{getBillSubtitle(selectedBill)}</div>
+              </div>
+
+              {/* Details Grid */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between py-2.5 border-b border-gray-100">
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <Hash className="w-4 h-4" />
+                    <span>ID Tagihan</span>
+                  </div>
+                  <span className="text-xs font-mono text-gray-600 bg-gray-100 px-2 py-1 rounded-md">
+                    {String(selectedBill.id).slice(0, 8)}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between py-2.5 border-b border-gray-100">
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <CalendarDays className="w-4 h-4" />
+                    <span>Jatuh Tempo</span>
+                  </div>
+                  <span className="text-sm font-medium text-gray-800">
+                    {new Date(selectedBill.due_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between py-2.5 border-b border-gray-100">
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <CreditCard className="w-4 h-4" />
+                    <span>Total Tagihan</span>
+                  </div>
+                  <span className="text-sm font-semibold text-gray-900">{formatCurrencyInline(Number(selectedBill.amount))}</span>
+                </div>
+
+                <div className="flex items-center justify-between py-2.5 border-b border-gray-100">
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                    <span>Jumlah Dibayar</span>
+                  </div>
+                  <span className="text-sm font-semibold text-emerald-600">{formatCurrencyInline(getBillPaidAmount(selectedBill))}</span>
+                </div>
+
+                <div className="flex items-center justify-between py-2.5">
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <span className="w-4 h-4 flex items-center justify-center">📋</span>
+                    <span>Status</span>
+                  </div>
+                  <div>{getStatusBadge(selectedBill.status)}</div>
+                </div>
+              </div>
+
+              {/* Status Summary */}
+              {selectedBill.status === 'paid' && (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center gap-3">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                  <div>
+                    <p className="text-sm font-semibold text-emerald-800">Tagihan Telah Dilunasi</p>
+                    <p className="text-xs text-emerald-600 mt-0.5">Pembayaran sebesar {formatCurrencyInline(Number(selectedBill.amount))} telah terverifikasi.</p>
+                  </div>
+                </div>
+              )}
+
+              {selectedBill.status === 'pending_verification' && (
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center gap-3">
+                  <Clock className="w-5 h-5 text-blue-600 shrink-0" />
+                  <div>
+                    <p className="text-sm font-semibold text-blue-800">Menunggu Verifikasi Admin</p>
+                    <p className="text-xs text-blue-600 mt-0.5">Bukti pembayaran Anda sedang ditinjau oleh admin/bendahara.</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 pb-6">
+              <button
+                onClick={() => setSelectedBill(null)}
+                className="w-full btn-secondary py-2.5 text-sm font-medium"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   )
 }
+
