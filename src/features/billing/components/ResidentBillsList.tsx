@@ -48,6 +48,18 @@ export default function ResidentBillsList() {
     }
 
     void fetchBills()
+
+    const handleSync = (e: Event) => {
+      const customEvent = e as CustomEvent
+      const { sheetName } = customEvent.detail
+      if (sheetName === 'Bills') {
+        console.log(`♻️ Menyegarkan tagihan warga secara real-time.`)
+        void fetchBills()
+      }
+    }
+
+    window.addEventListener('soematra-sync-event', handleSync)
+    return () => window.removeEventListener('soematra-sync-event', handleSync)
   }, [profile?.email, profile?.full_name, profile?.id])
 
   const handlePayNow = (billId: number | string) => {

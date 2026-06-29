@@ -93,6 +93,19 @@ export default function Verification({ period = defaultPeriod }: VerificationPro
 
   useEffect(() => {
     fetchVerifications()
+
+    const handleSync = (e: Event) => {
+      const customEvent = e as CustomEvent
+      const { sheetName } = customEvent.detail
+      const relevantSheets = ['Payments', 'Bills', 'MasterData']
+      if (relevantSheets.includes(sheetName)) {
+        console.log(`♻️ Menyegarkan verifikasi karena sheet ${sheetName} diperbarui secara real-time.`)
+        fetchVerifications()
+      }
+    }
+
+    window.addEventListener('soematra-sync-event', handleSync)
+    return () => window.removeEventListener('soematra-sync-event', handleSync)
   }, [])
 
   const formatCurrency = (amount: number) => {

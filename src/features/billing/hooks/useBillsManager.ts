@@ -55,6 +55,19 @@ export function useBillsManager(period: PeriodFilter = { preset: 'all' }) {
 
   useEffect(() => {
     fetchBills()
+
+    const handleSync = (e: Event) => {
+      const customEvent = e as CustomEvent
+      const { sheetName } = customEvent.detail
+      const relevantSheets = ['Bills', 'Users', 'Settings', 'JournalEntries', 'Payments']
+      if (relevantSheets.includes(sheetName)) {
+        console.log(`♻️ Menyegarkan tagihan karena sheet ${sheetName} diperbarui secara real-time.`)
+        fetchBills()
+      }
+    }
+
+    window.addEventListener('soematra-sync-event', handleSync)
+    return () => window.removeEventListener('soematra-sync-event', handleSync)
   }, [])
 
   useEffect(() => {

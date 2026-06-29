@@ -7,6 +7,84 @@ import type { User, Bill, Payment, Expense, JournalEntry, MasterData, Gallon, Ga
 const SPREADSHEET_API_URL = import.meta.env.VITE_SPREADSHEET_API_URL || 'https://script.google.com/macros/s/AKfycbwYOUR_SCRIPT_ID/exec'
 const SOEMATRA_API_TOKEN = import.meta.env.VITE_SOEMATRA_API_TOKEN || ''
 
+const clientSessionId = Math.random().toString(36).substring(2, 15)
+
+export function getClientSessionId() {
+  return clientSessionId
+}
+
+let wsInstance: WebSocket | null = null
+
+export function initRealTimeSync() {
+  const token = import.meta.env.VITE_SOEMATRA_API_TOKEN || SOEMATRA_API_TOKEN || ''
+  if (!token) {
+    console.warn('⚠️ Real-time sync dinonaktifkan: SOEMATRA_API_TOKEN tidak ditemukan.')
+    return
+  }
+
+  const topic = `soematra-kost-sync-${token.substring(0, 16)}`
+  
+  const connect = () => {
+    if (wsInstance && (wsInstance.readyState === WebSocket.OPEN || wsInstance.readyState === WebSocket.CONNECTING)) {
+      return
+    }
+
+    console.log('🔌 Menghubungkan ke server real-time sync (ntfy.sh)...')
+    const ws = new WebSocket(`wss://ntfy.sh/${topic}/ws`)
+    wsInstance = ws
+
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data)
+        if (!data.message) return
+        
+        const payload = JSON.parse(data.message)
+        if (payload && payload.senderId !== clientSessionId) {
+          console.log(`🔔 Menerima update real-time: ${payload.action} di sheet ${payload.sheetName}`)
+          window.dispatchEvent(new CustomEvent('soematra-sync-event', { detail: payload }))
+        }
+      } catch (err) {
+        // Abaikan
+      }
+    }
+
+    ws.onclose = () => {
+      console.warn('🔌 Koneksi real-time sync terputus. Menghubungkan kembali dalam 5 detik...')
+      wsInstance = null
+      setTimeout(connect, 5000)
+    }
+
+    ws.onerror = (err) => {
+      console.error('🔌 Real-time WebSocket error:', err)
+      ws.close()
+    }
+  }
+
+  connect()
+}
+
+export async function publishSyncEvent(action: string, sheetName: string, details?: any) {
+  const token = import.meta.env.VITE_SOEMATRA_API_TOKEN || SOEMATRA_API_TOKEN || ''
+  if (!token) return
+  const topic = `soematra-kost-sync-${token.substring(0, 16)}`
+  try {
+    await fetch(`https://ntfy.sh/${topic}`, {
+      method: 'POST',
+      body: JSON.stringify({
+        action,
+        sheetName,
+        details,
+        senderId: clientSessionId
+      }),
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+  } catch (err) {
+    console.warn('Gagal mengirim event sinkronisasi real-time:', err)
+  }
+}
+
 if (typeof window !== 'undefined') {
   if (!import.meta.env.VITE_SOEMATRA_API_TOKEN) {
     console.warn('⚠️ SOEMATRA WARNING: VITE_SOEMATRA_API_TOKEN is not defined in environment variables! Requests will fail authorization.')
@@ -22,6 +100,11 @@ if (typeof window !== 'undefined') {
   if (!import.meta.env.VITE_SPREADSHEET_API_URL || import.meta.env.VITE_SPREADSHEET_API_URL.includes('YOUR_SCRIPT_ID')) {
     console.warn('⚠️ SOEMATRA WARNING: VITE_SPREADSHEET_API_URL is missing or using fallback value.')
   }
+
+  // Jalankan inisialisasi sinkronisasi otomatis
+  setTimeout(() => {
+    initRealTimeSync()
+  }, 1000)
 }
 
 function buildHeaders() {
@@ -151,6 +234,7 @@ export const spreadsheetApi = {
       const result = await parseJsonResponse<{ status: string; message?: string }>(response)
       if (result.status !== 'success') throw new Error(result.message || 'Spreadsheet API mengembalikan error saat POST')
       
+      void publishSyncEvent('post', sheetName, data)
       return { success: true, error: null }
     } catch (error) {
       console.error('Spreadsheet POST Error:', error)
@@ -174,6 +258,8 @@ export const spreadsheetApi = {
       })
       const result = await parseJsonResponse<{ status: string; message?: string }>(response)
       if (result.status !== 'success') throw new Error(result.message || 'Spreadsheet API mengembalikan error saat PUT')
+      
+      void publishSyncEvent('put', sheetName, data)
       return { success: true, error: null }
     } catch (error) {
       console.error('Spreadsheet PUT Error:', error)
@@ -197,6 +283,8 @@ export const spreadsheetApi = {
       })
       const result = await parseJsonResponse<{ status: string; message?: string }>(response)
       if (result.status !== 'success') throw new Error(result.message || 'Spreadsheet API mengembalikan error saat DELETE')
+      
+      void publishSyncEvent('delete', sheetName, { id })
       return { success: true, error: null }
     } catch (error) {
       console.error('Spreadsheet DELETE Error:', error)
@@ -220,6 +308,8 @@ export const spreadsheetApi = {
       })
       const result = await parseJsonResponse<{ status: string; message?: string }>(response)
       if (result.status !== 'success') throw new Error(result.message || 'Spreadsheet API mengembalikan error saat RESTORE')
+      
+      void publishSyncEvent('restore', sheetName)
       return { success: true, error: null }
     } catch (error) {
       console.error('Spreadsheet RESTORE Error:', error)
@@ -243,6 +333,8 @@ export const spreadsheetApi = {
       })
       const result = await parseJsonResponse<{ status: string; message?: string }>(response)
       if (result.status !== 'success') throw new Error(result.message || 'Custom action failed')
+      
+      void publishSyncEvent('customAction', 'System', { action })
       return { success: true, data: result, error: null }
     } catch (error) {
       console.error(`Spreadsheet Action ${action} Error:`, error)

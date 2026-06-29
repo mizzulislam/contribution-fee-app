@@ -38,6 +38,26 @@ export default function FinanceDashboard() {
       }
     }
     initData()
+
+    const handleSync = async (e: Event) => {
+      const customEvent = e as CustomEvent
+      const { sheetName } = customEvent.detail
+      const relevantSheets = ['JournalEntries', 'MasterData', 'Bills', 'Payments', 'Expenses']
+      if (relevantSheets.includes(sheetName)) {
+        console.log(`♻️ Menyegarkan data keuangan karena sheet ${sheetName} diperbarui secara real-time.`)
+        setIsSyncing(true)
+        try {
+          await syncAccountingWithSheet()
+        } catch (err) {
+          console.error("Gagal sinkronisasi akuntansi:", err)
+        } finally {
+          setIsSyncing(false)
+        }
+      }
+    }
+
+    window.addEventListener('soematra-sync-event', handleSync)
+    return () => window.removeEventListener('soematra-sync-event', handleSync)
   }, [])
 
   useEffect(() => {
