@@ -55,6 +55,17 @@ export default function ResidentBillsList() {
             if (hasPending && (bill.status === 'unpaid' || bill.status === 'rejected')) {
               return { ...bill, status: 'pending_verification' }
             }
+            
+            // Safeguard: Jika total pembayaran yang terverifikasi >= nominal tagihan, otomatis set status Lunas (paid)
+            if (bill.status === 'partially_paid' || bill.status === 'unpaid') {
+              const verified = paymentsData.filter(
+                p => String(p.billId) === String(bill.id) && (p.status === 'verified' || p.status === 'paid' || p.status === 'Terverifikasi' || p.status === 'Lunas')
+              )
+              const paidAmount = verified.reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
+              if (paidAmount >= (Number(bill.amount) || 0)) {
+                return { ...bill, status: 'paid' }
+              }
+            }
             return bill
           })
         }

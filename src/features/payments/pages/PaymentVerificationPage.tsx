@@ -215,15 +215,32 @@ export default function Verification({ period = defaultPeriod }: VerificationPro
 
       if (targetBillId) {
         try {
-          const { data: billsData } = await spreadsheetApi.get('Bills')
+          const [billsRes, paymentsRes] = await Promise.all([
+            spreadsheetApi.get('Bills'),
+            spreadsheetApi.get('Payments')
+          ])
+          const billsData = billsRes.data
+          const paymentsData = paymentsRes.data
+          
           if (Array.isArray(billsData)) {
             originalBill = billsData.find(b => String(b.id) === String(targetBillId))
             if (originalBill) {
               const paymentAmount = Number(item.amount) || 0
               const billAmount = Number(originalBill.amount) || 0
-              computedBillStatus = action === 'approve'
-                ? (paymentAmount >= billAmount ? 'paid' : 'partially_paid')
-                : 'rejected'
+              
+              if (action === 'approve') {
+                const paymentsList = Array.isArray(paymentsData) ? paymentsData : []
+                const verifiedPayments = paymentsList.filter(
+                  p => String(p.billId) === String(targetBillId) && 
+                       String(p.id) !== String(item.id) &&
+                       (p.status === 'verified' || p.status === 'paid' || p.status === 'Terverifikasi' || p.status === 'Lunas')
+                )
+                const alreadyPaid = verifiedPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
+                const totalPaid = alreadyPaid + paymentAmount
+                computedBillStatus = totalPaid >= billAmount ? 'paid' : 'partially_paid'
+              } else {
+                computedBillStatus = originalBill.status === 'partially_paid' ? 'partially_paid' : 'rejected'
+              }
 
               billPayload = {
                 ...originalBill,
