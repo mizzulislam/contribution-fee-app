@@ -234,17 +234,19 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
               <table className="w-full text-left text-[11px] border-collapse">
                 <thead>
                   <tr className="border-b border-gray-300 text-gray-500 font-semibold bg-gray-50/50">
-                    <th className="py-2 px-2 text-center w-[15%]">ID Tagihan</th>
-                    <th className="py-2 px-2 text-center w-[15%]">Jatuh Tempo</th>
-                    <th className="py-2 px-2 text-center w-[40%]">Keterangan</th>
-                    <th className="py-2 px-2 text-center w-[15%]">Nominal</th>
-                    <th className="py-2 px-2 text-center w-[15%]">Status</th>
+                    <th className="py-2 px-2 w-[15%]" style={{ textAlign: 'center' }}>ID Tagihan</th>
+                    <th className="py-2 px-2 w-[15%]" style={{ textAlign: 'center' }}>Jatuh Tempo</th>
+                    <th className="py-2 px-2 w-[40%]" style={{ textAlign: 'center' }}>Keterangan</th>
+                    <th className="py-2 px-2 w-[15%]" style={{ textAlign: 'center' }}>Nominal</th>
+                    <th className="py-2 px-2 w-[15%]" style={{ textAlign: 'center' }}>Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-150 text-gray-700">
                   {residentBills.map((bill) => (
                     <tr key={bill.id} className="align-middle">
-                      <td className="py-2 px-2 text-center font-mono text-[10px] text-gray-500">{bill.id}</td>
+                      <td className="py-2 px-2 text-center font-mono text-[10px] text-gray-500">
+                        {bill.id ? bill.id.slice(0, 16) : ''}
+                      </td>
                       <td className="py-2 px-2 text-center whitespace-nowrap">
                         {new Date(bill.due_date).toLocaleDateString('id-ID')}
                       </td>
@@ -258,12 +260,16 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
                         Rp {new Intl.NumberFormat('id-ID').format(bill.amount)}
                       </td>
                       <td className="py-2 px-2 text-center">
-                        <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full font-bold text-xs border ${
+                        <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full border shadow-sm ${
                           bill.status === 'paid'
                             ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
                             : 'bg-rose-50 text-rose-600 border-rose-200'
                         }`}>
-                          {bill.status === 'paid' ? '✔' : '✘'}
+                          {bill.status === 'paid' ? (
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                          ) : (
+                            <XCircle className="w-3.5 h-3.5" />
+                          )}
                         </span>
                       </td>
                     </tr>
@@ -284,6 +290,16 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
                   <span>Belum Bayar:</span>
                   <span className="font-bold text-amber-700">Rp {new Intl.NumberFormat('id-ID').format(unpaidAmount)}</span>
                 </div>
+              </div>
+
+              <div className="flex items-center gap-4 mt-4 pt-2.5 border-t border-gray-100 text-[10px] text-gray-500 font-medium px-2">
+                <span className="font-bold text-gray-700">Keterangan Status:</span>
+                <span className="flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Lunas / Terbayar
+                </span>
+                <span className="flex items-center gap-1">
+                  <XCircle className="w-3.5 h-3.5 text-rose-600" /> Belum Bayar
+                </span>
               </div>
             </div>
           )
