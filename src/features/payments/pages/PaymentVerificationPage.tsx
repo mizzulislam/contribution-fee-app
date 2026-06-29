@@ -437,9 +437,9 @@ export default function Verification({ period = defaultPeriod }: VerificationPro
         isOpen={alertDialog.isOpen}
         title={alertDialog.title}
         message={alertDialog.message}
-        variant={alertDialog.isConfirm ? (alertDialog.title.includes('Tolak') ? 'danger' : 'info') : (alertDialog.title.includes('Gagal') || alertDialog.title.includes('Terkunci') ? 'danger' : 'success')}
+        variant={alertDialog.isConfirm ? (alertDialog.title.includes('Tolak') || alertDialog.title.includes('Penolakan') ? 'danger' : 'info') : (alertDialog.title.includes('Gagal') || alertDialog.title.includes('Terkunci') ? 'danger' : 'success')}
         showCancel={alertDialog.isConfirm}
-        confirmLabel={alertDialog.isConfirm ? (alertDialog.title.includes('Tolak') ? 'Ya, Tolak' : 'Ya, Setujui') : 'Mengerti'}
+        confirmLabel={alertDialog.isConfirm ? (alertDialog.title.includes('Tolak') || alertDialog.title.includes('Penolakan') ? 'Ya, Tolak' : 'Ya, Setujui') : 'Mengerti'}
         cancelLabel="Batal"
         isLoading={isActioning}
         onClose={() => !isActioning && setAlertDialog(prev => ({ ...prev, isOpen: false }))}
