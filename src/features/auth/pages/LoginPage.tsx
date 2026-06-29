@@ -111,28 +111,25 @@ export default function Login() {
 
       <form onSubmit={handleLogin} className="space-y-5">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">Username</label>
           <input 
             type="email" 
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="form-input"
-            placeholder="admin@soematra.com"
+            placeholder="nama@soematra.com"
           />
         </div>
         <div>
-          <div className="flex justify-between items-center mb-1.5">
-            <label className="block text-sm font-medium text-gray-700">Kata Sandi</label>
-            <a href="#" className="text-sm font-medium text-[#10B981] hover:text-[#047857]">Lupa Sandi?</a>
-          </div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">Kata Sandi</label>
           <input 
             type="password" 
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="form-input"
-            placeholder="admin123"
+            placeholder="user123"
           />
         </div>
         <button 
