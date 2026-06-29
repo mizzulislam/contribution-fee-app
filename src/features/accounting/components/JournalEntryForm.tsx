@@ -404,6 +404,20 @@ export default function JournalEntryForm({ onSuccess, editingEntry }: JournalEnt
     value: acc.accountNumber
   }))
 
+  const getSelectedJournalTypeInfo = () => {
+    switch (journalType) {
+      case 'manual_adjusting':
+        return { label: 'Jurnal Penyesuaian', tone: 'emerald' as const }
+      case 'manual_closing':
+        return { label: 'Jurnal Penutup', tone: 'red' as const }
+      case 'manual_reversing':
+        return { label: 'Jurnal Pembalik', tone: 'slate' as const }
+      case 'manual_journal':
+      default:
+        return { label: 'Jurnal Umum', tone: 'slate' as const }
+    }
+  }
+
   if (isSuccessOpen) {
     return (
       <div className="bg-white p-8 sm:p-10 md:p-12 w-full flex flex-col items-center justify-center text-center animate-in fade-in duration-300 min-h-[450px]">
@@ -422,13 +436,13 @@ export default function JournalEntryForm({ onSuccess, editingEntry }: JournalEnt
           <div className="flex justify-between items-center text-sm">
             <span className="text-gray-500 font-medium">Klasifikasi Jurnal</span>
             <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
-              journalClassification.tone === 'red'
+              getSelectedJournalTypeInfo().tone === 'red'
                 ? 'bg-red-50 text-red-700 border-red-100'
-                : journalClassification.tone === 'emerald'
+                : getSelectedJournalTypeInfo().tone === 'emerald'
                   ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
                   : 'bg-slate-50 text-slate-700 border-slate-200'
             }`}>
-              {journalClassification.label.replace('Terdeteksi sebagai ', '')}
+              {getSelectedJournalTypeInfo().label}
             </span>
           </div>
         </div>

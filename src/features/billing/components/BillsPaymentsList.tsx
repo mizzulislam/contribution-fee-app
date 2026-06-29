@@ -368,7 +368,7 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight flex items-center">
             <FileText className="mr-2 sm:mr-3 text-primary w-6 h-6 sm:w-8 sm:h-8" />
@@ -376,15 +376,27 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
           </h1>
           <p className="text-xs sm:text-sm text-text-secondary mt-1">Pantau seluruh status tagihan penghuni dan riwayat pembayarannya.</p>
         </div>
-        <button 
-          onClick={() => {
-            setNewBill(prev => ({ ...prev, due_date: prev.due_date || buildDefaultDueDate() }))
-            setIsAddModalOpen(true)
-          }}
-          className="btn-primary flex items-center"
-        >
-          <Plus className="w-5 h-5 mr-2" /> Buat Tagihan Baru
-        </button>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+          <div className="w-full sm:w-auto [&>button]:w-full">
+            <AccountingDownloadMenu
+              fileName={`buku-besar-tagihan-${period?.preset || 'all'}`}
+              title="Buku Besar Tagihan"
+              meta={`Periode: ${period ? getPeriodLabel(period) : 'Semua Periode'} | Dicetak: ${new Date().toLocaleString('id-ID')}`}
+              headers={['Data Tagihan', '', '', '', '', '']}
+              rows={billingExportRows}
+              printContent={billingPrintContent}
+            />
+          </div>
+          <button 
+            onClick={() => {
+              setNewBill(prev => ({ ...prev, due_date: prev.due_date || buildDefaultDueDate() }))
+              setIsAddModalOpen(true)
+            }}
+            className="btn-primary inline-flex min-h-[46px] min-w-[212px] items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-base font-semibold w-full sm:w-auto shadow-lg shadow-emerald-500/20 bg-emerald-600 hover:bg-emerald-700 hover:border-emerald-700 focus:outline-none border border-transparent"
+          >
+            <Plus className="w-5 h-5 mr-2" /> Buat Tagihan Baru
+          </button>
+        </div>
       </div>
 
       <div className="card-container">
@@ -410,14 +422,7 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
                 <span>Urutkan: {sortOrder === 'asc' ? 'Terlama' : 'Terbaru'}</span>
               </button>
 
-              <AccountingDownloadMenu
-                fileName={`buku-besar-tagihan-${period?.preset || 'all'}`}
-                title="Buku Besar Tagihan"
-                meta={`Periode: ${period ? getPeriodLabel(period) : 'Semua Periode'} | Dicetak: ${new Date().toLocaleString('id-ID')}`}
-                headers={['Data Tagihan', '', '', '', '', '']}
-                rows={billingExportRows}
-                printContent={billingPrintContent}
-              />
+
 
               {!isEditMode ? (
                 <button
