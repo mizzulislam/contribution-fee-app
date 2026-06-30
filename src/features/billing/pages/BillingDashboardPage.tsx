@@ -22,7 +22,7 @@ export default function BillingDashboard() {
   const [customStartDate, setCustomStartDate] = useState('')
   const [customEndDate, setCustomEndDate] = useState('')
   const [residents, setResidents] = useState<User[]>([])
-  const [residentFilter, setResidentFilter] = useState('all')
+  const [residentFilter, setResidentFilter] = useState<string[]>([])
   const periodDropdownRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -36,7 +36,13 @@ export default function BillingDashboard() {
       try {
         const { data } = await spreadsheetApi.get('Users')
         if (data && Array.isArray(data)) {
-          const userRoleUsers = (data as User[]).filter(u => (!u.status || u.status === 'Aktif') && String(u.role).includes('user'))
+          const userRoleUsers = (data as User[]).filter(u => {
+            const statusStr = String(u.status || '').toLowerCase()
+            const roleStr = String(u.role || '').toLowerCase()
+            const isUser = roleStr.includes('user')
+            const isActive = !u.status || statusStr === 'aktif' || statusStr === 'active'
+            return isUser && isActive
+          })
           setResidents(userRoleUsers)
         }
       } catch (err) {
@@ -69,6 +75,20 @@ export default function BillingDashboard() {
       setPeriod(getPresetPeriod(preset))
     }
     setIsPeriodOpen(false)
+  }
+
+  const getFilterLabel = () => {
+    const periodPart = getPeriodLabel(period)
+    if (residentFilter.length === 0) {
+      return `Filter: ${periodPart}`
+    }
+    if (residentFilter.length === 1) {
+      return `Filter: ${periodPart} • ${residentFilter[0].split(' ')[0]}`
+    }
+    if (residentFilter.length === 2) {
+      return `Filter: ${periodPart} • ${residentFilter[0].split(' ')[0]}, ${residentFilter[1].split(' ')[0]}`
+    }
+    return `Filter: ${periodPart} • ${residentFilter.length} Orang`
   }
 
   const tabs = [
@@ -130,7 +150,7 @@ export default function BillingDashboard() {
               <span className="flex-shrink-0">
                 <Filter className="h-4 w-4 text-emerald-600" />
               </span>
-              Filter: {getPeriodLabel(period)}{residentFilter !== 'all' ? ` • ${residentFilter.split(' ')[0]}` : ''}
+              {getFilterLabel()}
             </span>
             <CalendarDays className="h-4 w-4 text-gray-400 flex-shrink-0 ml-2" />
           </button>
@@ -139,16 +159,49 @@ export default function BillingDashboard() {
             <div className="absolute right-0 z-40 mt-2 w-full lg:w-[min(22rem,calc(100vw-2rem))] rounded-2xl border border-gray-100 bg-white p-4 shadow-xl shadow-gray-200/60 space-y-4">
               {/* Resident Filter */}
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1.5">Orang/Penghuni</label>
-                <Select
-                  options={[
-                    { label: 'Semua Penghuni', value: 'all' },
-                    ...residents.map(u => ({ label: `${u.full_name} (Kamar ${u.room_number || '-'})`, value: u.full_name }))
-                  ]}
-                  value={residentFilter}
-                  onChange={setResidentFilter}
-                  placeholder="Pilih penghuni..."
-                />
+                <label className="block text-xs font-semibold text-gray-600 mb-2">Orang/Penghuni</label>
+                <div className="max-h-40 overflow-y-auto border border-gray-150 rounded-xl p-2.5 space-y-2 bg-gray-50/50 scrollbar-thin scrollbar-thumb-gray-200">
+                  {/* Select All */}
+                  <label className="flex items-center gap-2.5 px-1 py-0.5 cursor-pointer hover:bg-gray-100/50 rounded-lg transition-colors select-none">
+                    <input
+                      type="checkbox"
+                      className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
+                      checked={residentFilter.length === 0}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setResidentFilter([])
+                        }
+                      }}
+                    />
+                    <span className="text-xs font-semibold text-gray-700">Semua Penghuni</span>
+                  </label>
+                  
+                  <hr className="border-gray-250/50 my-1.5" />
+
+                  {/* Individual occupants */}
+                  {residents.map((u) => {
+                    const isChecked = residentFilter.includes(u.full_name)
+                    return (
+                      <label key={u.id} className="flex items-center gap-2.5 px-1 py-0.5 cursor-pointer hover:bg-gray-100/50 rounded-lg transition-colors select-none">
+                        <input
+                          type="checkbox"
+                          className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
+                          checked={isChecked}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setResidentFilter([...residentFilter, u.full_name])
+                            } else {
+                              setResidentFilter(residentFilter.filter(name => name !== u.full_name))
+                            }
+                          }}
+                        />
+                        <span className="text-xs font-medium text-gray-600">
+                          {u.full_name} <span className="text-gray-450">({u.room_number ? `Kamar ${u.room_number}` : '-'})</span>
+                        </span>
+                      </label>
+                    )
+                  })}
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-2">

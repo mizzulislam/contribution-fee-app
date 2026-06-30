@@ -86,9 +86,9 @@ export default function FinanceDashboard() {
 
   const tabs = [
     { id: 'journal', label: 'Jurnal Umum', icon: BookOpen },
-    { id: 'adjusting', label: 'Jurnal Penyesuaian', icon: SlidersHorizontal },
     { id: 'ledger', label: 'Buku Besar', icon: ScrollText },
     { id: 'trial_balance', label: 'Neraca Saldo', icon: Scale },
+    { id: 'adjusting', label: 'Jurnal Penyesuaian', icon: SlidersHorizontal },
     { id: 'statements', label: 'Laporan Keuangan', icon: FileBarChart },
     { id: 'closing', label: 'Tutup Buku', icon: Archive },
   ]

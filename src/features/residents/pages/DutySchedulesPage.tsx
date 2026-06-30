@@ -245,13 +245,6 @@ export default function DutySchedules() {
               {displaySchedules.map((schedule, index) => {
                 const isNextInLine = schedule.status !== 'Selesai' && index === 0;
                 
-                const formatDateSafe = (dateStr: string) => {
-                  if (!dateStr) return 'Tanggal Belum Diatur'
-                  const d = new Date(dateStr)
-                  if (Number.isNaN(d.getTime())) return dateStr
-                  return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
-                }
-
                 return (
                 <div 
                   key={schedule.id}
@@ -265,7 +258,7 @@ export default function DutySchedules() {
                 >
                   <div className="flex justify-between items-start mb-4">
                     <p className={`font-semibold text-xs tracking-wide uppercase ${isNextInLine ? 'text-emerald-700 font-bold' : 'text-gray-400'}`}>
-                      {formatDateSafe(schedule.date)}
+                      Antrean Ke-{index + 1}
                     </p>
                     
                     {/* Action Buttons */}

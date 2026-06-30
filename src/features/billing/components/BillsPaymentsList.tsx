@@ -13,12 +13,13 @@ import AccountingDownloadMenu from '@/features/accounting/components/AccountingD
 
 interface BillsPaymentsProps {
   period?: PeriodFilter
-  residentFilter?: string
+  residentFilter?: string[]
 }
 
 const defaultPeriod: PeriodFilter = { preset: 'all' }
+const defaultResidentFilter: string[] = []
 
-export default function BillsPayments({ period = defaultPeriod, residentFilter = 'all' }: BillsPaymentsProps) {
+export default function BillsPayments({ period = defaultPeriod, residentFilter = defaultResidentFilter }: BillsPaymentsProps) {
   const [sendingStatus, setSendingStatus] = useState<Record<string, boolean>>({})
   const [whatsappSettings, setWhatsappSettings] = useState({
     provider: 'manual',
@@ -141,19 +142,9 @@ export default function BillsPayments({ period = defaultPeriod, residentFilter =
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const sortOptions = [
-    { label: 'Jatuh Tempo: Terlama', sortBy: 'due_date', sortOrder: 'asc' },
-    { label: 'Jatuh Tempo: Terbaru', sortBy: 'due_date', sortOrder: 'desc' },
-    { label: 'Nama: A - Z', sortBy: 'name', sortOrder: 'asc' },
-    { label: 'Nama: Z - A', sortBy: 'name', sortOrder: 'desc' },
-    { label: 'Jenis Iuran: A - Z', sortBy: 'category', sortOrder: 'asc' },
-    { label: 'Jenis Iuran: Z - A', sortBy: 'category', sortOrder: 'desc' },
-    { label: 'Status: A - Z', sortBy: 'status', sortOrder: 'asc' },
-    { label: 'Status: Z - A', sortBy: 'status', sortOrder: 'desc' },
-  ]
-
-  const activeSortOption = sortOptions.find(opt => opt.sortBy === sortBy && opt.sortOrder === sortOrder)
-  const activeLabel = activeSortOption ? activeSortOption.label : 'Jatuh Tempo: Terlama'
+  const sortByLabel = sortBy === 'due_date' ? 'Jatuh Tempo' : sortBy === 'name' ? 'Nama Warga' : sortBy === 'category' ? 'Jenis Iuran' : 'Status'
+  const sortOrderLabel = sortOrder === 'asc' ? 'Terlama' : 'Terbaru'
+  const activeLabel = `${sortByLabel}: ${sortOrderLabel}`
 
   const sortedBills = useMemo(() => {
     return [...filteredBills].sort((a, b) => {
@@ -517,26 +508,52 @@ export default function BillsPayments({ period = defaultPeriod, residentFilter =
                   <span>Urutkan: {activeLabel}</span>
                 </button>
                 {isSortDropdownOpen && (
-                  <div className="absolute right-0 z-50 mt-2 w-56 rounded-xl border border-gray-150 bg-white p-1 shadow-lg divide-y divide-gray-50 animate-in fade-in slide-in-from-top-1 duration-200">
-                    {sortOptions.map((opt, i) => (
-                      <button
-                        key={i}
-                        type="button"
-                        onClick={() => {
-                          setSortBy(opt.sortBy as any)
-                          setSortOrder(opt.sortOrder as any)
-                          setIsSortDropdownOpen(false)
-                        }}
-                        className={cn(
-                          "w-full text-left px-3 py-2 text-xs font-medium rounded-lg transition-colors hover:bg-gray-50",
-                          sortBy === opt.sortBy && sortOrder === opt.sortOrder
-                            ? "text-emerald-700 bg-emerald-50/50"
-                            : "text-gray-600"
-                        )}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
+                  <div className="absolute right-0 z-50 mt-2 w-56 rounded-xl border border-gray-150 bg-white p-1.5 shadow-lg animate-in fade-in slide-in-from-top-1 duration-200 space-y-1">
+                    {/* Categories Group */}
+                    <div className="space-y-0.5">
+                      {[
+                        { label: 'Jatuh Tempo', value: 'due_date' },
+                        { label: 'Nama Warga', value: 'name' },
+                        { label: 'Jenis Iuran', value: 'category' },
+                        { label: 'Status Tagihan', value: 'status' }
+                      ].map((cat) => (
+                        <button
+                          key={cat.value}
+                          type="button"
+                          onClick={() => setSortBy(cat.value as any)}
+                          className={cn(
+                            "w-full text-left px-2.5 py-1.5 text-xs font-medium rounded-lg transition-colors hover:bg-gray-50 flex items-center justify-between",
+                            sortBy === cat.value ? "text-emerald-700 bg-emerald-50/40 font-semibold" : "text-gray-600"
+                          )}
+                        >
+                          <span>{cat.label}</span>
+                          {sortBy === cat.value && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                        </button>
+                      ))}
+                    </div>
+
+                    <hr className="border-gray-150 my-1 mx-1" />
+
+                    {/* Order Directions Group */}
+                    <div className="space-y-0.5">
+                      {[
+                        { label: 'Ascending (A-Z / Terlama)', value: 'asc' },
+                        { label: 'Descending (Z-A / Terbaru)', value: 'desc' }
+                      ].map((dir) => (
+                        <button
+                          key={dir.value}
+                          type="button"
+                          onClick={() => setSortOrder(dir.value as any)}
+                          className={cn(
+                            "w-full text-left px-2.5 py-1.5 text-xs font-medium rounded-lg transition-colors hover:bg-gray-50 flex items-center justify-between",
+                            sortOrder === dir.value ? "text-emerald-700 bg-emerald-50/40 font-semibold" : "text-gray-600"
+                          )}
+                        >
+                          <span>{dir.label}</span>
+                          {sortOrder === dir.value && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>

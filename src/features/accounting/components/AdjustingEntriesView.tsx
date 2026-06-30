@@ -95,7 +95,35 @@ const isAdjustingEntry = (entry: any) => {
   const description = String(entry.description || '').toLowerCase()
   const source = String(entry.source || entry.type || '').toLowerCase()
 
-  return id.startsWith('adj') || source.includes('adjust') || source.includes('penyesuaian') || description.includes('adjusting') || description.includes('penyesuaian')
+}
+
+const formatCurrencyParts = (val: number) => {
+  const formatted = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(val)
+  return { symbol: 'Rp', amount: formatted }
+}
+
+const formatDate = (dateString: string) => {
+  if (!dateString) return '-'
+  const date = new Date(dateString)
+  if (Number.isNaN(date.getTime())) return dateString || '-'
+  const day = date.getDate().toString().padStart(2, '0')
+  let month = ''
+  try {
+    month = date.toLocaleString('id-ID', { month: 'short' })
+  } catch {
+    month = String(date.getMonth() + 1).padStart(2, '0')
+  }
+  const year = date.getFullYear()
+  return `${day}/${month}/${year}`
+}
+
+const formatJournalId = (id: string) => (
+  id.split('-').length > 2 ? `ADJ-${id.split('-')[2].slice(-4)}` : id
+)
+
+const getAccountName = (num: string) => {
+  const acc = defaultEngine.coa.getAccount(num)
+  return acc ? acc.accountName : '-'
 }
 
 export default function AdjustingEntriesView({ period }: AdjustingEntriesViewProps) {
@@ -337,34 +365,7 @@ export default function AdjustingEntriesView({ period }: AdjustingEntriesViewPro
     }
   }
 
-  const formatCurrencyParts = (val: number) => {
-    const formatted = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(val)
-    return { symbol: 'Rp', amount: formatted }
-  }
-
-  const formatDate = (dateString: string) => {
-    if (!dateString) return '-'
-    const date = new Date(dateString)
-    if (Number.isNaN(date.getTime())) return dateString || '-'
-    const day = date.getDate().toString().padStart(2, '0')
-    let month = ''
-    try {
-      month = date.toLocaleString('id-ID', { month: 'short' })
-    } catch {
-      month = String(date.getMonth() + 1).padStart(2, '0')
-    }
-    const year = date.getFullYear()
-    return `${day}/${month}/${year}`
-  }
-
-  const formatJournalId = (id: string) => (
-    id.split('-').length > 2 ? `ADJ-${id.split('-')[2].slice(-4)}` : id
-  )
-
-  const getAccountName = (num: string) => {
-    const acc = defaultEngine.coa.getAccount(num)
-    return acc ? acc.accountName : '-'
-  }
+  // Helper functions moved above component to prevent hoisting ReferenceError
 
   if (loading) {
     return (
