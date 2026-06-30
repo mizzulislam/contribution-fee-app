@@ -1,7 +1,8 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { ArrowUpDown, CheckCircle2, Clock, XCircle, FileText, Search, Bell, Plus, X, Save, Check, Pencil, Trash2, Edit, Loader2 } from 'lucide-react'
 import { TableLoader } from '@/components/ui/TableLoader'
+import { cn } from '@/utils/styles'
 import Select from '@/components/ui/Select'
 import { getPeriodLabel, type PeriodFilter } from '@/features/accounting/calculations/period'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
@@ -12,11 +13,12 @@ import AccountingDownloadMenu from '@/features/accounting/components/AccountingD
 
 interface BillsPaymentsProps {
   period?: PeriodFilter
+  residentFilter?: string
 }
 
 const defaultPeriod: PeriodFilter = { preset: 'all' }
 
-export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsProps) {
+export default function BillsPayments({ period = defaultPeriod, residentFilter = 'all' }: BillsPaymentsProps) {
   const [sendingStatus, setSendingStatus] = useState<Record<string, boolean>>({})
   const [whatsappSettings, setWhatsappSettings] = useState({
     provider: 'manual',
@@ -85,7 +87,7 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
     handleDebtCompensation,
     handleMarkAsPaid,
     payments
-  } = useBillsManager(period)
+  } = useBillsManager(period, residentFilter)
 
   const getContributionData = (contrib: any) => {
     if (!contrib) return { title: '', contribution_types: { name: '' } }
@@ -124,15 +126,59 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
     return bill.month || 'Tagihan Penghuni'
   }
 
+  const [sortBy, setSortBy] = useState<'due_date' | 'name' | 'category' | 'status'>('due_date')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
+  const [isSortDropdownOpen, setIsSortDropdownOpen] = useState(false)
+  const sortDropdownRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (sortDropdownRef.current && !sortDropdownRef.current.contains(event.target as Node)) {
+        setIsSortDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const sortOptions = [
+    { label: 'Jatuh Tempo: Terlama', sortBy: 'due_date', sortOrder: 'asc' },
+    { label: 'Jatuh Tempo: Terbaru', sortBy: 'due_date', sortOrder: 'desc' },
+    { label: 'Nama: A - Z', sortBy: 'name', sortOrder: 'asc' },
+    { label: 'Nama: Z - A', sortBy: 'name', sortOrder: 'desc' },
+    { label: 'Jenis Iuran: A - Z', sortBy: 'category', sortOrder: 'asc' },
+    { label: 'Jenis Iuran: Z - A', sortBy: 'category', sortOrder: 'desc' },
+    { label: 'Status: A - Z', sortBy: 'status', sortOrder: 'asc' },
+    { label: 'Status: Z - A', sortBy: 'status', sortOrder: 'desc' },
+  ]
+
+  const activeSortOption = sortOptions.find(opt => opt.sortBy === sortBy && opt.sortOrder === sortOrder)
+  const activeLabel = activeSortOption ? activeSortOption.label : 'Jatuh Tempo: Terlama'
 
   const sortedBills = useMemo(() => {
     return [...filteredBills].sort((a, b) => {
-      const dateA = new Date(a.due_date).getTime()
-      const dateB = new Date(b.due_date).getTime()
-      return sortOrder === 'asc' ? dateA - dateB : dateB - dateA
+      let valA: any = ''
+      let valB: any = ''
+
+      if (sortBy === 'due_date') {
+        valA = new Date(a.due_date).getTime()
+        valB = new Date(b.due_date).getTime()
+      } else if (sortBy === 'name') {
+        valA = (a.resident_name || '').toLowerCase()
+        valB = (b.resident_name || '').toLowerCase()
+      } else if (sortBy === 'category') {
+        valA = (getBillTitle(a) || '').toLowerCase()
+        valB = (getBillTitle(b) || '').toLowerCase()
+      } else if (sortBy === 'status') {
+        valA = (a.status || '').toLowerCase()
+        valB = (b.status || '').toLowerCase()
+      }
+
+      if (valA < valB) return sortOrder === 'asc' ? -1 : 1
+      if (valA > valB) return sortOrder === 'asc' ? 1 : -1
+      return 0
     })
-  }, [filteredBills, sortOrder])
+  }, [filteredBills, sortBy, sortOrder])
 
   const groupedBills = useMemo(() => {
     const groups: Record<string, typeof sortedBills> = {}
@@ -453,21 +499,47 @@ export default function BillsPayments({ period = defaultPeriod }: BillsPaymentsP
               <input 
                 type="text" 
                 placeholder="Cari penghuni atau tagihan..." 
-                className="form-input pl-10 bg-white"
+                className="form-input pl-10 bg-white h-[42px]"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-                className="text-sm font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 px-3.5 py-2 rounded-xl border border-gray-200 transition-colors flex items-center gap-2 shadow-sm min-h-10"
-              >
-                <ArrowUpDown className="w-4 h-4 text-gray-500" />
-                <span>Urutkan: {sortOrder === 'asc' ? 'Terlama' : 'Terbaru'}</span>
-              </button>
+              {/* Sorting Dropdown */}
+              <div className="relative" ref={sortDropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => setIsSortDropdownOpen(!isSortDropdownOpen)}
+                  className="text-sm font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 px-3.5 py-2 rounded-xl border border-gray-200 transition-colors flex items-center gap-2 shadow-sm h-[42px]"
+                >
+                  <ArrowUpDown className="w-4 h-4 text-gray-500" />
+                  <span>Urutkan: {activeLabel}</span>
+                </button>
+                {isSortDropdownOpen && (
+                  <div className="absolute right-0 z-50 mt-2 w-56 rounded-xl border border-gray-150 bg-white p-1 shadow-lg divide-y divide-gray-50 animate-in fade-in slide-in-from-top-1 duration-200">
+                    {sortOptions.map((opt, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => {
+                          setSortBy(opt.sortBy as any)
+                          setSortOrder(opt.sortOrder as any)
+                          setIsSortDropdownOpen(false)
+                        }}
+                        className={cn(
+                          "w-full text-left px-3 py-2 text-xs font-medium rounded-lg transition-colors hover:bg-gray-50",
+                          sortBy === opt.sortBy && sortOrder === opt.sortOrder
+                            ? "text-emerald-700 bg-emerald-50/50"
+                            : "text-gray-600"
+                        )}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
 
 
 

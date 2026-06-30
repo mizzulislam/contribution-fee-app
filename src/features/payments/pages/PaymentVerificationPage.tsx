@@ -332,7 +332,7 @@ export default function Verification({ period = defaultPeriod }: VerificationPro
             <input 
               type="text" 
               placeholder="Cari penghuni..." 
-              className="form-input pl-10 bg-white"
+              className="form-input pl-10 bg-white h-[42px]"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />

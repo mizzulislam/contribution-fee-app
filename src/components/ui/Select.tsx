@@ -37,7 +37,7 @@ export default function Select({ options, value, onChange, placeholder = 'Pilih.
     <div className={`relative ${className}`} ref={containerRef}>
       <button
         type="button"
-        className="w-full form-input flex items-center justify-between bg-white cursor-pointer hover:border-primary/50 transition-colors text-left"
+        className="w-full form-input flex items-center justify-between bg-white cursor-pointer hover:border-primary/50 transition-colors text-left h-[42px]"
         onClick={() => setIsOpen(!isOpen)}
       >
         <span className={`flex items-center gap-2 truncate ${selectedOption ? 'text-gray-900 font-medium' : 'text-gray-500'}`}>

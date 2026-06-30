@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import { useAuth } from '@/features/auth/hooks/useAuth'
@@ -36,13 +36,60 @@ import MasterData from '@/features/settings/pages/MasterDataPage'
 import NotificationSettings from '@/features/settings/pages/NotificationSettingsPage'
 import BackupRestore from '@/features/settings/pages/BackupRestorePage'
 import SystemSettings from '@/features/settings/pages/SystemSettingsPage'
+import PageControl from '@/features/settings/pages/PageControlPage'
+import { spreadsheetApi } from '@/services/sheets-client'
 
 export default function App() {
   const { loadUser, isLoading } = useAuth()
+  const [disabledPages, setDisabledPages] = useState<string[]>([])
+  const [loadingPages, setLoadingPages] = useState(true)
 
   useEffect(() => {
     loadUser()
   }, [loadUser])
+
+  useEffect(() => {
+    async function loadSettings() {
+      try {
+        const { data } = await spreadsheetApi.get('Settings')
+        if (data && data.length > 0) {
+          const settings = data[0]
+          if (settings.disabledPages) {
+            setDisabledPages(JSON.parse(settings.disabledPages))
+          }
+        }
+      } catch (err) {
+        console.error("Gagal memuat setting rute:", err)
+      } finally {
+        setLoadingPages(false)
+      }
+    }
+    loadSettings()
+    
+    const handleSync = (e: Event) => {
+      const customEvent = e as CustomEvent
+      if (customEvent.detail.sheetName === 'Settings') {
+        loadSettings()
+      }
+    }
+    window.addEventListener('soematra-sync-event', handleSync)
+    return () => window.removeEventListener('soematra-sync-event', handleSync)
+  }, [])
+
+  const restrict = (path: string, element: React.ReactNode) => {
+    if (loadingPages) {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 text-gray-500">
+          <Loader2 className="w-12 h-12 animate-spin text-primary mb-4" />
+          <span className="text-lg font-medium">Memverifikasi akses...</span>
+        </div>
+      )
+    }
+    if (disabledPages.includes(path)) {
+      return <Navigate to="/dashboard" replace />
+    }
+    return element
+  }
 
   if (isLoading) {
     return (
@@ -70,6 +117,7 @@ export default function App() {
             {/* SUPER ADMIN ROUTES */}
             <Route element={<ProtectedRoute allowedRoles={['super admin']} />}>
               <Route path="/dashboard/warga" element={<ManajemenWarga />} />
+              <Route path="/dashboard/page-control" element={<PageControl />} />
               <Route path="/dashboard/roles" element={<RolesPermissions />} />
               <Route path="/dashboard/master" element={<MasterData />} />
               <Route path="/dashboard/audit" element={<AuditLogs />} />
@@ -80,20 +128,20 @@ export default function App() {
   
             {/* ADMIN / BENDAHARA ROUTES */}
             <Route element={<ProtectedRoute allowedRoles={['super admin', 'admin']} />}>
-              <Route path="/dashboard/billing" element={<BillingDashboard />} />
-              <Route path="/dashboard/finance" element={<FinanceDashboard />} />
-              <Route path="/dashboard/gallons-management" element={<GallonsDashboard />} />
-              <Route path="/dashboard/duties" element={<DutySchedules />} />
+              <Route path="/dashboard/billing" element={restrict('/dashboard/billing', <BillingDashboard />)} />
+              <Route path="/dashboard/finance" element={restrict('/dashboard/finance', <FinanceDashboard />)} />
+              <Route path="/dashboard/gallons-management" element={restrict('/dashboard/gallons-management', <GallonsDashboard />)} />
+              <Route path="/dashboard/duties" element={restrict('/dashboard/duties', <DutySchedules />)} />
             </Route>
   
             {/* USER / PENGHUNI ROUTES */}
             <Route element={<ProtectedRoute allowedRoles={['super admin', 'admin', 'user']} />}>
-              <Route path="/dashboard/billing-user" element={<UserBillingDashboard />} />
-              <Route path="/dashboard/information" element={<UserInformationDashboard />} />
+              <Route path="/dashboard/billing-user" element={restrict('/dashboard/billing-user', <UserBillingDashboard />)} />
+              <Route path="/dashboard/information" element={restrict('/dashboard/information', <UserInformationDashboard />)} />
               <Route path="/dashboard/profile" element={<ProfileSettings />} />
-              <Route path="/dashboard/cash-reports" element={<CashReports />} />
-              <Route path="/dashboard/gallons-info" element={<GallonsInfo />} />
-              <Route path="/dashboard/duties-mine" element={<MyDuties />} />
+              <Route path="/dashboard/cash-reports" element={restrict('/dashboard/cash-reports', <CashReports />)} />
+              <Route path="/dashboard/gallons-info" element={restrict('/dashboard/gallons-info', <GallonsInfo />)} />
+              <Route path="/dashboard/duties-mine" element={restrict('/dashboard/duties-mine', <MyDuties />)} />
   
               {/* Legacy Routes Redirect */}
               <Route path="/dashboard/bills" element={<Navigate to="/dashboard/billing-user" replace />} />

@@ -103,7 +103,11 @@ export default function GeneralJournalView({ period }: GeneralJournalViewProps) 
   }
 
   // Sort entries based on date and order state
-  const filteredEntries = filterJournalEntriesByPeriod(entries, period)
+  const filteredEntries = filterJournalEntriesByPeriod(entries, period).filter(entry => {
+    const isClosing = entry.source === 'manual_closing' || String(entry.id).toUpperCase().startsWith('CL-')
+    const isAdjusting = entry.source === 'manual_adjusting' || entry.source === 'depreciation' || entry.source === 'unearned_rent' || String(entry.id).toUpperCase().startsWith('ADJ-')
+    return !isClosing && !isAdjusting
+  })
 
   const sortedEntries = [...filteredEntries].sort((a, b) => {
     const dateA = new Date(a.date).getTime()

@@ -64,7 +64,6 @@ export default function JournalEntryForm({ onSuccess, editingEntry }: JournalEnt
     }
     return 'manual_journal'
   })
-  const [isManualTypeSelection, setIsManualTypeSelection] = useState(false)
   const [error, setError] = useState('')
   const [isSuccessOpen, setIsSuccessOpen] = useState(false)
 
@@ -140,173 +139,6 @@ export default function JournalEntryForm({ onSuccess, editingEntry }: JournalEnt
     const lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate()
     return currentDate.getDate() === lastDayOfMonth
   })()
-
-  const detectAdjustingJournal = (() => {
-    const normalizedDescription = description.toLowerCase()
-    const lines = [...parsedDebitsPreview, ...parsedCreditsPreview]
-    const relatedAccounts = lines
-      .map(line => getAccountByNumber(line.accountNumber))
-      .filter((account): account is Account => Boolean(account))
-
-    const accountNames = relatedAccounts.map(account => account.accountName.toLowerCase())
-    const accountTypes = relatedAccounts.map(account => account.accountType)
-    const accountNumbers = relatedAccounts.map(account => account.accountNumber)
-
-    const hasExpense = accountTypes.includes('Expenses')
-    const hasRevenue = accountTypes.includes('Revenues')
-    const hasAsset = accountTypes.includes('Assets')
-    const hasLiability = accountTypes.includes('Liabilities')
-
-    const keywordMatch = [
-      'penyesuaian',
-      'adjusting',
-      'akrual',
-      'accrual',
-      'deferral',
-      'deferal',
-      'penyusutan',
-      'depresiasi',
-      'amortisasi',
-      'beban dibayar dimuka',
-      'dibayar dimuka',
-      'uang muka',
-      'pendapatan diterima dimuka',
-      'sewa dibayar dimuka',
-      'beban terutang',
-      'pendapatan masih harus diterima'
-    ].some(keyword => normalizedDescription.includes(keyword))
-
-    const accountPatternMatch = accountNames.some(name => (
-      name.includes('akumulasi penyusutan') ||
-      name.includes('penyusutan') ||
-      name.includes('amortisasi') ||
-      name.includes('dibayar dimuka') ||
-      name.includes('uang muka') ||
-      name.includes('terutang') ||
-      name.includes('diterima dimuka')
-    ))
-
-    const numberPatternMatch = accountNumbers.some(number => (
-      number.startsWith('15') ||
-      number === '2102' ||
-      number === '4101' ||
-      number === '5107'
-    ))
-
-    const typePatternMatch =
-      (hasExpense && hasLiability) ||
-      (hasExpense && hasAsset) ||
-      (hasRevenue && hasLiability) ||
-      (hasRevenue && hasAsset)
-
-    const forcedAdjustingSource = ['manual_adjusting', 'depreciation', 'unearned_rent'].includes(editingEntry?.source || '')
-    const isAdjusting = forcedAdjustingSource || keywordMatch || accountPatternMatch || numberPatternMatch || (typePatternMatch && monthEndDate)
-
-    let reason = 'Belum memenuhi pola umum jurnal penyesuaian.'
-    if (forcedAdjustingSource) {
-      reason = 'Entri ini sudah berasal dari sumber jurnal penyesuaian.'
-    } else if (keywordMatch) {
-      reason = 'Keterangan transaksi memuat kata kunci jurnal penyesuaian.'
-    } else if (accountPatternMatch || numberPatternMatch) {
-      reason = 'Akun yang dipilih cocok dengan pola akun penyesuaian.'
-    } else if (typePatternMatch && monthEndDate) {
-      reason = 'Kombinasi tipe akun dan tanggal akhir periode cocok untuk penyesuaian.'
-    }
-
-    return { isAdjusting, reason }
-  })()
-
-  const detectClosingJournal = (() => {
-    const normalizedDescription = description.toLowerCase()
-    const lines = [...parsedDebitsPreview, ...parsedCreditsPreview]
-    const relatedAccounts = lines
-      .map(line => getAccountByNumber(line.accountNumber))
-      .filter((account): account is Account => Boolean(account))
-
-    const accountNames = relatedAccounts.map(account => account.accountName.toLowerCase())
-    const accountTypes = relatedAccounts.map(account => account.accountType)
-    const accountNumbers = relatedAccounts.map(account => account.accountNumber)
-
-    const keywordMatch = [
-      'jurnal penutup',
-      'tutup buku',
-      'closing',
-      'ikhtisar laba rugi',
-      'laba ditahan',
-      'prive',
-      'menutup akun',
-      'penutupan buku'
-    ].some(keyword => normalizedDescription.includes(keyword))
-
-    const accountPatternMatch = accountNames.some(name => (
-      name.includes('ikhtisar laba rugi') ||
-      name.includes('laba ditahan') ||
-      name.includes('prive')
-    ))
-
-    const numberPatternMatch = accountNumbers.some(number => (
-      number === '3500' ||
-      number === '3201' ||
-      number === '3301'
-    ))
-
-    const hasRevenue = accountTypes.includes('Revenues')
-    const hasExpense = accountTypes.includes('Expenses')
-    const hasEquity = accountTypes.includes('Equity')
-    const typePatternMatch = (hasRevenue && hasEquity) || (hasExpense && hasEquity)
-
-    const currentDate = new Date(date)
-    const endOfYearDate = !Number.isNaN(currentDate.getTime()) && currentDate.getMonth() === 11 && currentDate.getDate() === 31
-
-    const forcedClosingSource = ['manual_closing'].includes(editingEntry?.source || '') || normalizedDescription.includes('jurnal penutup:')
-    const isClosing = forcedClosingSource || keywordMatch || accountPatternMatch || numberPatternMatch || (typePatternMatch && endOfYearDate)
-
-    let reason = 'Belum memenuhi pola umum jurnal penutup.'
-    if (forcedClosingSource) {
-      reason = 'Entri ini sudah berasal dari sumber jurnal penutup.'
-    } else if (keywordMatch) {
-      reason = 'Keterangan transaksi memuat kata kunci jurnal penutup.'
-    } else if (accountPatternMatch || numberPatternMatch) {
-      reason = 'Akun yang dipilih cocok dengan pola akun penutup.'
-    } else if (typePatternMatch && endOfYearDate) {
-      reason = 'Kombinasi akun nominal dan ekuitas pada akhir tahun cocok untuk penutupan buku.'
-    }
-
-    return { isClosing, reason }
-  })()
-
-  const journalClassification = (() => {
-    if (detectClosingJournal.isClosing) {
-      return {
-        label: 'Terdeteksi sebagai jurnal penutup',
-        reason: detectClosingJournal.reason,
-        source: 'manual_closing',
-        tone: 'red' as const,
-      }
-    }
-
-    if (detectAdjustingJournal.isAdjusting) {
-      return {
-        label: 'Terdeteksi sebagai jurnal penyesuaian',
-        reason: detectAdjustingJournal.reason,
-        source: 'manual_adjusting',
-        tone: 'emerald' as const,
-      }
-    }
-
-    return {
-      label: 'Terdeteksi sebagai jurnal umum',
-      reason: 'Transaksi ini belum memenuhi pola jurnal penyesuaian atau jurnal penutup.',
-      source: 'manual_journal',
-      tone: 'slate' as const,
-    }
-  })()
-
-  useEffect(() => {
-    if (!editingEntry && !isManualTypeSelection) {
-      setJournalType(journalClassification.source)
-    }
-  }, [journalClassification.source, isManualTypeSelection, editingEntry])
 
   const handleRecord = async () => {
     setError('')
@@ -466,7 +298,7 @@ export default function JournalEntryForm({ onSuccess, editingEntry }: JournalEnt
   return (
     <div className="bg-white p-6 sm:p-8 md:p-10 w-full">
       <div className="flex justify-between items-center border-b pb-5 mb-6 border-gray-100 pr-12">
-        <h3 className="font-bold text-gray-900 text-xl tracking-tight">{editingEntry ? 'Edit Jurnal Umum' : 'Input Jurnal Cepat (Compound Entry)'}</h3>
+        <h3 className="font-bold text-gray-900 text-xl tracking-tight">{editingEntry ? 'Edit Jurnal Umum' : 'Catat Transaksi'}</h3>
       </div>
       
       {error && (
@@ -495,39 +327,12 @@ export default function JournalEntryForm({ onSuccess, editingEntry }: JournalEnt
               value={journalType}
               onChange={(val) => {
                 setJournalType(val)
-                setIsManualTypeSelection(true)
               }}
             />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Keterangan Transaksi</label>
             <input type="text" className="form-input w-full" placeholder="Contoh: Pembayaran asuransi bangunan..." value={description} onChange={(e) => setDescription(e.target.value)} />
-          </div>
-        </div>
-
-        <div className={`rounded-2xl border px-4 py-3 flex items-start gap-3 ${
-          journalClassification.tone === 'red'
-            ? 'bg-red-50 border-red-200 text-red-900'
-            : journalClassification.tone === 'emerald'
-              ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
-              : 'bg-slate-50 border-slate-200 text-slate-700'
-        }`}>
-          <div className={`mt-0.5 p-2 rounded-xl ${
-            journalClassification.tone === 'red'
-              ? 'bg-red-100 text-red-700'
-              : journalClassification.tone === 'emerald'
-                ? 'bg-emerald-100 text-emerald-700'
-                : 'bg-slate-100 text-slate-500'
-          }`}>
-            <Sparkles className="w-4 h-4" />
-          </div>
-          <div>
-            <div className="text-sm font-semibold">
-              {journalClassification.label}
-            </div>
-            <p className="text-xs mt-1 leading-relaxed">
-              {journalClassification.reason}
-            </p>
           </div>
         </div>
 

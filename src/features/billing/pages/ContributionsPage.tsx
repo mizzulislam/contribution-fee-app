@@ -374,7 +374,7 @@ export default function ContributionsList() {
               placeholder="Cari iuran..." 
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="form-input pl-9"
+              className="form-input pl-9 h-[42px]"
             />
           </div>
         </div>

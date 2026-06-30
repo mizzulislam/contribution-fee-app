@@ -245,20 +245,27 @@ export default function DutySchedules() {
               {displaySchedules.map((schedule, index) => {
                 const isNextInLine = schedule.status !== 'Selesai' && index === 0;
                 
+                const formatDateSafe = (dateStr: string) => {
+                  if (!dateStr) return 'Tanggal Belum Diatur'
+                  const d = new Date(dateStr)
+                  if (Number.isNaN(d.getTime())) return dateStr
+                  return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+                }
+
                 return (
                 <div 
                   key={schedule.id}
                   className={
                     isNextInLine
-                      ? "border-2 border-[#10B981] bg-gradient-to-br from-[#ECFDF5] to-white p-5 rounded-[14px] flex flex-col justify-between shadow-md transform hover:-translate-y-1 transition-all"
+                      ? "border-2 border-emerald-400 bg-gradient-to-br from-emerald-50/40 via-emerald-50/5 to-white p-5 rounded-2xl flex flex-col justify-between shadow-[0_4px_20px_-2px_rgba(16,185,129,0.12)] hover:shadow-[0_8px_30px_rgba(16,185,129,0.22)] hover:scale-[1.03] hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group"
                       : schedule.status === 'Selesai'
-                      ? "border border-gray-200 p-5 rounded-[14px] flex flex-col justify-between bg-gray-50/40 opacity-80"
-                      : "border border-[#E5E7EB] p-5 rounded-[14px] flex flex-col justify-between bg-white hover:shadow-sm transition-colors"
+                      ? "border border-gray-200 p-5 rounded-2xl flex flex-col justify-between bg-gray-50/60 opacity-60 hover:opacity-90 transition-all duration-300"
+                      : "border border-gray-200/80 p-5 rounded-2xl flex flex-col justify-between bg-white shadow-sm hover:shadow-md hover:scale-[1.02] hover:-translate-y-0.5 transition-all duration-300"
                   }
                 >
                   <div className="flex justify-between items-start mb-4">
-                    <p className={`font-bold text-lg flex items-center gap-2 ${isNextInLine ? 'text-[#047857]' : 'text-gray-800'}`}>
-                      <ListOrdered className="w-5 h-5 opacity-70" /> {schedule.date || 'Antrean'}
+                    <p className={`font-semibold text-xs tracking-wide uppercase ${isNextInLine ? 'text-emerald-700 font-bold' : 'text-gray-400'}`}>
+                      {formatDateSafe(schedule.date)}
                     </p>
                     
                     {/* Action Buttons */}
@@ -308,33 +315,40 @@ export default function DutySchedules() {
                         </div>
                       </div>
                     ) : (
-                      <>
-                        <p className={`text-[15px] font-semibold flex items-center gap-2 mb-2 ${isNextInLine ? 'text-[#047857]/90' : 'text-gray-700'}`}>
-                          <Users className="w-4 h-4 opacity-60 flex-shrink-0" /> <span className="truncate">{schedule.user}</span>
+                      <div className="mt-1 mb-4">
+                        <h4 className={`text-lg font-bold truncate flex items-center gap-2 ${isNextInLine ? 'text-emerald-950 font-extrabold' : 'text-gray-800'}`}>
+                          <Users className="w-4 h-4 opacity-50 flex-shrink-0" />
+                          {schedule.user}
+                        </h4>
+                        <p className={`text-xs mt-1.5 line-clamp-2 leading-relaxed ${isNextInLine ? 'text-emerald-700/80 font-medium' : 'text-gray-500'}`}>
+                          Tugas: {schedule.task || 'Ganti galon kos.'}
                         </p>
-                        <p className="text-xs text-gray-500 pl-6 mb-4 line-clamp-2">Tugas: {schedule.task}</p>
-                      </>
+                      </div>
                     )}
                   </div>
                   
                   <div className="w-full pt-4 border-t border-gray-100 flex justify-end">
                     {schedule.status === 'Selesai' ? (
-                      <span className="badge badge-success px-4 py-2 flex items-center justify-center w-full shadow-sm bg-emerald-100 text-emerald-700">
-                        <CheckCircle2 className="w-4 h-4 mr-2" /> Selesai
+                      <span className="w-full inline-flex items-center justify-center px-3 py-2 bg-gray-100 border border-gray-200 text-gray-500 text-xs font-semibold rounded-xl">
+                        <CheckCircle2 className="w-4 h-4 mr-2 text-gray-400" /> Selesai
                       </span>
                     ) : isNextInLine && activeRole === 'user' ? (
                       <button 
                         onClick={() => handleConfirm(schedule.id)}
                         disabled={isConfirming === schedule.id || editingId === schedule.id}
-                        className="w-full bg-[#10B981] text-white px-5 py-2.5 rounded-[10px] text-sm font-bold flex items-center justify-center hover:bg-[#047857] transition-all shadow-md hover:shadow-lg focus:ring-2 focus:ring-offset-2 focus:ring-[#10B981] disabled:opacity-70 disabled:cursor-not-allowed"
+                        className="w-full bg-emerald-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center hover:bg-emerald-700 transition-all shadow-md hover:shadow-lg focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-70 disabled:cursor-not-allowed"
                       >
                         {isConfirming === schedule.id ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <CheckSquare className="w-5 h-5 mr-2" />} 
                         Selesaikan Giliran
                       </button>
                     ) : isNextInLine ? (
-                      <span className="badge bg-emerald-50 text-emerald-700 px-3 py-1.5 w-full text-center">Giliran Berjalan</span>
+                      <span className="w-full inline-flex items-center justify-center px-3 py-2 bg-emerald-100 border border-emerald-200 text-emerald-800 text-xs font-bold rounded-xl animate-pulse">
+                        Giliran Berjalan
+                      </span>
                     ) : (
-                      <span className="badge bg-gray-100 text-gray-600 px-3 py-1.5 w-full text-center">Menunggu</span>
+                      <span className="w-full inline-flex items-center justify-center px-3 py-2 bg-slate-50 border border-slate-100 text-slate-500 text-xs font-medium rounded-xl">
+                        Menunggu Giliran
+                      </span>
                     )}
                   </div>
                 </div>

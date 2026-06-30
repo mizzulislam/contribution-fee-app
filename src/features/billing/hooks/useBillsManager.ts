@@ -17,7 +17,7 @@ interface AlertDialogState {
   onConfirm?: () => void
 }
 
-export function useBillsManager(period: PeriodFilter = { preset: 'all' }) {
+export function useBillsManager(period: PeriodFilter = { preset: 'all' }, residentFilter = 'all') {
   const [bills, setBills] = useState<Bill[]>([])
   const [users, setUsers] = useState<User[]>([])
   const [templates, setTemplates] = useState<any[]>([])
@@ -952,7 +952,7 @@ export function useBillsManager(period: PeriodFilter = { preset: 'all' }) {
     }
   }
 
-  // Filter bills based on search query and period filter
+  // Filter bills based on search query, period filter, and resident filter
   const filteredBills = bills.filter(bill => {
     const query = search.toLowerCase()
     
@@ -970,7 +970,10 @@ export function useBillsManager(period: PeriodFilter = { preset: 'all' }) {
     // Check period lock & dates
     const matchesPeriod = isDateInPeriod(bill.due_date, period)
     
-    return matchesSearch && matchesPeriod
+    // Check resident filter
+    const matchesResident = residentFilter === 'all' || bill.resident_name === residentFilter
+
+    return matchesSearch && matchesPeriod && matchesResident
   })
 
   return {

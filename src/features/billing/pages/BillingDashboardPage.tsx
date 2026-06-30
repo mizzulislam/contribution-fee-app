@@ -4,6 +4,8 @@ import { CalendarDays, FileText, Filter, ReceiptText, SearchCheck, BellRing } fr
 import { cn } from '@/utils/styles'
 import Select from '@/components/ui/Select'
 import { getPeriodLabel, getPresetPeriod, type PeriodFilter, type PeriodPreset } from '@/features/accounting/calculations/period'
+import { spreadsheetApi } from '@/services/sheets-client'
+import type { User } from '@/types/database'
 
 // Import Sub-pages
 import ContributionsList from '@/features/billing/pages/ContributionsPage'
@@ -19,6 +21,8 @@ export default function BillingDashboard() {
   const [period, setPeriod] = useState<PeriodFilter>({ preset: 'all' })
   const [customStartDate, setCustomStartDate] = useState('')
   const [customEndDate, setCustomEndDate] = useState('')
+  const [residents, setResidents] = useState<User[]>([])
+  const [residentFilter, setResidentFilter] = useState('all')
   const periodDropdownRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -26,6 +30,21 @@ export default function BillingDashboard() {
       setActiveTab(tabParam)
     }
   }, [tabParam])
+
+  useEffect(() => {
+    async function loadResidents() {
+      try {
+        const { data } = await spreadsheetApi.get('Users')
+        if (data && Array.isArray(data)) {
+          const userRoleUsers = (data as User[]).filter(u => (!u.status || u.status === 'Aktif') && String(u.role).includes('user'))
+          setResidents(userRoleUsers)
+        }
+      } catch (err) {
+        console.error('Failed to load residents for filter:', err)
+      }
+    }
+    loadResidents()
+  }, [])
 
   const handleTabChange = (id: string) => {
     setActiveTab(id)
@@ -105,19 +124,33 @@ export default function BillingDashboard() {
           <button
             type="button"
             onClick={() => setIsPeriodOpen(prev => !prev)}
-            className="w-full lg:w-auto form-input flex items-center justify-between bg-white cursor-pointer hover:border-primary/50 transition-colors text-left"
+            className="w-full lg:w-auto form-input flex items-center justify-between bg-white cursor-pointer hover:border-primary/50 transition-colors text-left h-[42px]"
           >
             <span className="flex items-center gap-2 truncate text-gray-900 font-medium">
               <span className="flex-shrink-0">
                 <Filter className="h-4 w-4 text-emerald-600" />
               </span>
-              Filter: {getPeriodLabel(period)}
+              Filter: {getPeriodLabel(period)}{residentFilter !== 'all' ? ` • ${residentFilter.split(' ')[0]}` : ''}
             </span>
             <CalendarDays className="h-4 w-4 text-gray-400 flex-shrink-0 ml-2" />
           </button>
 
           {isPeriodOpen && (
-            <div className="absolute right-0 z-40 mt-2 w-full lg:w-[min(22rem,calc(100vw-2rem))] rounded-2xl border border-gray-100 bg-white p-4 shadow-xl shadow-gray-200/60">
+            <div className="absolute right-0 z-40 mt-2 w-full lg:w-[min(22rem,calc(100vw-2rem))] rounded-2xl border border-gray-100 bg-white p-4 shadow-xl shadow-gray-200/60 space-y-4">
+              {/* Resident Filter */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1.5">Orang/Penghuni</label>
+                <Select
+                  options={[
+                    { label: 'Semua Penghuni', value: 'all' },
+                    ...residents.map(u => ({ label: `${u.full_name} (Kamar ${u.room_number || '-'})`, value: u.full_name }))
+                  ]}
+                  value={residentFilter}
+                  onChange={setResidentFilter}
+                  placeholder="Pilih penghuni..."
+                />
+              </div>
+
               <div className="grid grid-cols-2 gap-2">
                 {[
                   { label: 'Semua', value: 'all' },
@@ -141,7 +174,7 @@ export default function BillingDashboard() {
                 ))}
               </div>
 
-              <div className="mt-4 border-t border-gray-100 pt-4">
+              <div className="border-t border-gray-100 pt-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <label className="text-xs font-semibold text-gray-600">
                     Dari
@@ -165,7 +198,7 @@ export default function BillingDashboard() {
                 <button
                   type="button"
                   onClick={() => applyPresetPeriod('custom')}
-                  className="btn-primary mt-3 w-full justify-center py-2 text-sm"
+                  className="btn-primary mt-3 w-full justify-center py-2 text-sm h-[42px] flex items-center"
                 >
                   Terapkan Periode Custom
                 </button>
@@ -177,7 +210,7 @@ export default function BillingDashboard() {
 
       {/* Render Active Component */}
       <div className="pt-2">
-        {activeTab === 'bills' && <BillsPayments period={period} />}
+        {activeTab === 'bills' && <BillsPayments period={period} residentFilter={residentFilter} />}
         {activeTab === 'contributions' && <ContributionsList />}
         {activeTab === 'verification' && <Verification period={period} />}
         {activeTab === 'reminders' && <Reminders period={period} />}

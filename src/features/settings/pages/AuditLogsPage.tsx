@@ -59,12 +59,12 @@ export default function AuditLogs() {
             <input 
               type="text" 
               placeholder="Cari aksi atau pengguna..." 
-              className="form-input pl-10 bg-white"
+              className="form-input pl-10 bg-white h-[42px]"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <button className="btn-secondary flex items-center">
+          <button className="btn-secondary flex items-center h-[42px]">
             <Filter className="w-4 h-4 mr-2" /> Filter Waktu
           </button>
         </div>
