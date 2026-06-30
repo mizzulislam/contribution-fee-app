@@ -26,19 +26,31 @@ const PAGES_LIST: PageItem[] = [
 ]
 
 export default function PageControl() {
-  const [disabledPages, setDisabledPages] = useState<string[]>([])
-  const [loading, setLoading] = useState(true)
+  const [disabledPages, setDisabledPages] = useState<string[]>(() => {
+    try {
+      const cached = localStorage.getItem('soematra_disabled_pages')
+      return cached ? JSON.parse(cached) : []
+    } catch {
+      return []
+    }
+  })
+  const [loading, setLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [toastMessage, setToastMessage] = useState('')
 
   const fetchPageSettings = async () => {
-    setLoading(true)
+    const hasCache = localStorage.getItem('soematra_disabled_pages') !== null
+    if (!hasCache) {
+      setLoading(true)
+    }
     try {
       const { data } = await spreadsheetApi.get('Settings')
       if (data && data.length > 0) {
         const settings = data[0]
         if (settings.disabledPages) {
-          setDisabledPages(JSON.parse(settings.disabledPages))
+          const parsed = JSON.parse(settings.disabledPages)
+          setDisabledPages(parsed)
+          localStorage.setItem('soematra_disabled_pages', JSON.stringify(parsed))
         }
       }
     } catch (err) {
@@ -53,13 +65,19 @@ export default function PageControl() {
   }, [])
 
   const handleToggle = async (path: string) => {
-    setIsSaving(true)
     const newDisabled = disabledPages.includes(path)
       ? disabledPages.filter(p => p !== path)
       : [...disabledPages, path]
 
     setDisabledPages(newDisabled)
+    localStorage.setItem('soematra_disabled_pages', JSON.stringify(newDisabled))
 
+    // Dispatch local sync event immediately so the Sidebar/App routes update in real-time
+    window.dispatchEvent(new CustomEvent('soematra-sync-event', {
+      detail: { sheetName: 'Settings' }
+    }))
+
+    setIsSaving(true)
     try {
       const { data } = await spreadsheetApi.get('Settings')
       const existing = data && data.length > 0 ? data[0] : {}
@@ -80,7 +98,7 @@ export default function PageControl() {
       setTimeout(() => setToastMessage(''), 3000)
     } catch (err) {
       console.error(err)
-      setToastMessage('Gagal memperbarui akses halaman.')
+      setToastMessage('Gagal menyinkronkan akses halaman ke cloud.')
       setTimeout(() => setToastMessage(''), 3000)
     } finally {
       setIsSaving(false)

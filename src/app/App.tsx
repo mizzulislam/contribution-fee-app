@@ -41,8 +41,14 @@ import { spreadsheetApi } from '@/services/sheets-client'
 
 export default function App() {
   const { loadUser, isLoading } = useAuth()
-  const [disabledPages, setDisabledPages] = useState<string[]>([])
-  const [loadingPages, setLoadingPages] = useState(true)
+  const [disabledPages, setDisabledPages] = useState<string[]>(() => {
+    try {
+      const cached = localStorage.getItem('soematra_disabled_pages')
+      return cached ? JSON.parse(cached) : []
+    } catch {
+      return []
+    }
+  })
 
   useEffect(() => {
     loadUser()
@@ -55,13 +61,13 @@ export default function App() {
         if (data && data.length > 0) {
           const settings = data[0]
           if (settings.disabledPages) {
-            setDisabledPages(JSON.parse(settings.disabledPages))
+            const parsed = JSON.parse(settings.disabledPages)
+            setDisabledPages(parsed)
+            localStorage.setItem('soematra_disabled_pages', JSON.stringify(parsed))
           }
         }
       } catch (err) {
         console.error("Gagal memuat setting rute:", err)
-      } finally {
-        setLoadingPages(false)
       }
     }
     loadSettings()
@@ -77,14 +83,6 @@ export default function App() {
   }, [])
 
   const restrict = (path: string, element: React.ReactNode) => {
-    if (loadingPages) {
-      return (
-        <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 text-gray-500">
-          <Loader2 className="w-12 h-12 animate-spin text-primary mb-4" />
-          <span className="text-lg font-medium">Memverifikasi akses...</span>
-        </div>
-      )
-    }
     if (disabledPages.includes(path)) {
       return <Navigate to="/dashboard" replace />
     }

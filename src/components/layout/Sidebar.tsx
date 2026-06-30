@@ -20,7 +20,14 @@ export function Sidebar() {
   const { isCollapsed, isMobileOpen, toggleCollapsed, closeMobile } = useSidebarStore()
 
   const [isMobile, setIsMobile] = useState(false)
-  const [disabledPages, setDisabledPages] = useState<string[]>([])
+  const [disabledPages, setDisabledPages] = useState<string[]>(() => {
+    try {
+      const cached = localStorage.getItem('soematra_disabled_pages')
+      return cached ? JSON.parse(cached) : []
+    } catch {
+      return []
+    }
+  })
 
   useEffect(() => {
     const checkMobile = () => {
@@ -38,7 +45,9 @@ export function Sidebar() {
         if (data && data.length > 0) {
           const settings = data[0]
           if (settings.disabledPages) {
-            setDisabledPages(JSON.parse(settings.disabledPages))
+            const parsed = JSON.parse(settings.disabledPages)
+            setDisabledPages(parsed)
+            localStorage.setItem('soematra_disabled_pages', JSON.stringify(parsed))
           }
         }
       } catch (err) {

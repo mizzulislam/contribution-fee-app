@@ -113,23 +113,33 @@ function buildHeaders() {
   }
 }
 
-async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 15000): Promise<Response> {
-  const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const response = await fetch(url, {
-      ...options,
-      signal: controller.signal
-    });
-    clearTimeout(id);
-    return response;
-  } catch (error: any) {
-    clearTimeout(id);
-    if (error.name === 'AbortError') {
-      throw new Error('Koneksi ke Google Sheets timeout (melebihi 15 detik). Silakan coba lagi.');
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 30000, retries = 2): Promise<Response> {
+  let attempt = 0;
+  while (attempt <= retries) {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal
+      });
+      clearTimeout(id);
+      return response;
+    } catch (error: any) {
+      clearTimeout(id);
+      attempt++;
+      if (attempt > retries) {
+        if (error.name === 'AbortError') {
+          throw new Error(`Koneksi ke Google Sheets timeout (melebihi ${timeoutMs / 1000} detik). Silakan coba lagi.`);
+        }
+        throw error;
+      }
+      const delay = Math.pow(2, attempt) * 1000;
+      console.warn(`Spreadsheet connection failed, retrying in ${delay}ms... (Attempt ${attempt}/${retries})`);
+      await new Promise(resolve => setTimeout(resolve, delay));
     }
-    throw error;
   }
+  throw new Error('Gagal menghubungi Spreadsheet setelah beberapa percobaan.');
 }
 
 async function parseJsonResponse<T = any>(response: Response): Promise<T> {
