@@ -139,7 +139,7 @@ function isOfficialPaymentSource(source: string) {
 function isDebtCompensationJournal(entry: JournalEntryRow) {
   const description = normalizeText(entry.description)
   const source = normalizeText(String((entry as any).source || ''))
-  return source.includes('debt_compensation') || description.includes('kompensasi utang')
+  return source.includes('debt compensation') || description.includes('kompensasi utang')
 }
 
 function getResidentAliases(bill: BillRow, users: UserRow[]) {

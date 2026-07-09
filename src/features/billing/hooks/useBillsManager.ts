@@ -666,8 +666,27 @@ export function useBillsManager(period: PeriodFilter = { preset: 'all' }, reside
     }
 
     if (newBill.resident_name === 'ALL') {
-      const activeUsers = users.filter(u => (!u.status || u.status === 'Aktif') && String(u.role).includes('user'))
+      const activeUsers = users.filter(u => {
+        const statusStr = String(u.status || '').toLowerCase()
+        const roleStr = String(u.role || '').toLowerCase()
+        return (!u.status || statusStr === 'aktif' || statusStr === 'active') && roleStr.includes('user')
+      })
       billsToAdd = activeUsers.map((user, idx) => ({
+        id: generateSecureId('BIL'),
+        resident_name: user.full_name,
+        resident_email: user.email,
+        room_number: user.room_number || 'N/A',
+        title: contributionPayload.title,
+        contributions: JSON.stringify(contributionPayload),
+        category: contributionPayload.contribution_types.name,
+        due_date: newBill.due_date,
+        amount: Number(newBill.amount),
+        status: 'unpaid'
+      }))
+    } else if (newBill.resident_name.includes(',')) {
+      const selectedNames = newBill.resident_name.split(',').map(n => n.trim()).filter(Boolean)
+      const selectedUsers = users.filter(u => selectedNames.includes(u.full_name))
+      billsToAdd = selectedUsers.map((user) => ({
         id: generateSecureId('BIL'),
         resident_name: user.full_name,
         resident_email: user.email,

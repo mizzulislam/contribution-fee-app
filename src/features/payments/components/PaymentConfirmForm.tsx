@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { UploadCloud, FileText, CheckCircle2, Loader2 } from 'lucide-react'
+import { UploadCloud, FileText, CheckCircle2, Loader2, Tag, Coins, CalendarCheck, Clock, Send } from 'lucide-react'
 import Select from '@/components/ui/Select'
 import { spreadsheetApi } from '@/services/sheets-client'
 import { useAuth } from '@/features/auth/hooks/useAuth'
@@ -197,6 +197,7 @@ export default function PaymentConfirm() {
         proofDataUrl,
         status: 'pending_verification',
         title: getBillTitle(selectedBill),
+        month: selectedBill.month || '',
         resident_name: profile?.full_name || selectedBill.resident_name || '',
         resident_email: profile?.email || selectedBill.resident_email || '',
         room_number: profile?.room_number || selectedBill.room_number || '',
@@ -217,23 +218,122 @@ export default function PaymentConfirm() {
   }
 
   if (isSuccess) {
+    const selectedBill = bills.find(b => String(b.id) === String(billId))
+    const selectedMethod = paymentMethods.find(m => m.id === bankTarget)
+
     return (
-      <div className="space-y-6 mt-10">
-        <div className="card-container p-10 text-center flex flex-col items-center">
-          <div className="w-20 h-20 bg-success/10 rounded-full flex items-center justify-center mb-6">
-            <CheckCircle2 className="w-10 h-10 text-success" />
+      <div className="space-y-6 mt-6">
+        <div className="card-container relative overflow-hidden">
+
+          {/* Top gradient banner */}
+          <div className="absolute top-0 left-0 right-0 h-56 bg-gradient-to-br from-emerald-500/10 via-teal-400/5 to-transparent pointer-events-none" />
+
+          {/* Hero zone */}
+          <div className="relative z-10 flex flex-col sm:flex-row items-center gap-6 p-8 pb-6 border-b border-gray-100">
+            {/* Glow icon */}
+            <div className="relative shrink-0">
+              <div className="absolute inset-0 rounded-full bg-emerald-400/25 blur-xl scale-150 animate-pulse" />
+              <div className="relative h-20 w-20 flex items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-teal-600 text-white shadow-xl shadow-emerald-500/30 border-4 border-white">
+                <CheckCircle2 className="w-10 h-10" />
+              </div>
+            </div>
+            {/* Title + desc */}
+            <div className="text-center sm:text-left">
+              <div className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 text-[10px] font-semibold px-2.5 py-1 rounded-full border border-emerald-200 mb-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse inline-block" />
+                Berhasil Dikirim
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-1">Konfirmasi Pembayaran Diterima!</h2>
+              <p className="text-sm text-gray-500 leading-relaxed">
+                Bukti transfer Anda sedang menunggu verifikasi oleh <span className="font-semibold text-gray-700">Bendahara</span>.
+                Biasanya selesai dalam <span className="font-semibold text-gray-700">1×24 jam</span>.
+              </p>
+            </div>
           </div>
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Konfirmasi Berhasil Dikirim!</h2>
-          <p className="text-xs sm:text-sm text-text-secondary mb-8">
-            Bukti pembayaran Anda telah kami terima dan sedang menunggu verifikasi dari Bendahara. 
-            Proses verifikasi biasanya memakan waktu 1x24 jam.
-          </p>
-          <button 
-            onClick={() => setIsSuccess(false)}
-            className="btn-primary"
-          >
-            Kirim Konfirmasi Lainnya
-          </button>
+
+          {/* Receipt detail grid */}
+          <div className="relative z-10 p-8 pt-6">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">Ringkasan Konfirmasi</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
+
+              {/* Tagihan */}
+              {selectedBill && (
+                <div className="flex items-start gap-3 bg-gray-50 border border-gray-100 rounded-xl p-4 hover:bg-emerald-50/40 hover:border-emerald-100 transition-colors">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
+                    <Tag className="w-4 h-4 text-emerald-600" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wide">Tagihan</p>
+                    <p className="text-sm font-semibold text-gray-800 leading-tight mt-0.5 truncate">{getBillTitle(selectedBill)}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Nominal */}
+              <div className="flex items-start gap-3 bg-gray-50 border border-gray-100 rounded-xl p-4 hover:bg-amber-50/40 hover:border-amber-100 transition-colors">
+                <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
+                  <Coins className="w-4 h-4 text-amber-600" />
+                </div>
+                <div>
+                  <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wide">Nominal Transfer</p>
+                  <p className="text-base font-bold text-emerald-600 mt-0.5">
+                    Rp {new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(Number(amount) || 0)}
+                  </p>
+                </div>
+              </div>
+
+              {/* Tanggal */}
+              <div className="flex items-start gap-3 bg-gray-50 border border-gray-100 rounded-xl p-4 hover:bg-sky-50/40 hover:border-sky-100 transition-colors">
+                <div className="w-8 h-8 rounded-lg bg-sky-100 flex items-center justify-center shrink-0">
+                  <CalendarCheck className="w-4 h-4 text-sky-600" />
+                </div>
+                <div>
+                  <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wide">Tanggal Transfer</p>
+                  <p className="text-sm font-semibold text-gray-800 mt-0.5">
+                    {date ? new Date(date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '-'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Bank Tujuan */}
+              {selectedMethod && (
+                <div className="flex items-start gap-3 bg-gray-50 border border-gray-100 rounded-xl p-4 hover:bg-indigo-50/40 hover:border-indigo-100 transition-colors">
+                  <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center shrink-0">
+                    <Send className="w-4 h-4 text-indigo-600" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wide">Bank Tujuan</p>
+                    <p className="text-sm font-semibold text-gray-800 mt-0.5">{selectedMethod.bank_name}</p>
+                    {selectedMethod.account_name && (
+                      <p className="text-[10px] text-gray-400 truncate">{selectedMethod.account_name}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Status */}
+              <div className="flex items-start gap-3 bg-amber-50/60 border border-amber-100 rounded-xl p-4">
+                <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
+                  <Clock className="w-4 h-4 text-amber-600" />
+                </div>
+                <div>
+                  <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wide">Status</p>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse inline-block" />
+                    <span className="text-sm font-semibold text-amber-700">Menunggu Verifikasi</span>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <button
+              onClick={() => setIsSuccess(false)}
+              className="btn-primary w-full py-3 font-semibold text-sm shadow-md shadow-emerald-500/20"
+            >
+              Kirim Konfirmasi Lainnya
+            </button>
+          </div>
         </div>
       </div>
     )

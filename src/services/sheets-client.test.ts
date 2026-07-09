@@ -65,7 +65,8 @@ describe('Spreadsheet normalizeData utility', () => {
       due_date: '2026-06-12',
       resident_email: 'budi@test.com',
       resident_name: 'Budi',
-      room_number: '101'
+      room_number: '101',
+      month: 'Juni'
     })
 
     expect(normalized[1].amount).toBe(0)

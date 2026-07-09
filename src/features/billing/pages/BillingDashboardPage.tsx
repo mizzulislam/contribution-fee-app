@@ -141,10 +141,20 @@ export default function BillingDashboard() {
 
         {/* Filter Button (w-full on mobile, auto on desktop) */}
         <div ref={periodDropdownRef} className="relative w-full lg:w-auto flex lg:block">
+          {isPeriodOpen && (
+            <div
+              onClick={() => setIsPeriodOpen(false)}
+              className="fixed inset-0 z-[45] bg-gray-900/40 backdrop-blur-[2px] animate-in fade-in duration-250 cursor-pointer"
+            />
+          )}
+
           <button
             type="button"
             onClick={() => setIsPeriodOpen(prev => !prev)}
-            className="w-full lg:w-auto form-input flex items-center justify-between bg-white cursor-pointer hover:border-primary/50 transition-colors text-left h-[42px]"
+            className={cn(
+              "w-full lg:w-auto form-input flex items-center justify-between bg-white cursor-pointer hover:border-primary/50 transition-colors text-left h-[42px]",
+              isPeriodOpen ? "z-50 relative shadow-md" : "z-10 relative"
+            )}
           >
             <span className="flex items-center gap-2 truncate text-gray-900 font-medium">
               <span className="flex-shrink-0">
@@ -156,7 +166,7 @@ export default function BillingDashboard() {
           </button>
 
           {isPeriodOpen && (
-            <div className="absolute right-0 z-40 mt-2 w-full lg:w-[min(22rem,calc(100vw-2rem))] rounded-2xl border border-gray-100 bg-white p-4 shadow-xl shadow-gray-200/60 space-y-4">
+            <div className="absolute right-0 z-50 mt-2 w-full lg:w-[min(22rem,calc(100vw-2rem))] rounded-2xl border border-gray-100 bg-white p-4 shadow-xl shadow-gray-200/60 space-y-4">
               {/* Resident Filter */}
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-2">Orang/Penghuni</label>

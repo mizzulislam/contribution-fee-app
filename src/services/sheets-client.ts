@@ -466,6 +466,49 @@ export function normalizeData(sheetName: string, data: unknown): Record<string, 
       if (item.contributions) {
         normalized.contributions = parseGoogleSheetsObject(item.contributions)
       }
+      
+      // Extract Indonesian month name from title / contributions / description if month is not present in row data
+      if (!normalized.month) {
+        let extractedMonth = ''
+        const contributionData = normalized.contributions
+        const textToSearch = `${normalized.title || ''} ${normalized.description || ''} ${contributionData?.title || ''}`.toLowerCase()
+        
+        const monthsIndo = [
+          'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 
+          'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+        ]
+        const monthsIndoShort = [
+          'jan', 'feb', 'mar', 'apr', 'mei', 'jun', 
+          'jul', 'ags', 'sep', 'okt', 'nov', 'des'
+        ]
+        
+        // Match long name first
+        for (let i = 0; i < 12; i++) {
+          if (textToSearch.includes(monthsIndo[i].toLowerCase())) {
+            extractedMonth = monthsIndo[i]
+            break
+          }
+        }
+        
+        // Match short name if still not found
+        if (!extractedMonth) {
+          for (let i = 0; i < 12; i++) {
+            if (textToSearch.includes(monthsIndoShort[i])) {
+              extractedMonth = monthsIndo[i]
+              break
+            }
+          }
+        }
+
+        if (extractedMonth) {
+          normalized.month = extractedMonth
+        } else if (normalized.due_date) {
+          const dateObj = new Date(normalized.due_date)
+          if (!isNaN(dateObj.getTime())) {
+            normalized.month = monthsIndo[dateObj.getMonth()]
+          }
+        }
+      }
     } else if (sheetName === 'Contributions') {
       normalized.amount = Number(item.amount) || 0
       normalized.status = item.status || 'active'

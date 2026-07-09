@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { spreadsheetApi } from '@/services/sheets-client'
 import { TableLoader } from '@/components/ui/TableLoader'
 import { generateSecureId } from '@/utils/id'
-import { Plus, Search, FileText, X, Save, CheckCircle2, Pencil, Trash2, RotateCcw, Droplets, History, Users, Package, Wallet, UserCheck, TrendingUp, Info } from 'lucide-react'
+import { Plus, Search, FileText, X, Save, CheckCircle2, Pencil, Trash2, RotateCcw, Droplets, History, Users, Package, Wallet, UserCheck, TrendingUp, Info, Tag, Layers, RefreshCw, Coins, Calendar } from 'lucide-react'
 import Select from '@/components/ui/Select'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 
@@ -352,7 +352,7 @@ export default function ContributionsList() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight flex items-center">
             <FileText className="mr-2 sm:mr-3 text-primary w-6 h-6 sm:w-8 sm:h-8" />
@@ -360,36 +360,39 @@ export default function ContributionsList() {
           </h1>
           <p className="text-xs sm:text-sm text-text-secondary mt-1">Kelola data tagihan dan iuran bulanan.</p>
         </div>
-        <button onClick={openAddModal} className="btn-primary flex items-center">
+        <button 
+          onClick={openAddModal} 
+          className="btn-primary inline-flex min-h-[46px] min-w-[212px] items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-base font-semibold w-full sm:w-auto shadow-lg shadow-emerald-500/20 bg-emerald-600 hover:bg-emerald-700 hover:border-emerald-700 focus:outline-none border border-transparent"
+        >
           <Plus className="w-5 h-5 mr-2" /> Buat Iuran Baru
         </button>
       </div>
 
       <div className="card-container p-0 overflow-hidden">
-        <div className="p-4 border-b border-border bg-white">
-          <div className="relative max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+        <div className="p-4 sm:p-6 border-b border-border flex flex-col sm:flex-row gap-4 justify-between items-center bg-gray-50/50">
+          <div className="relative w-full sm:max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input 
               type="text" 
               placeholder="Cari iuran..." 
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="form-input pl-9 h-[42px]"
+              className="form-input pl-10 bg-white h-[42px]"
             />
           </div>
         </div>
         
-        <div className="overflow-x-auto w-full rounded-b-[20px] border-t border-border scrollbar-thin scrollbar-thumb-gray-200">
-          <table className="min-w-[700px] w-full text-left text-sm">
-            <thead className="bg-[#F3F4F6] border-b border-border text-gray-600">
+        <div className="overflow-x-auto w-full scrollbar-thin scrollbar-thumb-gray-200">
+          <table className="min-w-[700px] w-full table-fixed text-left text-sm">
+            <thead className="bg-[#F3F4F6] text-gray-700 text-xs uppercase font-semibold border-b border-border">
               <tr>
-                <th className="px-6 py-3 font-semibold whitespace-nowrap text-center">Judul</th>
-                <th className="px-6 py-3 font-semibold whitespace-nowrap text-center">Kategori</th>
-                <th className="px-6 py-3 font-semibold whitespace-nowrap text-center hidden md:table-cell">Siklus</th>
-                <th className="px-6 py-3 font-semibold whitespace-nowrap text-center">Nominal</th>
-                <th className="px-6 py-3 font-semibold whitespace-nowrap text-center hidden md:table-cell">Jatuh Tempo</th>
-                <th className="px-6 py-3 font-semibold whitespace-nowrap text-center">Status</th>
-                <th className="px-6 py-3 font-semibold whitespace-nowrap text-center">Aksi</th>
+                <th className="px-6 py-3 font-semibold whitespace-nowrap text-center w-[16%]">Judul</th>
+                <th className="px-6 py-3 font-semibold whitespace-nowrap text-center w-[13%]">Kategori</th>
+                <th className="px-6 py-3 font-semibold whitespace-nowrap text-center hidden md:table-cell w-[12%]">Siklus</th>
+                <th className="px-6 py-3 font-semibold whitespace-nowrap text-center w-[17%]">Nominal</th>
+                <th className="px-6 py-3 font-semibold whitespace-nowrap text-center hidden md:table-cell w-[15%]">Jatuh Tempo</th>
+                <th className="px-6 py-3 font-semibold whitespace-nowrap text-center w-[14%]">Status</th>
+                <th className="px-6 py-3 font-semibold whitespace-nowrap text-center w-[13%]">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border text-gray-700 bg-white">
@@ -407,9 +410,13 @@ export default function ContributionsList() {
                   <tr key={c.id} className="hover:bg-[#ECFDF5] transition-colors">
                     <td className="px-6 py-4 font-medium text-gray-900">{c.title}</td>
                     <td className="px-6 py-4">{c.category || (getCategoryData(c.contribution_types).name)}</td>
-                    <td className="px-6 py-4 text-blue-600 bg-blue-50/30 text-xs font-medium rounded-md w-max hidden md:table-cell mt-3">{getCategoryData(c.contribution_types).period_type}</td>
+                    <td className="px-6 py-4 text-center hidden md:table-cell">
+                      <span className="inline-block px-2.5 py-1 text-blue-600 bg-blue-50 text-xs font-medium rounded-md">
+                        {getCategoryData(c.contribution_types).period_type}
+                      </span>
+                    </td>
                     <td className="px-6 py-4 font-medium text-gray-900">{formatCurrency(c.amount)}</td>
-                    <td className="px-6 py-4 hidden md:table-cell">{formatDueDate(c.due_date, getCategoryData(c.contribution_types).period_type)}</td>
+                    <td className="px-6 py-4 text-center hidden md:table-cell">{formatDueDate(c.due_date, getCategoryData(c.contribution_types).period_type)}</td>
                     <td className="px-6 py-4 text-center">
                       <span className={`badge ${c.status === 'active' ? 'badge-success' : 'bg-gray-100 text-gray-700'}`}>
                         {c.status}
@@ -478,38 +485,63 @@ export default function ContributionsList() {
               )}
             </div>
             {isFormSuccessOpen ? (
-              <div className="p-8 flex flex-col items-center justify-center text-center animate-in fade-in duration-300 min-h-[350px]">
-                <div className="mb-5 inline-flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100 shadow-sm animate-bounce">
-                  <CheckCircle2 className="h-8 w-8" />
+              <div className="p-8 flex flex-col items-center justify-center text-center animate-in fade-in duration-300 min-h-[350px] relative">
+                {/* Decorative glowing gradient background */}
+                <div className="absolute top-0 left-0 right-0 h-36 bg-gradient-to-b from-emerald-500/5 to-transparent pointer-events-none" />
+
+                <div className="relative mb-6">
+                  {/* Outer soft glow ring */}
+                  <div className="absolute inset-0 rounded-full bg-emerald-500/15 blur-md scale-125 animate-pulse" />
+                  {/* Inner ring */}
+                  <div className="relative h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg flex border-4 border-white">
+                    <CheckCircle2 className="h-10 w-10 animate-in zoom-in duration-300" />
+                  </div>
                 </div>
+
                 <h3 className="text-xl font-bold text-gray-900 mb-2">
                   {editingId ? 'Iuran Berhasil Diperbarui!' : 'Iuran Berhasil Dibuat!'}
                 </h3>
                 <p className="text-gray-500 max-w-sm mb-6 leading-relaxed text-xs">
                   Iuran <span className="font-semibold text-gray-800">"{newContribution.title}"</span> telah berhasil dicatat ke sistem iuran master.
                 </p>
-                <div className="w-full bg-gray-50 border border-gray-100 rounded-xl p-4 mb-6 text-left space-y-2 text-xs shadow-sm">
-                  <div className="flex justify-between items-center pb-2 border-b border-gray-200/60">
-                    <span className="text-gray-500 font-medium">Judul Iuran</span>
-                    <span className="font-semibold text-gray-800">{newContribution.title}</span>
+
+                <div className="w-full bg-gradient-to-b from-gray-50 to-gray-50/50 border border-gray-150 rounded-2xl p-5 mb-6 text-left relative overflow-hidden shadow-inner space-y-3">
+                  <div className="flex justify-between items-center pb-2.5 border-b border-gray-200/60">
+                    <span className="text-gray-500 font-medium flex items-center gap-2 text-xs">
+                      <Tag className="w-4 h-4 text-emerald-500" />
+                      Judul Iuran
+                    </span>
+                    <span className="font-semibold text-gray-800 text-xs">{newContribution.title}</span>
                   </div>
-                  <div className="flex justify-between items-center pb-2 border-b border-gray-200/60">
-                    <span className="text-gray-500 font-medium">Kategori</span>
-                    <span className="font-medium text-gray-800">{newContribution.category}</span>
+                  <div className="flex justify-between items-center pb-2.5 border-b border-gray-200/60">
+                    <span className="text-gray-500 font-medium flex items-center gap-2 text-xs">
+                      <Layers className="w-4 h-4 text-sky-500" />
+                      Kategori
+                    </span>
+                    <span className="font-medium text-[10px] bg-sky-50 text-sky-800 px-2 py-0.5 rounded-lg border border-sky-100">{newContribution.category}</span>
                   </div>
-                  <div className="flex justify-between items-center pb-2 border-b border-gray-200/60">
-                    <span className="text-gray-500 font-medium">Siklus</span>
-                    <span className="font-medium text-gray-800">{newContribution.period_type}</span>
+                  <div className="flex justify-between items-center pb-2.5 border-b border-gray-200/60">
+                    <span className="text-gray-500 font-medium flex items-center gap-2 text-xs">
+                      <RefreshCw className="w-4 h-4 text-indigo-500" />
+                      Siklus
+                    </span>
+                    <span className="font-medium text-[10px] bg-indigo-50 text-indigo-800 px-2 py-0.5 rounded-lg border border-indigo-100">{newContribution.period_type}</span>
                   </div>
-                  <div className="flex justify-between items-center pb-2 border-b border-gray-200/60">
-                    <span className="text-gray-500 font-medium">Nominal</span>
+                  <div className="flex justify-between items-center pb-2.5 border-b border-gray-200/60">
+                    <span className="text-gray-500 font-medium flex items-center gap-2 text-xs">
+                      <Coins className="w-4 h-4 text-amber-500" />
+                      Nominal
+                    </span>
                     <span className="font-bold text-emerald-600 text-sm">
                       Rp {new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(newContribution.useAutoCalc ? autoNominal : (Number(newContribution.amount) || 0))}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-gray-500 font-medium">Jatuh Tempo Default</span>
-                    <span className="font-medium text-gray-800">
+                    <span className="text-gray-500 font-medium flex items-center gap-2 text-xs">
+                      <Calendar className="w-4 h-4 text-rose-500" />
+                      Jatuh Tempo Default
+                    </span>
+                    <span className="font-medium text-gray-800 text-[10px] bg-rose-50 text-rose-800 px-2 py-0.5 rounded-lg border border-rose-100">
                       {newContribution.due_date ? (
                         newContribution.period_type === 'Bulanan' ? `Tanggal ${newContribution.due_date} tiap bulan` :
                         newContribution.period_type === 'Tahunan' ? `${newContribution.due_date.split('-')[1]} tiap tahun` :
@@ -519,6 +551,7 @@ export default function ContributionsList() {
                     </span>
                   </div>
                 </div>
+
                 <button
                   type="button"
                   onClick={closeAddModal}

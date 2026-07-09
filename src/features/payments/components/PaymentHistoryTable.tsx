@@ -12,6 +12,8 @@ interface PaymentRecord {
   title?: string
   month?: string
   date_verified?: string
+  date_submitted?: string
+  date?: string
   amount: number
   status: string
   billId?: number | string
@@ -26,14 +28,113 @@ export default function PaymentHistory() {
 
   async function fetchHistory() {
     setLoading(true)
-    const { data } = await spreadsheetApi.get('Payments')
+    const [paymentsRes, billsRes] = await Promise.all([
+      spreadsheetApi.get('Payments'),
+      spreadsheetApi.get('Bills')
+    ])
     
-    if (data && Array.isArray(data)) {
-      setHistory((data as PaymentRecord[]).filter((p: PaymentRecord) => {
+    const paymentsData = paymentsRes.data
+    const billsData = billsRes.data
+    
+    if (paymentsData && Array.isArray(paymentsData)) {
+      const billsList = Array.isArray(billsData) ? billsData : []
+      const userPayments = (paymentsData as PaymentRecord[]).filter((p: PaymentRecord) => {
         const isPaid = ['verified', 'paid', 'Lunas'].includes(p.status)
         const belongsToUser = p.resident_email === profile?.email || p.resident_name === profile?.full_name
         return isPaid && belongsToUser
-      }))
+      })
+
+      const enriched = userPayments.map((p) => {
+        const matchingBill = billsList.find(b => String(b.id) === String(p.billId || (p as any).bill_id))
+        
+        // 1. Resolve Month (Period)
+        let month = p.month || ''
+        if (!month && matchingBill) {
+          month = matchingBill.month || ''
+        }
+        if (!month) {
+          // Attempt to extract month name from payment title
+          const textToSearch = (p.title || '').toLowerCase()
+          const monthsIndo = [
+            'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 
+            'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+          ]
+          const monthsIndoShort = [
+            'jan', 'feb', 'mar', 'apr', 'mei', 'jun', 
+            'jul', 'ags', 'sep', 'okt', 'nov', 'des'
+          ]
+          
+          for (let i = 0; i < 12; i++) {
+            if (textToSearch.includes(monthsIndo[i].toLowerCase())) {
+              month = monthsIndo[i]
+              break
+            }
+          }
+          if (!month) {
+            for (let i = 0; i < 12; i++) {
+              if (textToSearch.includes(monthsIndoShort[i])) {
+                month = monthsIndo[i]
+                break
+              }
+            }
+          }
+        }
+        if (!month) {
+          // Fallback to parsing from due_date
+          const targetDate = matchingBill?.due_date || p.date_submitted || p.date
+          if (targetDate) {
+            const dateObj = new Date(targetDate)
+            if (!isNaN(dateObj.getTime())) {
+              const monthsIndo = [
+                'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 
+                'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+              ]
+              month = monthsIndo[dateObj.getMonth()]
+            }
+          }
+        }
+
+        // 2. Resolve Title (Keterangan)
+        let title = p.title || ''
+        if (!title && matchingBill) {
+          const getContributionData = (contrib: any) => {
+            if (!contrib) return { title: '', contribution_types: { name: '' } }
+            if (typeof contrib === 'string') {
+              try {
+                return JSON.parse(contrib)
+              } catch {
+                const titleMatch = contrib.match(/title=([^,}]+)/)
+                const nameMatch = contrib.match(/name=([^,}]+)/)
+                return {
+                  title: titleMatch ? titleMatch[1].trim() : contrib,
+                  contribution_types: { name: nameMatch ? nameMatch[1].trim() : '' }
+                }
+              }
+            }
+            return contrib || { title: '', contribution_types: { name: '' } }
+          }
+          const contribData = getContributionData(matchingBill.contributions)
+          title = contribData.title || matchingBill.title || matchingBill.description || contribData.contribution_types?.name || 'Tagihan Kos'
+        }
+        if (!title) {
+          title = 'Tagihan Kos'
+        }
+
+        // 3. Resolve Date Verified (Tanggal Lunas)
+        let dateVerified = p.date_verified || ''
+        if (!dateVerified) {
+          dateVerified = matchingBill?.paid_at || (p as any).updated_at || p.date_submitted || p.date || ''
+        }
+
+        return {
+          ...p,
+          title,
+          month,
+          date_verified: dateVerified
+        }
+      })
+
+      setHistory(enriched)
     } else {
       setHistory([])
     }

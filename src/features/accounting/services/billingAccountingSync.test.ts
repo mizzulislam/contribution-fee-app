@@ -23,7 +23,7 @@ describe('billingAccountingSync', () => {
     description: 'Penerimaan Pembayaran Iuran Galon Juni - Siti Aminah',
     debits: JSON.stringify([{ accountNumber: '1102', amount: 120000 }]),
     credits: JSON.stringify([{ accountNumber: '1104', amount: 120000 }]),
-    source: 'payment_verification',
+    source: 'debt_compensation',
   }
 
   const manualJournal = {

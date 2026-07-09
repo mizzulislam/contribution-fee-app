@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowUpDown, CheckCircle2, Clock, XCircle, FileText, Search, Bell, Plus, X, Save, Check, Pencil, Trash2, Edit, Loader2 } from 'lucide-react'
+import { ArrowUpDown, CheckCircle2, Clock, XCircle, FileText, Search, Bell, Plus, X, Save, Check, Pencil, Trash2, Edit, Loader2, ChevronDown, Tag, Coins, Calendar, Users } from 'lucide-react'
 import { TableLoader } from '@/components/ui/TableLoader'
 import { cn } from '@/utils/styles'
 import Select from '@/components/ui/Select'
@@ -132,10 +132,16 @@ export default function BillsPayments({ period = defaultPeriod, residentFilter =
   const [isSortDropdownOpen, setIsSortDropdownOpen] = useState(false)
   const sortDropdownRef = useRef<HTMLDivElement>(null)
 
+  const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false)
+  const userDropdownRef = useRef<HTMLDivElement>(null)
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (sortDropdownRef.current && !sortDropdownRef.current.contains(event.target as Node)) {
         setIsSortDropdownOpen(false)
+      }
+      if (userDropdownRef.current && !userDropdownRef.current.contains(event.target as Node)) {
+        setIsUserDropdownOpen(false)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
@@ -483,9 +489,9 @@ export default function BillsPayments({ period = defaultPeriod, residentFilter =
         </div>
       </div>
 
-      <div className="card-container">
-<div className="py-4 pr-4 pl-0 sm:py-6 sm:pr-6 sm:pl-0 border-b border-border flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center bg-gray-50/50 rounded-t-[20px]">
-            <div className="relative w-full sm:max-w-lg">
+      <div className="card-container p-0 overflow-hidden">
+        <div className="p-4 sm:p-6 border-b border-border flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center bg-gray-50/50">
+            <div className="relative w-full sm:max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
               <input 
                 type="text" 
@@ -595,12 +601,12 @@ export default function BillsPayments({ period = defaultPeriod, residentFilter =
             </div>
           </div>
 
-        <div className="overflow-x-auto w-full rounded-xl border border-gray-100 shadow-sm scrollbar-thin scrollbar-thumb-gray-200">
-          <table className="min-w-[750px] w-full text-left text-sm">
-            <thead className="bg-[#F3F4F6] border-b border-border text-gray-600">
+        <div className="overflow-x-auto w-full scrollbar-thin scrollbar-thumb-gray-200">
+          <table className="min-w-[750px] w-full table-fixed text-left text-sm">
+            <thead className="bg-[#F3F4F6] text-gray-700 text-xs uppercase font-semibold border-b border-border">
               <tr>
                 {isEditMode && (
-                  <th className="px-6 py-3 font-semibold whitespace-nowrap text-center">
+                  <th className="px-6 py-3 font-semibold whitespace-nowrap text-center w-[5%]">
                     <input 
                       type="checkbox" 
                       onChange={(e) => e.target.checked ? setSelectedBillIds(filteredBills.map(b => b.id)) : setSelectedBillIds([])}
@@ -609,12 +615,12 @@ export default function BillsPayments({ period = defaultPeriod, residentFilter =
                     />
                   </th>
                 )}
-                <th className="px-6 py-3 font-semibold whitespace-nowrap text-center">Penghuni</th>
-                <th className="px-6 py-3 font-semibold whitespace-nowrap text-center">Keterangan</th>
-                <th className="px-6 py-3 font-semibold whitespace-nowrap text-center hidden md:table-cell">Jatuh Tempo</th>
-                <th className="px-6 py-3 font-semibold whitespace-nowrap text-center">Nominal</th>
-                <th className="px-6 py-3 font-semibold whitespace-nowrap text-center">Status</th>
-                <th className="px-6 py-3 font-semibold whitespace-nowrap text-center">Aksi</th>
+                <th className="px-6 py-3 font-semibold whitespace-nowrap text-center w-[14%]">Penghuni</th>
+                <th className="px-6 py-3 font-semibold whitespace-nowrap text-center w-[18%]">Keterangan</th>
+                <th className="px-6 py-3 font-semibold whitespace-nowrap text-center hidden md:table-cell w-[17%]">Jatuh Tempo</th>
+                <th className="px-6 py-3 font-semibold whitespace-nowrap text-center w-[19%]">Nominal</th>
+                <th className="px-6 py-3 font-semibold whitespace-nowrap text-center w-[15%]">Status</th>
+                <th className="px-6 py-3 font-semibold whitespace-nowrap text-center w-[17%]">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border text-gray-700 bg-white">
@@ -776,34 +782,63 @@ export default function BillsPayments({ period = defaultPeriod, residentFilter =
               </button>
             </div>
             {isFormSuccessOpen ? (
-              <div className="p-8 flex flex-col items-center justify-center text-center animate-in fade-in duration-300 min-h-[350px]">
-                <div className="mb-5 inline-flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100 shadow-sm animate-bounce">
-                  <CheckCircle2 className="h-8 w-8" />
+              <div className="p-8 flex flex-col items-center justify-center text-center animate-in fade-in duration-300 min-h-[350px] relative">
+                {/* Decorative glowing gradient background */}
+                <div className="absolute top-0 left-0 right-0 h-36 bg-gradient-to-b from-emerald-500/5 to-transparent pointer-events-none" />
+
+                <div className="relative mb-6">
+                  {/* Outer soft glow ring */}
+                  <div className="absolute inset-0 rounded-full bg-emerald-500/15 blur-md scale-125 animate-pulse" />
+                  {/* Inner ring */}
+                  <div className="relative h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg flex border-4 border-white">
+                    <CheckCircle2 className="h-10 w-10 animate-in zoom-in duration-300" />
+                  </div>
                 </div>
+
                 <h3 className="text-xl font-bold text-gray-900 mb-2">
                   {editingBillId ? 'Tagihan Berhasil Diperbarui!' : 'Tagihan Berhasil Dibuat!'}
                 </h3>
                 <p className="text-gray-500 max-w-sm mb-6 leading-relaxed text-xs">
                   Tagihan untuk <span className="font-semibold text-gray-800">"{newBill.resident_name === 'ALL' ? 'Semua Penghuni Warga' : newBill.resident_name}"</span> telah berhasil dicatat ke sistem billing dan piutang.
                 </p>
-                <div className="w-full bg-gray-50 border border-gray-100 rounded-xl p-4 mb-6 text-left space-y-2 text-xs shadow-sm">
-                  <div className="flex justify-between items-center pb-2 border-b border-gray-200/60">
-                    <span className="text-gray-500 font-medium">Judul Tagihan</span>
-                    <span className="font-semibold text-gray-800">{newBill.title}</span>
+
+                <div className="w-full bg-gradient-to-b from-gray-50 to-gray-50/50 border border-gray-100 rounded-2xl p-5 mb-6 text-left relative overflow-hidden shadow-inner space-y-3">
+                  <div className="flex justify-between items-center pb-2.5 border-b border-gray-200/60">
+                    <span className="text-gray-500 font-medium flex items-center gap-2 text-xs">
+                      <Tag className="w-4 h-4 text-emerald-500" />
+                      Judul Tagihan
+                    </span>
+                    <span className="font-semibold text-gray-800 text-xs">{newBill.title}</span>
                   </div>
-                  <div className="flex justify-between items-center pb-2 border-b border-gray-200/60">
-                    <span className="text-gray-500 font-medium">Nominal</span>
+                  <div className="flex justify-between items-center pb-2.5 border-b border-gray-200/60">
+                    <span className="text-gray-500 font-medium flex items-center gap-2 text-xs">
+                      <Users className="w-4 h-4 text-sky-500" />
+                      Penghuni
+                    </span>
+                    <span className="font-medium text-[10px] bg-sky-50 text-sky-800 px-2 py-0.5 rounded-lg border border-sky-100">
+                      {newBill.resident_name === 'ALL' ? 'Semua Penghuni' : newBill.resident_name}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center pb-2.5 border-b border-gray-200/60">
+                    <span className="text-gray-500 font-medium flex items-center gap-2 text-xs">
+                      <Coins className="w-4 h-4 text-amber-500" />
+                      Nominal
+                    </span>
                     <span className="font-bold text-emerald-600 text-sm">
                       Rp {new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(newBill.amount)}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-gray-500 font-medium">Jatuh Tempo</span>
-                    <span className="font-medium text-gray-800">
+                    <span className="text-gray-500 font-medium flex items-center gap-2 text-xs">
+                      <Calendar className="w-4 h-4 text-rose-500" />
+                      Jatuh Tempo
+                    </span>
+                    <span className="font-medium text-[10px] bg-rose-50 text-rose-800 px-2 py-0.5 rounded-lg border border-rose-100">
                       {newBill.due_date ? new Date(newBill.due_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '-'}
                     </span>
                   </div>
                 </div>
+
                 <button
                   type="button"
                   onClick={closeFormModal}
@@ -813,24 +848,97 @@ export default function BillsPayments({ period = defaultPeriod, residentFilter =
                 </button>
               </div>
             ) : (
-              <form onSubmit={handleCreateInvoice} className="p-6 space-y-4">
+              <form onSubmit={handleCreateInvoice} className="p-6 space-y-4 overflow-y-auto max-h-[400px] custom-scrollbar">
                 {isLoadingForm ? (
                   <div className="py-8 text-center text-gray-500 text-sm animate-pulse">Memuat form data...</div>
                 ) : (
                   <>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1.5">Nama Penghuni</label>
-                      <Select 
-                        options={editingBillId ? [
-                          ...users.filter(u => (!u.status || u.status === 'Aktif') && String(u.role).includes('user')).map(u => ({ label: `${u.full_name} (Kamar ${u.room_number || '-'})`, value: u.full_name }))
-                        ] : [
-                          { label: '--- Semua Penghuni ---', value: 'ALL' },
-                          ...users.filter(u => (!u.status || u.status === 'Aktif') && String(u.role).includes('user')).map(u => ({ label: `${u.full_name} (Kamar ${u.room_number || '-'})`, value: u.full_name }))
-                        ]}
-                        value={newBill.resident_name}
-                        onChange={val => setNewBill({...newBill, resident_name: val})}
-                        placeholder="Pilih penghuni..."
-                      />
+                      <div className="relative" ref={userDropdownRef}>
+                        <button
+                          type="button"
+                          onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
+                          className="w-full form-input flex items-center justify-between bg-white cursor-pointer hover:border-primary/50 transition-colors text-left h-[42px] px-3.5"
+                        >
+                          <span className="truncate text-gray-700">
+                            {newBill.resident_name === 'ALL'
+                              ? 'Semua Penghuni'
+                              : newBill.resident_name
+                              ? newBill.resident_name.split(',').length > 2
+                                ? `${newBill.resident_name.split(',').length} Terpilih`
+                                : newBill.resident_name
+                              : 'Pilih penghuni...'}
+                          </span>
+                          <ChevronDown className="w-4 h-4 text-gray-400" />
+                        </button>
+
+                        {isUserDropdownOpen && (
+                          <div className="absolute left-0 z-[110] mt-1 w-full max-h-60 overflow-y-auto rounded-xl border border-gray-150 bg-white p-2 shadow-lg space-y-1.5 scrollbar-thin scrollbar-thumb-gray-200">
+                            {/* Option: Semua Penghuni */}
+                            {!editingBillId && (
+                              <label className="flex items-center gap-2.5 px-2.5 py-1.5 cursor-pointer hover:bg-gray-50 rounded-lg transition-colors select-none">
+                                <input
+                                  type="checkbox"
+                                  className="rounded border-gray-350 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
+                                  checked={newBill.resident_name === 'ALL'}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setNewBill({ ...newBill, resident_name: 'ALL' })
+                                    } else {
+                                      setNewBill({ ...newBill, resident_name: '' })
+                                    }
+                                  }}
+                                />
+                                <span className="text-xs font-semibold text-gray-700">Semua Penghuni</span>
+                              </label>
+                            )}
+
+                            {!editingBillId && <hr className="border-gray-150 my-1 mx-1" />}
+
+                            {/* Individual Occupants */}
+                            {users
+                              .filter(u => {
+                                const statusStr = String(u.status || '').toLowerCase()
+                                const roleStr = String(u.role || '').toLowerCase()
+                                return (!u.status || statusStr === 'aktif' || statusStr === 'active') && roleStr.includes('user')
+                              })
+                              .map((u) => {
+                                const checkedNames = newBill.resident_name === 'ALL'
+                                  ? []
+                                  : newBill.resident_name
+                                  ? newBill.resident_name.split(',').map(n => n.trim())
+                                  : []
+                                const isChecked = newBill.resident_name === 'ALL' || checkedNames.includes(u.full_name)
+
+                                return (
+                                  <label key={u.id} className="flex items-center gap-2.5 px-2.5 py-1.5 cursor-pointer hover:bg-gray-50 rounded-lg transition-colors select-none">
+                                    <input
+                                      type="checkbox"
+                                      disabled={newBill.resident_name === 'ALL'}
+                                      className="rounded border-gray-355 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer disabled:opacity-50"
+                                      checked={isChecked}
+                                      onChange={(e) => {
+                                        let nextNames = [...checkedNames]
+                                        if (e.target.checked) {
+                                          if (!nextNames.includes(u.full_name)) {
+                                            nextNames.push(u.full_name)
+                                          }
+                                        } else {
+                                          nextNames = nextNames.filter(n => n !== u.full_name)
+                                        }
+                                        setNewBill({ ...newBill, resident_name: nextNames.join(', ') })
+                                      }}
+                                    />
+                                    <span className="text-xs font-medium text-gray-600">
+                                      {u.full_name} <span className="text-gray-400 font-normal">({u.room_number ? `Kamar ${u.room_number}` : '-'})</span>
+                                    </span>
+                                  </label>
+                                )
+                              })}
+                          </div>
+                        )}
+                      </div>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1.5">Keterangan / Judul Tagihan</label>
