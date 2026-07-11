@@ -51,7 +51,7 @@ export default function BackupRestore() {
       // Add metadata
       const backupPayload = {
         metadata: {
-          app_name: "Soematra Kost",
+          app_name: "Splitz",
           backup_date: new Date().toISOString(),
           version: "1.0"
         },
@@ -63,7 +63,7 @@ export default function BackupRestore() {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `soematrakost_backup_${new Date().toISOString().split('T')[0]}.json`
+      a.download = `splitz_backup_${new Date().toISOString().split('T')[0]}.json`
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)

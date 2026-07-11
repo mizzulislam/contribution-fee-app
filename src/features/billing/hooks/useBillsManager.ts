@@ -6,6 +6,7 @@ import { generateSecureId } from '@/utils/id'
 import type { Bill, User, Payment } from '@/types/database'
 import { defaultEngine, syncAccountingWithSheet } from '@/features/accounting'
 import { syncBillsWithAccountingEntries } from '@/features/accounting/services/billingAccountingSync'
+import { mergeAccounts } from '@/features/accounting/data/chartOfAccounts'
 
 interface AlertDialogState {
   isOpen: boolean
@@ -546,27 +547,98 @@ export function useBillsManager(period: PeriodFilter = { preset: 'all' }, reside
     return `Pencatatan Piutang - ${kind} - ${residentName}`
   }
 
+  // Helper function to calculate similarity between two strings
+  const getSimilarity = (s1: string, s2: string) => {
+    let matches = 0
+    const minLen = Math.min(s1.length, s2.length)
+    for (let i = 0; i < minLen; i++) {
+      if (s1[i] === s2[i]) matches++
+    }
+    return Math.max(s1.length, s2.length) > 0 ? matches / Math.max(s1.length, s2.length) : 0
+  }
+
   const findReceivableAccount = (residentName: string) => {
-    const residentNameTokens = residentName
-      .split(/\s+/)
-      .map(token => token.trim())
-      .filter(Boolean)
-      .map(token => token.toLowerCase())
+    // 1. Cari user berdasarkan nama lengkap atau nickname untuk mendapatkan nickname-nya
+    const user = users.find(u => 
+      u.full_name?.toLowerCase() === residentName.toLowerCase() || 
+      u.nickname?.toLowerCase() === residentName.toLowerCase()
+    )
+    const nickname = user?.nickname || ''
+
+    // 2. Persiapkan tokens pencarian dari nama lengkap
+    const normalizedResident = residentName.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim()
+    const residentTokens = normalizedResident.split(/\s+/).filter(t => t.length >= 2)
+
+    // Tambahkan nickname ke tokens pencarian jika memenuhi syarat
+    const cleanNickname = nickname.toLowerCase().replace(/[^a-z0-9]/g, '').trim()
+    if (cleanNickname && cleanNickname.length >= 2 && !residentTokens.includes(cleanNickname)) {
+      residentTokens.push(cleanNickname)
+    }
 
     const accounts = defaultEngine.coa.getAllAccounts()
-    const exactMatch = accounts.find(acc => {
-      if (acc.accountType !== 'Assets') return false
-      const nameLower = acc.accountName.toLowerCase()
-      return residentNameTokens.every(term => nameLower.includes(term))
+    // Filter akun tipe Assets (Harta) yang mengandung kata "piutang"
+    const candidateAccounts = accounts.filter(acc => 
+      acc.accountType === 'Assets' && 
+      acc.accountName.toLowerCase().includes('piutang')
+    )
+
+    // Step A: Cari kecocokan persis pada nama akun (tanpa kata "piutang")
+    const exactMatch = candidateAccounts.find(acc => {
+      const accName = acc.accountName.toLowerCase().replace('piutang', '').replace(/[^a-z0-9]/g, '').trim()
+      const resName = normalizedResident.replace(/[^a-z0-9]/g, '').trim()
+      return accName === resName || resName === accName || (cleanNickname && accName === cleanNickname)
     })
 
     if (exactMatch) return exactMatch
 
-    return accounts.find(acc => {
-      if (acc.accountType !== 'Assets') return false
-      const nameLower = acc.accountName.toLowerCase()
-      return residentNameTokens.some(term => nameLower.includes(term))
-    }) || null
+    // Step B: Cari kecocokan di mana salah satu token nama warga persis sama dengan nama akun
+    const tokenMatch = candidateAccounts.find(acc => {
+      const namePart = acc.accountName.toLowerCase().replace('piutang', '').replace(/[^a-z0-9]/g, '').trim()
+      return namePart && residentTokens.includes(namePart)
+    })
+
+    if (tokenMatch) return tokenMatch
+
+    // Step C: Cari kecocokan di mana nama warga/nickname mengandung nama akun
+    const containsMatch = candidateAccounts.find(acc => {
+      const namePart = acc.accountName.toLowerCase().replace('piutang', '').replace(/[^a-z0-9]/g, '').trim()
+      return namePart && (normalizedResident.includes(namePart) || (cleanNickname && cleanNickname.includes(namePart)))
+    })
+
+    if (containsMatch) return containsMatch
+
+    // Step D: Cari dengan kecocokan samar (fuzzy match) untuk menangani typo (misal Ghalib vs Gholib)
+    let bestFuzzyMatch: any = null
+    let bestSim = 0
+
+    for (const acc of candidateAccounts) {
+      const namePart = acc.accountName.toLowerCase().replace('piutang', '').replace(/[^a-z0-9]/g, '').trim()
+      if (namePart && namePart.length >= 3) {
+        for (const token of residentTokens) {
+          if (token.length >= 3) {
+            const sim = getSimilarity(token, namePart)
+            if (sim >= 0.7 && sim > bestSim) {
+              bestSim = sim
+              bestFuzzyMatch = acc
+            }
+          }
+        }
+      }
+    }
+
+    if (bestFuzzyMatch) return bestFuzzyMatch
+
+    // Step E: Cari jika ada substring overlap antara token nama dan nama akun
+    const partialMatch = candidateAccounts.find(acc => {
+      const namePart = acc.accountName.toLowerCase().replace('piutang', '').replace(/[^a-z0-9]/g, '').trim()
+      if (!namePart) return false
+      return residentTokens.some(token => namePart.includes(token) || token.includes(namePart))
+    })
+
+    if (partialMatch) return partialMatch
+
+    // Fallback ke akun 1104
+    return candidateAccounts.find(acc => acc.accountNumber === '1104') || candidateAccounts[0] || null
   }
 
   const handleCreateInvoice = async (e: React.FormEvent) => {
@@ -749,20 +821,69 @@ export function useBillsManager(period: PeriodFilter = { preset: 'all' }, reside
     let errorMessage = ''
 
     try {
+      // 1. Fetch MasterData to map accounts
+      let accounts: any[] = []
+      try {
+        const { data: coaData } = await spreadsheetApi.get('MasterData')
+        accounts = mergeAccounts(coaData && Array.isArray(coaData) ? coaData : [])
+      } catch (err) {
+        console.warn("Gagal mengambil MasterData untuk mapping jurnal:", err)
+      }
+
+      // 2. Map debits per resident using a robust matching algorithm
+      const debits = billsToAdd.map(bill => {
+        const matchedAcc = findReceivableAccount(bill.resident_name)
+        return {
+          accountNumber: matchedAcc?.accountNumber || '1104',
+          amount: Number(bill.amount)
+        }
+      })
+
+      // 3. Map credit (Pendapatan Iuran)
+      const creditMatch = accounts.find(acc => acc.account_name.toLowerCase().trim() === 'pendapatan iuran')
+      const creditAccNum = creditMatch ? creditMatch.account_number : '4101' // Default to 4101
+      const totalDebitAmount = debits.reduce((sum, d) => sum + d.amount, 0)
+      const credits = [{
+        accountNumber: creditAccNum,
+        amount: totalDebitAmount
+      }]
+
+      // 4. Create dynamic journal description
+      const journalDescription = `Pengakuan pendapatan ${newBill.title} berjalan untuk ${billsToAdd.length} penghuni kos aktif`
+      const journalId = generateSecureId('JE')
+      const journalPayload = {
+        id: journalId,
+        date: new Date().toISOString().split('T')[0],
+        description: journalDescription,
+        debits: JSON.stringify(debits),
+        credits: JSON.stringify(credits),
+        source: 'manual_journal',
+        created_at: new Date().toISOString()
+      }
+
+      // 5. Save bills sequentially (rollback on failure)
       for (const bill of billsToAdd) {
         const resBill = await billingService.createBill(bill)
         if (!resBill.success) {
           throw new Error(resBill.error?.message || `Gagal menyimpan tagihan untuk ${bill.resident_name}`)
         }
         createdBills.push(bill)
-
-        // New billing invoices are no longer recorded directly into accounting journal entries from the billing module.
-        // Accounting recording should be performed from the accounting module when needed.
       }
+
+      // 6. Save journal entry (rollback on failure)
+      const resJournal = await spreadsheetApi.post('JournalEntries', journalPayload)
+      if (!resJournal.success) {
+        throw new Error((resJournal.error as any)?.message || 'Gagal menyimpan jurnal pencatatan tagihan.')
+      }
+      createdJournals.push(journalId)
+
+      // 7. Sync accounting engine
+      await syncAccountingWithSheet()
     } catch (err: any) {
       transactionSuccess = false
       errorMessage = err.message || String(err)
 
+      // Rollback
       for (const journalId of createdJournals) {
         await spreadsheetApi.del('JournalEntries', journalId)
       }

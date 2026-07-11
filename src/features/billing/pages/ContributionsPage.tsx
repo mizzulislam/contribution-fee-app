@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { spreadsheetApi } from '@/services/sheets-client'
 import { TableLoader } from '@/components/ui/TableLoader'
 import { generateSecureId } from '@/utils/id'
-import { Plus, Search, FileText, X, Save, CheckCircle2, Pencil, Trash2, RotateCcw, Droplets, History, Users, Package, Wallet, UserCheck, TrendingUp, Info, Tag, Layers, RefreshCw, Coins, Calendar } from 'lucide-react'
+import { Plus, Search, FileText, X, Save, CheckCircle2, Pencil, Trash2, RotateCcw, Droplets, History, Users, Package, Wallet, UserCheck, TrendingUp, Info, Tag, Layers, RefreshCw, Coins, Calendar, ArrowUpDown, Check } from 'lucide-react'
 import Select from '@/components/ui/Select'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
+import { cn } from '@/utils/styles'
 
 export default function ContributionsList() {
   const [contributions, setContributions] = useState<any[]>([])
@@ -33,6 +34,22 @@ export default function ContributionsList() {
     isOpen: false,
     idToDelete: null
   })
+
+  // Sorting States
+  const [sortBy, setSortBy] = useState<'title' | 'category' | 'amount' | 'due_date'>('due_date')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
+  const [isSortDropdownOpen, setIsSortDropdownOpen] = useState(false)
+  const sortDropdownRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (sortDropdownRef.current && !sortDropdownRef.current.contains(event.target as Node)) {
+        setIsSortDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
   const [alertDialog, setAlertDialog] = useState<{
     isOpen: boolean
     title: string
@@ -140,14 +157,50 @@ export default function ContributionsList() {
     c.title?.toLowerCase().includes(search.toLowerCase())
   )
 
+  const getResolvedCategory = (c: any) => {
+    return c.category || (getCategoryData(c.contribution_types).name) || ''
+  }
+
+  const sortedContributions = [...filtered].sort((a, b) => {
+    let valA: any = ''
+    let valB: any = ''
+
+    if (sortBy === 'title') {
+      valA = (a.title || '').toLowerCase()
+      valB = (b.title || '').toLowerCase()
+    } else if (sortBy === 'category') {
+      valA = getResolvedCategory(a).toLowerCase()
+      valB = getResolvedCategory(b).toLowerCase()
+    } else if (sortBy === 'amount') {
+      valA = Number(a.amount) || 0
+      valB = Number(b.amount) || 0
+    } else if (sortBy === 'due_date') {
+      valA = (a.due_date || '').toLowerCase()
+      valB = (b.due_date || '').toLowerCase()
+    }
+
+    if (valA < valB) return sortOrder === 'asc' ? -1 : 1
+    if (valA > valB) return sortOrder === 'asc' ? 1 : -1
+    return 0
+  })
+
+  const activeSortLabel = `${sortBy === 'title' ? 'Judul' : sortBy === 'category' ? 'Kategori' : sortBy === 'amount' ? 'Nominal' : 'Jatuh Tempo'}`
+
   const formatDueDate = (dueDate: string, periodType: string) => {
     if (!dueDate) return '-'
+    
+    const toDDMMYYYY = (dateVal: string | Date) => {
+      const d = new Date(dateVal)
+      if (isNaN(d.getTime())) return String(dateVal)
+      const day = String(d.getDate()).padStart(2, '0')
+      const month = String(d.getMonth() + 1).padStart(2, '0')
+      const year = d.getFullYear()
+      return `${day}/${month}/${year}`
+    }
+
     if (periodType === 'Satu Kali') {
       try {
-        const d = new Date(dueDate)
-        if (!isNaN(d.getTime())) {
-          return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
-        }
+        return toDDMMYYYY(dueDate)
       } catch (e) {
         return dueDate
       }
@@ -162,8 +215,7 @@ export default function ContributionsList() {
     }
     if (periodType === 'Mingguan') return `Tiap ${dueDate}`
     try {
-      const d = new Date(dueDate)
-      if (!isNaN(d.getTime())) return d.toLocaleDateString('id-ID')
+      return toDDMMYYYY(dueDate)
     } catch(e) {}
     return dueDate
   }
@@ -380,6 +432,77 @@ export default function ContributionsList() {
               className="form-input pl-10 bg-white h-[42px]"
             />
           </div>
+
+          <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+            {/* Sorting Dropdown */}
+            <div className="relative w-full sm:w-auto" ref={sortDropdownRef}>
+              <button
+                type="button"
+                onClick={() => setIsSortDropdownOpen(!isSortDropdownOpen)}
+                className="text-sm font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 px-3.5 py-2 rounded-xl border border-gray-200 transition-colors flex items-center justify-between sm:justify-start gap-2 shadow-sm h-[42px] w-full sm:w-auto"
+              >
+                <div className="flex items-center gap-2">
+                  <ArrowUpDown className="w-4 h-4 text-gray-500" />
+                  <span>Urutkan: {activeSortLabel}</span>
+                </div>
+              </button>
+              {isSortDropdownOpen && (
+                <div className="absolute right-0 left-0 z-50 mt-2 w-full rounded-xl border border-gray-150 bg-white p-1.5 shadow-lg animate-in fade-in slide-in-from-top-1 duration-200 space-y-1">
+                  {/* Categories Group */}
+                  <div className="space-y-0.5">
+                    {[
+                      { label: 'Judul', value: 'title' },
+                      { label: 'Kategori', value: 'category' },
+                      { label: 'Nominal', value: 'amount' },
+                      { label: 'Jatuh Tempo', value: 'due_date' }
+                    ].map((cat) => (
+                      <button
+                        key={cat.value}
+                        type="button"
+                        onClick={() => {
+                          setSortBy(cat.value as any)
+                          setIsSortDropdownOpen(false)
+                        }}
+                        className={cn(
+                          "w-full text-left px-2.5 py-1.5 text-xs font-medium rounded-lg transition-colors hover:bg-gray-50 flex items-center justify-between",
+                          sortBy === cat.value ? "text-emerald-700 bg-emerald-50/40 font-semibold" : "text-gray-600"
+                        )}
+                      >
+                        <span>{cat.label}</span>
+                        {sortBy === cat.value && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                      </button>
+                    ))}
+                  </div>
+
+                  <hr className="border-gray-150 my-1 mx-1" />
+
+                  {/* Order Directions Group */}
+                  <div className="space-y-0.5">
+                    {[
+                      { label: 'Ascending', value: 'asc' },
+                      { label: 'Descending', value: 'desc' }
+                    ].map((dir) => (
+                      <button
+                        key={dir.value}
+                        type="button"
+                        onClick={() => {
+                          setSortOrder(dir.value as any)
+                          setIsSortDropdownOpen(false)
+                        }}
+                        className={cn(
+                          "w-full text-left px-2.5 py-1.5 text-xs font-medium rounded-lg transition-colors hover:bg-gray-50 flex items-center justify-between",
+                          sortOrder === dir.value ? "text-emerald-700 bg-emerald-50/40 font-semibold" : "text-gray-600"
+                        )}
+                      >
+                        <span>{dir.label}</span>
+                        {sortOrder === dir.value && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
         
         <div className="overflow-x-auto w-full scrollbar-thin scrollbar-thumb-gray-200">
@@ -398,7 +521,7 @@ export default function ContributionsList() {
             <tbody className="divide-y divide-border text-gray-700 bg-white">
               {loading ? (
                 <TableLoader colSpan={7} />
-              ) : filtered.length === 0 ? (
+              ) : sortedContributions.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-6 py-12 text-center text-text-muted flex flex-col items-center">
                     <FileText className="w-8 h-8 text-gray-300 mb-2" />
@@ -406,7 +529,7 @@ export default function ContributionsList() {
                   </td>
                 </tr>
               ) : (
-                filtered.map((c) => (
+                sortedContributions.map((c) => (
                   <tr key={c.id} className="hover:bg-[#ECFDF5] transition-colors">
                     <td className="px-6 py-4 font-medium text-gray-900">{c.title}</td>
                     <td className="px-6 py-4">{c.category || (getCategoryData(c.contribution_types).name)}</td>

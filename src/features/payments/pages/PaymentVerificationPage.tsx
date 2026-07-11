@@ -40,8 +40,17 @@ interface PaymentVerification {
 interface VerificationProps {
   period?: PeriodFilter
 }
-
 const defaultPeriod: PeriodFilter = { preset: 'all' }
+
+const formatDateStr = (dateStr?: string) => {
+  if (!dateStr) return '-'
+  const d = new Date(dateStr)
+  if (isNaN(d.getTime())) return dateStr
+  const day = String(d.getDate()).padStart(2, '0')
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const year = d.getFullYear()
+  return `${day}/${month}/${year}`
+}
 
 export default function Verification({ period = defaultPeriod }: VerificationProps) {
   const [verifications, setVerifications] = useState<PaymentVerification[]>([])
@@ -394,9 +403,7 @@ export default function Verification({ period = defaultPeriod }: VerificationPro
                     </td>
                     <td className="px-4 py-4 w-32 text-left">{item.title}</td>
                     <td className="px-4 py-4 pr-2 hidden md:table-cell w-24 text-sm text-left">
-                      {item.date_submitted
-                        ? new Date(item.date_submitted).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
-                        : '-'}
+                      {formatDateStr(item.date_submitted)}
                     </td>
                     <td className="px-2 py-4 hidden max-w-[140px] text-sm text-gray-500 lg:table-cell w-32 text-left">{getBankName(item)}</td>
                     <td className="px-2 py-4 w-28 font-semibold text-gray-900 text-center">{formatCurrency(item.amount)}</td>

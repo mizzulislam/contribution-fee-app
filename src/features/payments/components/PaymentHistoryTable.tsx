@@ -207,7 +207,7 @@ export default function PaymentHistory() {
       <body>
         <div class="receipt">
           <div class="header">
-            <div class="brand">SOEMATRA KOST</div>
+            <div class="brand">SPLITZ</div>
             <h1>Kuitansi Pembayaran</h1>
             <div class="receipt-no">${receiptNo}</div>
             <div class="badge-paid">✓ Lunas &amp; Terverifikasi</div>
@@ -240,7 +240,7 @@ export default function PaymentHistory() {
             </div>
           </div>
           <div class="footer">
-            Dicetak pada ${printedAt} &bull; Soematra Kost Management System
+            Dicetak pada ${printedAt} &bull; Splitz Management System
           </div>
         </div>
         <script>window.onload = () => { window.print(); }<\/script>
@@ -337,7 +337,7 @@ export default function PaymentHistory() {
             <div className="bg-gradient-to-br from-emerald-600 to-emerald-500 px-6 py-5 text-white">
               <div className="flex justify-between items-start">
                 <div>
-                  <p className="text-[10px] font-bold tracking-widest opacity-80 uppercase mb-1">Soematra Kost</p>
+                  <p className="text-[10px] font-bold tracking-widest opacity-80 uppercase mb-1">Splitz</p>
                   <h2 className="text-lg font-bold">Kuitansi Pembayaran</h2>
                   <p className="text-xs opacity-70 mt-0.5">RCP-{String(receiptItem.id).slice(0, 8).toUpperCase()}</p>
                 </div>

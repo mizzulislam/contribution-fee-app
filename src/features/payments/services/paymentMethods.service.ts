@@ -12,7 +12,7 @@ const FALLBACK_PAYMENT_METHODS: PaymentMethod[] = [
   {
     id: 'fallback-bca',
     bank_name: 'BCA',
-    account_name: 'Soematra Kost',
+    account_name: 'Splitz',
     account_number: '1234567890',
     status: 'Aktif',
   },
@@ -29,7 +29,7 @@ function normalizePaymentMethod(row: any): PaymentMethod | null {
   return {
     id,
     bank_name: bankName,
-    account_name: accountName || 'Bendahara Kos',
+    account_name: accountName || 'Bendahara Splitz',
     account_number: accountNumber,
     status: String(row?.status || 'Aktif').trim(),
   }

@@ -118,7 +118,7 @@ export default function Login() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="form-input"
-            placeholder="nama@soematra.com"
+            placeholder="nama@splitz.com"
           />
         </div>
         <div>

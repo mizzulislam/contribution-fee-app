@@ -19,6 +19,16 @@ interface BillsPaymentsProps {
 const defaultPeriod: PeriodFilter = { preset: 'all' }
 const defaultResidentFilter: string[] = []
 
+const formatDateStr = (dateStr?: string) => {
+  if (!dateStr) return '-'
+  const d = new Date(dateStr)
+  if (isNaN(d.getTime())) return dateStr
+  const day = String(d.getDate()).padStart(2, '0')
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const year = d.getFullYear()
+  return `${day}/${month}/${year}`
+}
+
 export default function BillsPayments({ period = defaultPeriod, residentFilter = defaultResidentFilter }: BillsPaymentsProps) {
   const [sendingStatus, setSendingStatus] = useState<Record<string, boolean>>({})
   const [whatsappSettings, setWhatsappSettings] = useState({
@@ -149,8 +159,7 @@ export default function BillsPayments({ period = defaultPeriod, residentFilter =
   }, [])
 
   const sortByLabel = sortBy === 'due_date' ? 'Jatuh Tempo' : sortBy === 'name' ? 'Nama Warga' : sortBy === 'category' ? 'Jenis Iuran' : 'Status'
-  const sortOrderLabel = sortOrder === 'asc' ? 'Terlama' : 'Terbaru'
-  const activeLabel = `${sortByLabel}: ${sortOrderLabel}`
+  const activeLabel = sortByLabel
 
   const sortedBills = useMemo(() => {
     return [...filteredBills].sort((a, b) => {
@@ -199,13 +208,7 @@ export default function BillsPayments({ period = defaultPeriod, residentFilter =
   const billingExportRows = useMemo(() => {
     const rows: (string | number)[][] = []
     const formatAmount = (val: number) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(val)
-    const formatDateStr = (dateStr: string) => {
-      try {
-        return new Date(dateStr).toLocaleDateString('id-ID')
-      } catch {
-        return dateStr
-      }
-    }
+
     const getStatusLabel = (status: string) => {
       if (status === 'paid') return 'Lunas'
       if (status === 'partially_paid') return 'Belum Lunas'
@@ -308,7 +311,7 @@ export default function BillsPayments({ period = defaultPeriod, residentFilter =
                         {bill.id ? bill.id.slice(0, 8) : ''}
                       </td>
                       <td className="py-2 px-2 text-center whitespace-nowrap">
-                        {new Date(bill.due_date).toLocaleDateString('id-ID')}
+                        {formatDateStr(bill.due_date)}
                       </td>
                       <td className="py-2 px-2">
                         <div className="font-semibold text-gray-900">{getBillTitle(bill)}</div>
@@ -514,7 +517,7 @@ export default function BillsPayments({ period = defaultPeriod, residentFilter =
                   <span>Urutkan: {activeLabel}</span>
                 </button>
                 {isSortDropdownOpen && (
-                  <div className="absolute right-0 z-50 mt-2 w-56 rounded-xl border border-gray-150 bg-white p-1.5 shadow-lg animate-in fade-in slide-in-from-top-1 duration-200 space-y-1">
+                  <div className="absolute right-0 left-0 z-50 mt-2 w-full rounded-xl border border-gray-150 bg-white p-1.5 shadow-lg animate-in fade-in slide-in-from-top-1 duration-200 space-y-1">
                     {/* Categories Group */}
                     <div className="space-y-0.5">
                       {[
@@ -543,8 +546,8 @@ export default function BillsPayments({ period = defaultPeriod, residentFilter =
                     {/* Order Directions Group */}
                     <div className="space-y-0.5">
                       {[
-                        { label: 'Ascending (A-Z / Terlama)', value: 'asc' },
-                        { label: 'Descending (Z-A / Terbaru)', value: 'desc' }
+                        { label: 'Ascending', value: 'asc' },
+                        { label: 'Descending', value: 'desc' }
                       ].map((dir) => (
                         <button
                           key={dir.value}
@@ -655,7 +658,7 @@ export default function BillsPayments({ period = defaultPeriod, residentFilter =
                       <div className="font-medium text-gray-900">{getBillTitle(bill)}</div>
                       <div className="text-xs text-text-secondary mt-0.5">{getBillSubtitle(bill)}</div>
                     </td>
-                    <td className="px-6 py-4 text-center text-text-secondary hidden md:table-cell">{new Date(bill.due_date).toLocaleDateString('id-ID')}</td>
+                    <td className="px-6 py-4 text-center text-text-secondary hidden md:table-cell">{formatDateStr(bill.due_date)}</td>
                     <td className="px-6 py-4 font-semibold">
                       {bill.status === 'partially_paid'
                         ? formatCurrency(Math.max(0, (Number(bill.amount) || 0) - getBillPaidAmount(bill)))
@@ -1062,7 +1065,7 @@ export default function BillsPayments({ period = defaultPeriod, residentFilter =
                 </div>
                 <div className="grid grid-cols-[104px_minmax(0,1fr)] items-center gap-3 sm:grid-cols-[120px_minmax(0,1fr)]">
                   <span className="text-sm font-medium leading-snug text-gray-500">Jatuh Tempo</span>
-                  <span className="text-right text-sm font-semibold leading-snug text-gray-900">{new Date(selectedBill.due_date).toLocaleDateString('id-ID')}</span>
+                  <span className="text-right text-sm font-semibold leading-snug text-gray-900">{formatDateStr(selectedBill.due_date)}</span>
                 </div>
                 <div className="grid grid-cols-[104px_minmax(0,1fr)] items-center gap-3 border-t border-gray-200 pt-3 sm:grid-cols-[120px_minmax(0,1fr)]">
                   <span className="text-sm font-medium leading-snug text-gray-500">Nominal</span>

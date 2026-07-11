@@ -5,7 +5,7 @@ import { filterJournalEntriesByPeriod, getPeriodLabel, type PeriodFilter } from 
 import JournalEntryModal from '@/features/accounting/components/JournalEntryModal'
 import AccountingDownloadMenu from '@/features/accounting/components/AccountingDownloadMenu'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
-import { PlusCircle, Pencil, ArrowUpDown, Edit, ScrollText } from 'lucide-react'
+import { Loader2, ScrollText, ArrowUpDown, Pencil, Eye, Trash2, X, PlusCircle, Edit } from 'lucide-react'
 import { spreadsheetApi } from '@/services/sheets-client'
 
 interface GeneralJournalViewProps {
@@ -34,6 +34,7 @@ export default function GeneralJournalView({ period }: GeneralJournalViewProps) 
   const [isEditMode, setIsEditMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [editingEntry, setEditingEntry] = useState<JournalEntry | null>(null)
+  const [selectedDetailEntry, setSelectedDetailEntry] = useState<any | null>(null)
 
   const refreshData = () => {
     setEntries(defaultEngine.journal.getEntries())
@@ -163,16 +164,14 @@ export default function GeneralJournalView({ period }: GeneralJournalViewProps) 
       
       <table className="w-full table-fixed text-left text-[11.5px] border border-gray-200 border-collapse">
         <colgroup>
-          <col className="w-[12%]" />
-          <col className="w-[13%]" />
-          <col className="w-[41%]" />
+          <col className="w-[10%]" />
+          <col className="w-[56%]" />
           <col className="w-[10%]" />
           <col className="w-[12%]" />
           <col className="w-[12%]" />
         </colgroup>
-        <thead className="bg-[#F8FAFC] border-b border-gray-300 text-gray-700">
+        <thead className="bg-[#F8FAFC] border-b border-gray-300 text-gray-700 uppercase">
           <tr>
-            <th className="px-3 py-2 border-r border-gray-200 font-bold text-center">ID Jurnal</th>
             <th className="px-3 py-2 border-r border-gray-200 font-bold text-center">Tanggal</th>
             <th className="px-3 py-2 border-r border-gray-200 font-bold text-center">Deskripsi</th>
             <th className="px-3 py-2 border-r border-gray-200 font-bold text-center">Ref</th>
@@ -183,16 +182,14 @@ export default function GeneralJournalView({ period }: GeneralJournalViewProps) 
         <tbody className="divide-y divide-gray-200 text-gray-700 bg-white">
           {sortedEntries.length === 0 ? (
             <tr>
-              <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
+              <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
                 Belum ada transaksi pada periode ini.
               </td>
             </tr>
           ) : (
             sortedEntries.map((entry) => (
               <tr key={entry.id} className="align-top border-b border-gray-200">
-                <td className="px-3 py-2 border-r border-gray-200 text-center font-mono">
-                  {formatJournalId(entry.id)}
-                </td>
+
                 <td className="px-3 py-2 border-r border-gray-200 text-center whitespace-nowrap">
                   {formatDate(entry.date)}
                 </td>
@@ -343,16 +340,15 @@ export default function GeneralJournalView({ period }: GeneralJournalViewProps) 
         <div className="overflow-x-auto w-full">
           <table className="min-w-[850px] w-full table-fixed text-left text-sm">
             <colgroup>
-              {isEditMode && <col className="w-12" />}
-              <col className="w-[11%]" />
-              <col className="w-[13%]" />
-              <col className="w-[29%]" />
-              <col className="w-[13%]" />
-              <col className="w-[17%]" />
-              <col className="w-[17%]" />
               {isEditMode && <col className="w-16" />}
+              <col className="w-[10%]" />
+              <col className="w-[43%]" />
+              <col className="w-[13%]" />
+              <col className="w-[17%]" />
+              <col className="w-[17%]" />
+              {isEditMode && <col className="w-32" />}
             </colgroup>
-            <thead className="bg-[#F8FAFC] border-b border-gray-200 text-gray-600">
+            <thead className="bg-[#F8FAFC] border-b border-gray-200 text-gray-600 text-xs uppercase font-semibold">
               <tr>
                 {isEditMode && (
                   <th className="px-4 py-4 text-center w-12">
@@ -370,19 +366,18 @@ export default function GeneralJournalView({ period }: GeneralJournalViewProps) 
                     />
                   </th>
                 )}
-                <th className="px-4 py-4 font-semibold whitespace-nowrap text-center">ID Jurnal</th>
                 <th className="px-4 py-4 font-semibold whitespace-nowrap text-center">Tanggal</th>
                 <th className="px-4 py-4 font-semibold text-center">Deskripsi</th>
                 <th className="px-4 py-4 font-semibold text-center">Ref</th>
                 <th className="px-5 py-4 font-semibold text-center">Debit</th>
                 <th className="px-5 py-4 font-semibold text-center">Kredit</th>
-                {isEditMode && <th className="px-6 py-4 font-semibold text-center w-16">Aksi</th>}
+                {isEditMode && <th className="px-6 py-4 font-semibold text-center w-32">Aksi</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 text-gray-700 bg-white">
               {sortedEntries.length === 0 ? (
                 <tr>
-                  <td colSpan={isEditMode ? 8 : 6} className="px-6 py-12 text-center text-text-muted">
+                  <td colSpan={isEditMode ? 7 : 5} className="px-6 py-12 text-center text-text-muted">
                     {isSyncing ? 'Memuat data transaksi...' : 'Belum ada transaksi pada periode ini.'}
                   </td>
                 </tr>
@@ -405,11 +400,7 @@ export default function GeneralJournalView({ period }: GeneralJournalViewProps) 
                         />
                       </td>
                     )}
-                    <td className="px-4 py-5 text-center">
-                      <div className="text-xs text-gray-600 font-mono bg-gray-50 inline-block px-1.5 py-1 rounded border border-gray-100">
-                        {formatJournalId(entry.id)}
-                      </div>
-                    </td>
+
                     <td className="px-4 py-5 whitespace-nowrap text-center">
                       <div className="font-medium text-gray-900">{formatDate(entry.date)}</div>
                     </td>
@@ -479,16 +470,37 @@ export default function GeneralJournalView({ period }: GeneralJournalViewProps) 
                     </td>
                     {isEditMode && (
                       <td className="px-6 py-5 text-center align-middle">
-                        <button 
-                          onClick={() => {
-                            setEditingEntry(entry)
-                            setIsModalOpen(true)
-                          }}
-                          className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-100"
-                          title="Edit transaksi"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </button>
+                        <div className="flex justify-center items-center gap-1.5">
+                          <button 
+                            onClick={() => {
+                              setSelectedDetailEntry(entry)
+                            }}
+                            className="p-1.5 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 rounded-lg transition-colors border border-transparent hover:border-emerald-100"
+                            title="Detail transaksi"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          <button 
+                            onClick={() => {
+                              setEditingEntry(entry)
+                              setIsModalOpen(true)
+                            }}
+                            className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-100"
+                            title="Edit transaksi"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button 
+                            onClick={() => {
+                              setSelectedIds([entry.id])
+                              setIsDeleteDialogOpen(true)
+                            }}
+                            className="p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100"
+                            title="Hapus transaksi"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     )}
                   </tr>
@@ -522,6 +534,85 @@ export default function GeneralJournalView({ period }: GeneralJournalViewProps) 
         confirmLabel="Selesai"
         onClose={() => setSuccessDialog(prev => ({ ...prev, isOpen: false }))}
       />
+
+      {selectedDetailEntry && (
+        <div className="fixed inset-0 w-screen h-screen z-[9999] flex items-center justify-center p-4 sm:p-6 bg-gray-900/60 backdrop-blur-md animate-in fade-in duration-300" onMouseDown={() => setSelectedDetailEntry(null)}>
+          <div className="bg-white rounded-[24px] shadow-2xl w-full max-w-2xl flex flex-col relative overflow-hidden animate-in zoom-in-95 duration-300" onMouseDown={e => e.stopPropagation()}>
+            {/* Modal Header */}
+            <div className="px-6 pt-6 pb-4 border-b border-gray-150 flex justify-between items-center">
+              <div>
+                <h3 className="font-bold text-gray-900 text-lg">Detail Ayat Jurnal</h3>
+                <p className="text-xs text-gray-500 mt-1">ID: {formatJournalId(selectedDetailEntry.id)}</p>
+              </div>
+              <button onClick={() => setSelectedDetailEntry(null)} className="p-2 text-gray-400 hover:text-white bg-gray-100 hover:bg-red-500 rounded-full transition-all duration-200 shadow-sm">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6 overflow-y-auto space-y-4">
+              {/* Info Grid */}
+              <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-2xl border border-gray-150 text-sm">
+                <div>
+                  <span className="text-gray-500 block font-medium">Tanggal Transaksi</span>
+                  <span className="font-semibold text-gray-900 mt-1 block">{formatDate(selectedDetailEntry.date)}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500 block font-medium">Keterangan / Deskripsi</span>
+                  <span className="font-semibold text-emerald-800 mt-1 block">{selectedDetailEntry.description}</span>
+                </div>
+              </div>
+
+              {/* Entries Table */}
+              <div className="border border-gray-200 rounded-xl overflow-hidden">
+                <table className="w-full text-xs text-left">
+                  <thead className="bg-[#F8FAFC] border-b border-gray-200 text-gray-600 uppercase font-semibold">
+                    <tr>
+                      <th className="px-4 py-2.5">Nama Akun</th>
+                      <th className="px-4 py-2.5 text-center">Ref</th>
+                      <th className="px-4 py-2.5 text-right">Debit</th>
+                      <th className="px-4 py-2.5 text-right">Kredit</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 text-gray-700 bg-white">
+                    {/* Debits */}
+                    {selectedDetailEntry.debits.map((d: any, idx: number) => {
+                      const acc = accounts.find(a => a.accountNumber === d.accountNumber)
+                      return (
+                        <tr key={`d-${idx}`} className="hover:bg-gray-50/50">
+                          <td className="px-4 py-3 font-semibold text-gray-900">{acc?.accountName || '-'}</td>
+                          <td className="px-4 py-3 text-center text-gray-500">{d.accountNumber}</td>
+                          <td className="px-4 py-3 text-right font-medium text-gray-900">Rp {formatAmount(d.amount)}</td>
+                          <td className="px-4 py-3 text-right text-gray-400">-</td>
+                        </tr>
+                      )
+                    })}
+                    {/* Credits */}
+                    {selectedDetailEntry.credits.map((c: any, idx: number) => {
+                      const acc = accounts.find(a => a.accountNumber === c.accountNumber)
+                      return (
+                        <tr key={`c-${idx}`} className="hover:bg-gray-50/50">
+                          <td className="px-4 py-3 pl-8 text-gray-900">{acc?.accountName || '-'}</td>
+                          <td className="px-4 py-3 text-center text-gray-500">{c.accountNumber}</td>
+                          <td className="px-4 py-3 text-right text-gray-400">-</td>
+                          <td className="px-4 py-3 text-right font-medium text-gray-900">Rp {formatAmount(c.amount)}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            
+            {/* Modal Footer */}
+            <div className="px-6 py-4 bg-gray-50 border-t border-gray-150 flex justify-end">
+              <button onClick={() => setSelectedDetailEntry(null)} className="px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white text-xs font-semibold rounded-xl transition-all shadow-sm">
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

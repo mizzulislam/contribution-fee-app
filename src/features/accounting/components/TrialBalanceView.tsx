@@ -62,7 +62,7 @@ export default function TrialBalanceView({ period }: TrialBalanceViewProps) {
           <col className="w-[20%]" />
           <col className="w-[20%]" />
         </colgroup>
-        <thead className="bg-[#F8FAFC] border-b border-gray-300 text-gray-700">
+        <thead className="bg-[#F8FAFC] border-b border-gray-300 text-gray-700 uppercase">
           <tr>
             <th className="px-3 py-2 border-r border-gray-200 font-bold">No. Akun</th>
             <th className="px-3 py-2 border-r border-gray-200 font-bold">Nama Akun</th>
@@ -173,7 +173,7 @@ export default function TrialBalanceView({ period }: TrialBalanceViewProps) {
 
         <div className="overflow-x-auto overscroll-x-contain">
           <table className="min-w-[720px] w-full text-left text-sm">
-            <thead className="bg-[#F3F4F6] border-b border-border text-gray-600">
+            <thead className="bg-[#F3F4F6] border-b border-border text-gray-600 text-xs uppercase font-semibold">
               <tr>
                 <th className="px-6 py-3 font-semibold whitespace-nowrap">No. Akun</th>
                 <th className="px-6 py-3 font-semibold whitespace-nowrap w-full">Nama Akun</th>

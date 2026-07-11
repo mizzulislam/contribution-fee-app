@@ -386,7 +386,7 @@ export default function Dashboard() {
 
   const getWelcomeMessage = () => {
     if (activeRole === 'super admin') return 'Pantau dan atur seluruh aktivitas sistem dari sini.'
-    if (activeRole === 'admin') return 'Kelola operasional kos, iuran, dan kebutuhan galon.'
+    if (activeRole === 'admin') return 'Kelola operasional iuran, split bill, dan kebutuhan bersama.'
     return 'Jangan lupa cek tagihan dan jadwal piket Anda.'
   }
 
@@ -712,7 +712,7 @@ export default function Dashboard() {
             <LayoutDashboard className="mr-2 sm:mr-3 text-primary w-6 h-6 sm:w-8 sm:h-8" />
             Dashboard
           </h1>
-          <p className="text-xs sm:text-sm text-text-secondary mt-1">Ringkasan operasional dan keuangan kos hari ini.</p>
+          <p className="text-xs sm:text-sm text-text-secondary mt-1">Sistem Cerdas untuk Manajemen Iuran & Split Bill.</p>
         </div>
       </div>
       

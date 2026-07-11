@@ -1,5 +1,6 @@
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { PlusCircle, SearchCheck, ReceiptText, ShieldAlert, CalendarCheck, Bell, Droplets, type LucideIcon } from 'lucide-react'
+import { PlusCircle, SearchCheck, ReceiptText, ShieldAlert, CalendarCheck, Bell, Droplets, Calculator, type LucideIcon } from 'lucide-react'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 
 type ActionTone = 'emerald' | 'blue' | 'rose' | 'orange' | 'purple' | 'amber'
@@ -96,7 +97,7 @@ function QuickActionCard({ icon: Icon, label, onClick, to, tone }: QuickActionIt
 
 function QuickActionGrid({ actions }: { actions: QuickActionItem[] }) {
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 xl:grid-cols-5">
       {actions.map(action => (
         <QuickActionCard key={action.label} {...action} />
       ))}
@@ -106,30 +107,70 @@ function QuickActionGrid({ actions }: { actions: QuickActionItem[] }) {
 
 export function QuickActions({ onOpenTransaction }: { onOpenTransaction?: () => void }) {
   const { activeRole } = useAuth()
+  const [disabledPages, setDisabledPages] = useState<string[]>(() => {
+    try {
+      const cached = localStorage.getItem('soematra_disabled_pages')
+      return cached ? JSON.parse(cached) : []
+    } catch {
+      return []
+    }
+  })
+
+  useEffect(() => {
+    const handleSync = (e: Event) => {
+      const customEvent = e as CustomEvent
+      if (customEvent.detail.sheetName === 'Settings') {
+        try {
+          const cached = localStorage.getItem('soematra_disabled_pages')
+          if (cached) {
+            setDisabledPages(JSON.parse(cached))
+          }
+        } catch {
+          // ignore
+        }
+      }
+    }
+    window.addEventListener('soematra-sync-event', handleSync)
+    return () => window.removeEventListener('soematra-sync-event', handleSync)
+  }, [])
+
+  const isSplitBillActive = !disabledPages.includes('/dashboard/split-bill')
 
   if (activeRole === 'super admin') {
-    return <QuickActionGrid actions={[
+    const actions: QuickActionItem[] = [
       { label: 'Tambah Warga', to: '/dashboard/warga', icon: PlusCircle, tone: 'emerald' },
       { label: 'Data Master', to: '/dashboard/master', icon: SearchCheck, tone: 'blue' },
       { label: 'Audit Log', to: '/dashboard/audit', icon: ShieldAlert, tone: 'amber' },
       { label: 'Laporan', to: '/dashboard/finance?tab=statements', icon: ReceiptText, tone: 'purple' },
-    ]} />
+    ]
+    if (isSplitBillActive) {
+      actions.push({ label: 'Kalkulator Split Bill', to: '/dashboard/split-bill', icon: Calculator, tone: 'rose' })
+    }
+    return <QuickActionGrid actions={actions} />
   }
 
   if (activeRole === 'admin') {
-    return <QuickActionGrid actions={[
+    const actions: QuickActionItem[] = [
       { label: 'Manajemen Iuran', to: '/dashboard/billing', icon: ReceiptText, tone: 'blue' },
       { label: 'Verifikasi Bayar', to: '/dashboard/billing?tab=verification', icon: SearchCheck, tone: 'emerald' },
       { label: 'Catat Transaksi', onClick: onOpenTransaction, icon: PlusCircle, tone: 'rose' },
       { label: 'Laporan Kas', to: '/dashboard/finance?tab=statements', icon: ShieldAlert, tone: 'purple' },
-    ]} />
+    ]
+    if (isSplitBillActive) {
+      actions.push({ label: 'Kalkulator Split Bill', to: '/dashboard/split-bill', icon: Calculator, tone: 'amber' })
+    }
+    return <QuickActionGrid actions={actions} />
   }
 
   // User role actions
-  return <QuickActionGrid actions={[
+  const actions: QuickActionItem[] = [
     { label: 'Pusat Pembayaran', to: '/dashboard/billing-user', icon: ReceiptText, tone: 'emerald' },
     { label: 'Kalender Kos', to: '/dashboard/duties-mine', icon: CalendarCheck, tone: 'blue' },
     { label: 'Pusat Informasi', to: '/dashboard/information', icon: Bell, tone: 'orange' },
     { label: 'Info Galon', to: '/dashboard/gallons-info', icon: Droplets, tone: 'purple' },
-  ]} />
+  ]
+  if (isSplitBillActive) {
+    actions.push({ label: 'Kalkulator Split Bill', to: '/dashboard/split-bill', icon: Calculator, tone: 'amber' })
+  }
+  return <QuickActionGrid actions={actions} />
 }

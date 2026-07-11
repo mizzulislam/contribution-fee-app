@@ -117,7 +117,7 @@ export default function GeneralLedgerView({ period }: GeneralLedgerViewProps) {
                     <col className="w-[16%]" />
                     <col className="w-[16%]" />
                   </colgroup>
-                  <thead className="bg-[#F8FAFC] border-b border-gray-300 text-gray-700">
+                  <thead className="bg-[#F8FAFC] border-b border-gray-300 text-gray-700 uppercase">
                     <tr>
                       <th className="px-3 py-2 border-r border-gray-200 font-bold text-center">Tanggal</th>
                       <th className="px-3 py-2 border-r border-gray-200 font-bold text-center">Keterangan</th>
@@ -176,7 +176,7 @@ export default function GeneralLedgerView({ period }: GeneralLedgerViewProps) {
               <col className="w-[16%]" />
               <col className="w-[16%]" />
             </colgroup>
-            <thead className="bg-[#F8FAFC] border-b border-gray-300 text-gray-700">
+            <thead className="bg-[#F8FAFC] border-b border-gray-300 text-gray-700 uppercase">
               <tr>
                 <th className="px-3 py-2 border-r border-gray-200 font-bold text-center">Tanggal</th>
                 <th className="px-3 py-2 border-r border-gray-200 font-bold text-center">Keterangan</th>
@@ -284,7 +284,7 @@ export default function GeneralLedgerView({ period }: GeneralLedgerViewProps) {
 
                 <div className="overflow-x-auto overscroll-x-contain">
                   <table className="min-w-[820px] w-full text-left text-sm">
-                    <thead className="bg-[#F3F4F6] border-b border-border text-gray-600">
+                    <thead className="bg-[#F3F4F6] border-b border-border text-gray-600 text-xs uppercase font-semibold">
                       <tr>
                         <th className="px-6 py-3 font-semibold whitespace-nowrap">Tanggal</th>
                         <th className="px-6 py-3 font-semibold whitespace-nowrap">Keterangan</th>

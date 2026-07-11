@@ -53,10 +53,10 @@ export function SidebarLogo({ collapsed, onClick }: SidebarLogoProps) {
         )}
       >
         <span className="truncate text-lg font-bold tracking-tight text-white">
-          Soematra
+          Splitz
         </span>
         <span className="truncate text-[10px] uppercase tracking-wider font-semibold text-white/70">
-          Kost Management
+          Iuran & Split Bill
         </span>
       </div>
     </div>

@@ -37,6 +37,7 @@ import NotificationSettings from '@/features/settings/pages/NotificationSettings
 import BackupRestore from '@/features/settings/pages/BackupRestorePage'
 import SystemSettings from '@/features/settings/pages/SystemSettingsPage'
 import PageControl from '@/features/settings/pages/PageControlPage'
+import SplitBillCalculator from '@/features/billing/pages/SplitBillCalculatorPage'
 import { spreadsheetApi } from '@/services/sheets-client'
 
 export default function App() {
@@ -135,6 +136,7 @@ export default function App() {
             {/* USER / PENGHUNI ROUTES */}
             <Route element={<ProtectedRoute allowedRoles={['super admin', 'admin', 'user']} />}>
               <Route path="/dashboard/billing-user" element={restrict('/dashboard/billing-user', <UserBillingDashboard />)} />
+              <Route path="/dashboard/split-bill" element={restrict('/dashboard/split-bill', <SplitBillCalculator />)} />
               <Route path="/dashboard/information" element={restrict('/dashboard/information', <UserInformationDashboard />)} />
               <Route path="/dashboard/profile" element={<ProfileSettings />} />
               <Route path="/dashboard/cash-reports" element={restrict('/dashboard/cash-reports', <CashReports />)} />

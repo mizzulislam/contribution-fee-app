@@ -23,6 +23,7 @@ const PAGES_LIST: PageItem[] = [
   { id: 'gallons-info', name: 'Info Galon', path: '/dashboard/gallons-info', system: 'Warga / Penghuni', description: 'Statistik air galon yang tersisa, kapasitas dispenser, dan log penggunaan.' },
   { id: 'duties-mine', name: 'Kalender Kos', path: '/dashboard/duties-mine', system: 'Warga / Penghuni', description: 'Kalender giliran piket pribadi warga dan tombol konfirmasi penyelesaian tugas.' },
   { id: 'information', name: 'Pusat Informasi', path: '/dashboard/information', system: 'Warga / Penghuni', description: 'Pengumuman terbaru dari pengelola kos dan notifikasi pengingat.' },
+  { id: 'split-bill', name: 'Kalkulator Split Bill', path: '/dashboard/split-bill', system: 'Warga / Penghuni', description: 'Fitur kalkulator interaktif untuk menghitung dan membagi tagihan (split bill) secara adil.' },
 ]
 
 export default function PageControl() {

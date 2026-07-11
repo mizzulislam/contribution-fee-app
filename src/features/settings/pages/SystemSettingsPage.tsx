@@ -4,8 +4,8 @@ import Select from '@/components/ui/Select'
 import { spreadsheetApi } from '@/services/sheets-client'
 
 export default function SystemSettings() {
-  const [appName, setAppName] = useState('Soematra Kost App')
-  const [contactEmail, setContactEmail] = useState('support@soematrakost.com')
+  const [appName, setAppName] = useState('Splitz')
+  const [contactEmail, setContactEmail] = useState('support@splitz.com')
   const [timezone, setTimezone] = useState('Asia/Jakarta (WIB)')
   const [currency, setCurrency] = useState('IDR (Rupiah)')
   const [defaultBillingDueDay, setDefaultBillingDueDay] = useState(12)
@@ -78,7 +78,7 @@ export default function SystemSettings() {
           <Settings className="mr-2 sm:mr-3 text-primary w-6 h-6 sm:w-8 sm:h-8" />
           Pengaturan Sistem
         </h1>
-        <p className="text-xs sm:text-sm text-text-secondary mt-1">Konfigurasi umum aplikasi Soematra Kost.</p>
+        <p className="text-xs sm:text-sm text-text-secondary mt-1">Konfigurasi umum aplikasi Splitz.</p>
       </div>
 
       <div className="card-container p-6 sm:p-8 relative">

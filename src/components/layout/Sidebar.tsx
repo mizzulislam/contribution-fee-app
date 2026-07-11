@@ -4,7 +4,8 @@ import {
   LayoutDashboard, Users, WalletCards,
   ArrowDownCircle, Droplets, CalendarCheck, Bell,
   Settings, ShieldCheck, Database, Activity,
-  RefreshCw, FileLineChart, Megaphone, LayoutGrid
+  RefreshCw, FileLineChart, Megaphone, LayoutGrid,
+  Calculator
 } from "lucide-react"
 import { cn } from "@/utils/styles"
 import { useSidebarStore } from "@/stores/sidebar-store"
@@ -87,6 +88,7 @@ export function Sidebar() {
     { name: 'Akuntansi & Laporan', path: '/dashboard/finance', icon: ArrowDownCircle },
     { name: 'Sistem Galon', path: '/dashboard/gallons-management', icon: Droplets },
     { name: 'Jadwal Piket', path: '/dashboard/duties', icon: CalendarCheck },
+    { name: 'Kalkulator Split Bill', path: '/dashboard/split-bill', icon: Calculator },
   ]
 
   const userNav = [
@@ -96,6 +98,7 @@ export function Sidebar() {
     { name: 'Info Galon', path: '/dashboard/gallons-info', icon: Droplets },
     { name: 'Kalender Kos', path: '/dashboard/duties-mine', icon: CalendarCheck },
     { name: 'Pusat Informasi', path: '/dashboard/information', icon: Megaphone },
+    { name: 'Kalkulator Split Bill', path: '/dashboard/split-bill', icon: Calculator },
   ]
 
   let navItems = userNav

@@ -25,6 +25,16 @@ interface ResidentBill {
   }
 }
 
+const formatDateStr = (dateStr?: string) => {
+  if (!dateStr) return '-'
+  const d = new Date(dateStr)
+  if (isNaN(d.getTime())) return dateStr
+  const day = String(d.getDate()).padStart(2, '0')
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const year = d.getFullYear()
+  return `${day}/${month}/${year}`
+}
+
 export default function ResidentBillsList() {
   const { profile } = useAuth()
   const navigate = useNavigate()
@@ -224,7 +234,7 @@ export default function ResidentBillsList() {
                       <div className="font-medium text-gray-900">{getBillTitle(bill)}</div>
                       <div className="text-xs text-text-secondary mt-0.5">{getBillSubtitle(bill)}</div>
                     </td>
-                    <td className="px-3 sm:px-6 py-4 text-text-secondary">{new Date(bill.due_date).toLocaleDateString('id-ID')}</td>
+                    <td className="px-3 sm:px-6 py-4 text-text-secondary">{formatDateStr(bill.due_date)}</td>
                     <td className="px-3 sm:px-6 py-4 font-semibold">{formatCurrency(getRemainingAmount(bill))}</td>
                     <td className="px-3 sm:px-6 py-4">{getStatusBadge(bill.status)}</td>
                     <td className="px-3 sm:px-6 py-4 text-center">

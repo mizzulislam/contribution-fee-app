@@ -1,0 +1,469 @@
+import React, { useState } from 'react'
+import { 
+  Calculator, 
+  Users, 
+  Plus, 
+  Trash2, 
+  Copy, 
+  Check, 
+  Percent, 
+  RotateCcw, 
+  Receipt, 
+  UserPlus, 
+  Sparkles, 
+  Tag, 
+  Info 
+} from 'lucide-react'
+
+interface Participant {
+  id: string
+  name: string
+  amount: number // Used in itemized/custom split
+}
+
+export default function SplitBillCalculator() {
+  const [splitMode, setSplitMode] = useState<'equal' | 'custom'>('equal')
+  const [billAmount, setBillAmount] = useState<number>(0)
+  const [taxPercent, setTaxPercent] = useState<number>(0)
+  const [servicePercent, setServicePercent] = useState<number>(0)
+  const [discountAmount, setDiscountAmount] = useState<number>(0)
+  
+  const [participants, setParticipants] = useState<Participant[]>([
+    { id: '1', name: 'Peserta 1', amount: 0 },
+    { id: '2', name: 'Peserta 2', amount: 0 }
+  ])
+
+  const [copied, setCopied] = useState(false)
+
+  // Handlers for participants
+  const handleAddParticipant = () => {
+    const nextId = (participants.length + 1).toString()
+    setParticipants([...participants, { id: nextId, name: `Peserta ${nextId}`, amount: 0 }])
+  }
+
+  const handleRemoveParticipant = (id: string) => {
+    if (participants.length <= 1) return
+    setParticipants(participants.filter(p => p.id !== id))
+  }
+
+  const handleParticipantChange = (id: string, field: 'name' | 'amount', value: string | number) => {
+    setParticipants(
+      participants.map(p => {
+        if (p.id === id) {
+          return {
+            ...p,
+            [field]: field === 'amount' ? Number(value) : value
+          }
+        }
+        return p
+      })
+    )
+  }
+
+  const handleReset = () => {
+    setBillAmount(0)
+    setTaxPercent(0)
+    setServicePercent(0)
+    setDiscountAmount(0)
+    setParticipants([
+      { id: '1', name: 'Peserta 1', amount: 0 },
+      { id: '2', name: 'Peserta 2', amount: 0 }
+    ])
+    setCopied(false)
+  }
+
+  // Calculations
+  const numParticipants = participants.length
+  
+  // Subtotal calculation based on mode
+  const rawSubtotal = splitMode === 'equal' ? billAmount : participants.reduce((sum, p) => sum + p.amount, 0)
+  
+  const taxAmount = (rawSubtotal * taxPercent) / 100
+  const serviceAmount = (rawSubtotal * servicePercent) / 100
+  const grandTotal = Math.max(0, rawSubtotal + taxAmount + serviceAmount - discountAmount)
+
+  // Compute shares
+  const shares = participants.map(p => {
+    let personalSubtotal = 0
+    if (splitMode === 'equal') {
+      personalSubtotal = numParticipants > 0 ? billAmount / numParticipants : 0
+    } else {
+      personalSubtotal = p.amount
+    }
+
+    // Proportional tax, service, and discount
+    const proportion = rawSubtotal > 0 ? personalSubtotal / rawSubtotal : 0
+    const personalTax = taxAmount * proportion
+    const personalService = serviceAmount * proportion
+    const personalDiscount = discountAmount * proportion
+    const personalTotal = Math.max(0, personalSubtotal + personalTax + personalService - personalDiscount)
+
+    return {
+      ...p,
+      subtotal: personalSubtotal,
+      tax: personalTax,
+      service: personalService,
+      discount: personalDiscount,
+      total: personalTotal
+    }
+  })
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount)
+  }
+
+  // Copy result to clipboard
+  const handleCopySummary = () => {
+    const modeLabel = splitMode === 'equal' ? 'Bagi Rata (Equal Split)' : 'Bagi Kustom (Itemized Split)'
+    let text = `*⚡ RINGKASAN SPLIT BILL - SPLITZ ⚡*\n`
+    text += `Mode: ${modeLabel}\n`
+    text += `-------------------------------------------\n`
+    text += `Subtotal: ${formatCurrency(rawSubtotal)}\n`
+    if (taxPercent > 0) text += `Pajak (${taxPercent}%): ${formatCurrency(taxAmount)}\n`
+    if (servicePercent > 0) text += `Biaya Layanan (${servicePercent}%): ${formatCurrency(serviceAmount)}\n`
+    if (discountAmount > 0) text += `Diskon: -${formatCurrency(discountAmount)}\n`
+    text += `*Total Akhir: ${formatCurrency(grandTotal)}*\n`
+    text += `-------------------------------------------\n`
+    text += `*Rincian Pembayaran per Orang:*\n\n`
+
+    shares.forEach((share, idx) => {
+      text += `${idx + 1}. *${share.name}*\n`
+      text += `   - Belanja: ${formatCurrency(share.subtotal)}\n`
+      if (taxPercent > 0 || servicePercent > 0 || discountAmount > 0) {
+        text += `   - Tambahan (Pajak/Layanan/Diskon): ${formatCurrency(share.tax + share.service - share.discount)}\n`
+      }
+      text += `   - *Total: ${formatCurrency(share.total)}*\n\n`
+    })
+
+    text += `Dihitung menggunakan Aplikasi Splitz.`
+
+    navigator.clipboard.writeText(text)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <div className="space-y-6 max-w-5xl mx-auto animate-in fade-in duration-500">
+      {/* Header Section */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-gradient-to-r from-white to-gray-50/50 p-6 rounded-2xl border border-gray-200/80 shadow-[0_8px_30px_rgb(0,0,0,0.02)]">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight flex items-center gap-3">
+            <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-2.5 rounded-xl text-white shadow-md shadow-emerald-500/10">
+              <Calculator className="w-6 h-6 sm:w-7 sm:h-7" />
+            </div>
+            Kalkulator Split Bill
+          </h1>
+          <p className="text-xs sm:text-sm text-text-secondary mt-1.5 pl-0.5">
+            Sistem Cerdas untuk membagi tagihan secara adil, baik dibagi rata maupun proporsional.
+          </p>
+        </div>
+        <button 
+          onClick={handleReset}
+          className="group bg-white hover:bg-gray-50 text-gray-700 hover:text-emerald-600 border border-gray-200 hover:border-emerald-200 py-2.5 px-4 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm active:scale-95 transition-all self-start sm:self-auto cursor-pointer"
+        >
+          <RotateCcw className="w-3.5 h-3.5 transition-transform duration-500 group-hover:rotate-180" /> Reset
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+        {/* Left Column: Form Inputs */}
+        <div className="lg:col-span-7 flex flex-col">
+          <div className="bg-white border border-gray-200 shadow-[0_8px_30px_rgb(0,0,0,0.03)] rounded-2xl flex flex-col h-full overflow-hidden">
+            {/* Mode Switch Tabs (Segmented Control) */}
+            <div className="bg-gray-50/70 p-2 border-b border-gray-150 flex gap-2.5">
+              <button
+                type="button"
+                className={`flex-grow py-3 px-4 rounded-xl font-extrabold text-xs sm:text-sm transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer ${
+                  splitMode === 'equal'
+                    ? 'bg-white text-emerald-600 shadow-sm border border-emerald-100/50'
+                    : 'text-gray-400 hover:text-gray-600 hover:bg-white/40'
+                }`}
+                onClick={() => setSplitMode('equal')}
+              >
+                <Users className={`w-4 h-4 ${splitMode === 'equal' ? 'text-emerald-500' : 'text-gray-400'}`} /> Bagi Rata (Equal Split)
+              </button>
+              <button
+                type="button"
+                className={`flex-grow py-3 px-4 rounded-xl font-extrabold text-xs sm:text-sm transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer ${
+                  splitMode === 'custom'
+                    ? 'bg-white text-emerald-600 shadow-sm border border-emerald-100/50'
+                    : 'text-gray-400 hover:text-gray-600 hover:bg-white/40'
+                }`}
+                onClick={() => setSplitMode('custom')}
+              >
+                <Sparkles className={`w-4 h-4 ${splitMode === 'custom' ? 'text-emerald-500' : 'text-gray-400'}`} /> Bagi Kustom (Itemized/Proportional)
+              </button>
+            </div>
+
+            <div className="p-6 flex flex-col flex-1 space-y-6">
+              {/* Billing Input (Equal Split only) */}
+              {splitMode === 'equal' && (
+                <div className="space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                  <label className="block text-xs font-extrabold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+                    <Receipt className="w-3.5 h-3.5 text-emerald-500" />
+                    Total Tagihan (Subtotal)
+                  </label>
+                  <div className="relative flex items-center">
+                    <div className="absolute left-4 text-emerald-600 font-extrabold text-lg select-none">
+                      Rp
+                    </div>
+                    <input
+                      type="number"
+                      className="bg-gray-50/50 border border-gray-200 hover:border-gray-300 focus:border-emerald-500 focus:bg-white rounded-xl pl-12 pr-4 h-14 w-full text-lg font-bold text-gray-800 transition-all focus:outline-none focus:ring-4 focus:ring-emerald-500/10"
+                      placeholder="Masukkan nominal tagihan utama..."
+                      value={billAmount || ''}
+                      onChange={e => setBillAmount(Number(e.target.value))}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Adjustments Section */}
+              <div className="space-y-2.5">
+                <span className="block text-xs font-extrabold text-gray-400 uppercase tracking-wider">Tambahan & Penyesuaian</span>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-gray-50/40 p-3 rounded-2xl border border-gray-150">
+                  {/* Tax */}
+                  <div className="relative bg-white border border-gray-200 rounded-xl p-2.5 focus-within:border-emerald-500 focus-within:ring-4 focus-within:ring-emerald-500/10 transition-all flex flex-col">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide flex items-center gap-1">
+                      <Percent className="w-3 h-3 text-emerald-500" /> Pajak (Tax)
+                    </span>
+                    <div className="relative mt-1 flex items-center">
+                      <input
+                        type="number"
+                        className="w-full text-sm font-bold text-gray-800 bg-transparent border-0 p-0 focus:ring-0 focus:outline-none placeholder-gray-300"
+                        placeholder="0"
+                        value={taxPercent || ''}
+                        onChange={e => setTaxPercent(Math.max(0, Number(e.target.value)))}
+                      />
+                      <span className="text-gray-400 font-bold text-xs ml-1">%</span>
+                    </div>
+                  </div>
+
+                  {/* Service Charge */}
+                  <div className="relative bg-white border border-gray-200 rounded-xl p-2.5 focus-within:border-emerald-500 focus-within:ring-4 focus-within:ring-emerald-500/10 transition-all flex flex-col">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide flex items-center gap-1">
+                      <Percent className="w-3 h-3 text-emerald-500" /> Layanan (Service)
+                    </span>
+                    <div className="relative mt-1 flex items-center">
+                      <input
+                        type="number"
+                        className="w-full text-sm font-bold text-gray-800 bg-transparent border-0 p-0 focus:ring-0 focus:outline-none placeholder-gray-300"
+                        placeholder="0"
+                        value={servicePercent || ''}
+                        onChange={e => setServicePercent(Math.max(0, Number(e.target.value)))}
+                      />
+                      <span className="text-gray-400 font-bold text-xs ml-1">%</span>
+                    </div>
+                  </div>
+
+                  {/* Discount */}
+                  <div className="relative bg-white border border-gray-200 rounded-xl p-2.5 focus-within:border-amber-500 focus-within:ring-4 focus-within:ring-amber-500/10 transition-all flex flex-col">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide flex items-center gap-1">
+                      <Tag className="w-3 h-3 text-amber-500" /> Diskon (Discount)
+                    </span>
+                    <div className="relative mt-1 flex items-center">
+                      <span className="text-gray-400 font-bold text-xs mr-1">Rp</span>
+                      <input
+                        type="number"
+                        className="w-full text-sm font-bold text-gray-800 bg-transparent border-0 p-0 focus:ring-0 focus:outline-none placeholder-gray-300"
+                        placeholder="0"
+                        value={discountAmount || ''}
+                        onChange={e => setDiscountAmount(Math.max(0, Number(e.target.value)))}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Participants Section */}
+              <div className="space-y-4 pt-2 flex flex-col flex-1">
+                <div className="flex justify-between items-center border-b pb-3 border-gray-150">
+                  <h3 className="text-sm font-extrabold text-gray-700 flex items-center gap-2">
+                    <Users className="w-4 h-4 text-emerald-500" /> 
+                    Daftar Peserta
+                    <span className="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-lg border border-emerald-100 font-bold ml-1">
+                      {numParticipants} Orang
+                    </span>
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={handleAddParticipant}
+                    className="group text-xs font-bold text-emerald-600 hover:text-white bg-emerald-50 hover:bg-emerald-500 transition-all px-3.5 py-2 rounded-xl border border-emerald-200/50 flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                  >
+                    <UserPlus className="w-3.5 h-3.5 transition-transform duration-300 group-hover:scale-110" /> Tambah Peserta
+                  </button>
+                </div>
+
+                {/* Participant Row List */}
+                <div className="space-y-2.5 flex-grow overflow-y-auto pr-1 max-h-[300px] lg:max-h-[340px] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-[#E5E7EB] [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-emerald-300">
+                  {participants.map((p, idx) => (
+                    <div key={p.id} className="flex items-center gap-3 bg-white p-2.5 rounded-xl border border-gray-200 hover:border-emerald-200 hover:shadow-[0_4px_16px_rgba(16,185,129,0.03)] transition-all">
+                      {/* Badge Index */}
+                      <span className="text-xs font-bold text-emerald-600 bg-emerald-50/60 w-7 h-7 flex items-center justify-center rounded-lg border border-emerald-100/30 shrink-0">
+                        {idx + 1}
+                      </span>
+                      
+                      {/* Name input */}
+                      <input
+                        type="text"
+                        className="bg-gray-50/50 border border-gray-200 hover:border-gray-300 focus:border-emerald-500 focus:bg-white rounded-lg px-3 py-2 text-xs sm:text-sm font-semibold text-gray-800 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/10 flex-1"
+                        placeholder="Nama Peserta..."
+                        value={p.name}
+                        onChange={e => handleParticipantChange(p.id, 'name', e.target.value)}
+                      />
+
+                      {/* Spent Amount input (Custom Split only) */}
+                      {splitMode === 'custom' && (
+                        <div className="relative bg-gray-50/50 border border-gray-200 hover:border-gray-300 focus-within:border-emerald-500 focus-within:bg-white transition-all rounded-lg px-2.5 py-2 flex items-center w-36 sm:w-44 shrink-0">
+                          <span className="text-gray-400 font-bold text-xs mr-1">Rp</span>
+                          <input
+                            type="number"
+                            className="w-full text-xs sm:text-sm font-semibold text-gray-800 bg-transparent border-0 p-0 text-right focus:ring-0 focus:outline-none placeholder-gray-300"
+                            placeholder="Nominal..."
+                            value={p.amount || ''}
+                            onChange={e => handleParticipantChange(p.id, 'amount', e.target.value)}
+                          />
+                        </div>
+                      )}
+
+                      {/* Delete button */}
+                      <button
+                        type="button"
+                        disabled={participants.length <= 1}
+                        onClick={() => handleRemoveParticipant(p.id)}
+                        className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all border border-transparent hover:border-red-100 disabled:opacity-20 cursor-pointer shrink-0"
+                        title="Hapus peserta"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column: Premium Receipt Card */}
+        <div className="lg:col-span-5 flex flex-col">
+          <div className="bg-gradient-to-b from-emerald-950 via-[#064e3b] to-emerald-950 rounded-[24px] text-white p-6 shadow-[0_20px_50px_rgba(4,120,87,0.12)] border border-emerald-800/40 space-y-6 relative overflow-hidden flex flex-col h-full">
+            {/* Background blur patterns */}
+            <div className="absolute right-[-40px] top-[-40px] h-36 w-36 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute left-[-20px] bottom-[-20px] h-36 w-36 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
+            
+            {/* Card Title Header */}
+            <div className="flex justify-between items-center border-b border-white/10 pb-4">
+              <div className="flex items-center gap-2">
+                <Receipt className="w-5 h-5 text-emerald-400" />
+                <h2 className="text-base sm:text-lg font-extrabold tracking-wide text-white">
+                  Ringkasan Pembagian
+                </h2>
+              </div>
+              <span className="text-[10px] font-black uppercase tracking-wider bg-white/10 px-2.5 py-1 rounded-md text-emerald-300 border border-white/5">
+                {splitMode === 'equal' ? 'Bagi Rata' : 'Bagi Kustom'}
+              </span>
+            </div>
+
+            {/* Calculations List */}
+            <div className="space-y-3.5 text-sm">
+              <div className="flex justify-between items-center text-emerald-200/80">
+                <span className="font-medium">Subtotal Belanja</span>
+                <span className="font-bold text-white text-base">{formatCurrency(rawSubtotal)}</span>
+              </div>
+
+              {taxPercent > 0 && (
+                <div className="flex justify-between items-center text-emerald-200/80">
+                  <span className="flex items-center gap-1"><Percent className="w-3.5 h-3.5 text-emerald-400" /> Pajak (Tax {taxPercent}%)</span>
+                  <span className="font-bold text-white">+{formatCurrency(taxAmount)}</span>
+                </div>
+              )}
+
+              {servicePercent > 0 && (
+                <div className="flex justify-between items-center text-emerald-200/80">
+                  <span className="flex items-center gap-1"><Percent className="w-3.5 h-3.5 text-emerald-400" /> Layanan (Service {servicePercent}%)</span>
+                  <span className="font-bold text-white">+{formatCurrency(serviceAmount)}</span>
+                </div>
+              )}
+
+              {discountAmount > 0 && (
+                <div className="flex justify-between items-center text-emerald-200/80">
+                  <span className="flex items-center gap-1"><Tag className="w-3.5 h-3.5 text-amber-400" /> Diskon (Discount)</span>
+                  <span className="font-bold text-amber-400">-{formatCurrency(discountAmount)}</span>
+                </div>
+              )}
+
+              {/* Total Display */}
+              <div className="flex justify-between items-baseline border-t border-white/10 pt-4">
+                <span className="text-xs font-extrabold uppercase tracking-wider text-emerald-400">Total Akhir</span>
+                <span className="text-3xl font-black tracking-tight bg-gradient-to-r from-white via-emerald-100 to-teal-200 bg-clip-text text-transparent">
+                  {formatCurrency(grandTotal)}
+                </span>
+              </div>
+            </div>
+
+            {/* Serrated Border Separator */}
+            <div className="relative my-1 flex items-center justify-between gap-1.5 overflow-hidden opacity-20 select-none pointer-events-none">
+              {Array.from({ length: 30 }).map((_, i) => (
+                <div key={i} className="w-1.5 h-1.5 bg-white rounded-full shrink-0" />
+              ))}
+            </div>
+
+            {/* Shares Detail list */}
+            <div className="flex-1 flex flex-col space-y-3 min-h-[220px]">
+              <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400 block">Rincian Pembayaran:</span>
+              
+              <div className="flex-1 space-y-2.5 overflow-y-auto pr-1 max-h-[250px] lg:max-h-[300px] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-white/20">
+                {shares.length === 0 ? (
+                  <div className="text-center text-xs text-emerald-300/60 py-8 flex flex-col items-center gap-2">
+                    <Users className="w-8 h-8 opacity-30" />
+                    Belum ada peserta terdaftar.
+                  </div>
+                ) : (
+                  shares.map(share => (
+                    <div key={share.id} className="flex justify-between items-center bg-white/5 p-3 rounded-xl border border-white/5 hover:bg-white/[0.08] hover:border-white/10 transition-all duration-200 animate-in fade-in duration-300">
+                      <div className="min-w-0 pr-3">
+                        <p className="font-extrabold text-xs sm:text-sm truncate text-white">{share.name}</p>
+                        <p className="text-[10px] text-emerald-300/70 mt-0.5">
+                          Murni: {formatCurrency(share.subtotal)} 
+                          {taxPercent > 0 || servicePercent > 0 || discountAmount > 0 ? ' + Penyesuaian' : ''}
+                        </p>
+                      </div>
+                      <span className="font-black text-xs sm:text-base text-emerald-300 text-right shrink-0">{formatCurrency(share.total)}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Info Message */}
+            <div className="bg-emerald-950/40 backdrop-blur-sm p-3 rounded-xl border border-white/5 flex items-start gap-2.5 text-[10.5px] text-emerald-200/90 leading-relaxed shadow-inner">
+              <Info className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+              <p>Pajak, biaya layanan, dan diskon dialokasikan secara proporsional sesuai porsi belanja masing-masing peserta.</p>
+            </div>
+
+            {/* Actions button */}
+            <button
+              type="button"
+              onClick={handleCopySummary}
+              className={`w-full py-3.5 rounded-xl font-extrabold text-sm tracking-wide shadow-lg transition-all duration-300 flex items-center justify-center gap-2 active:scale-98 cursor-pointer ${
+                copied
+                  ? 'bg-white text-emerald-950 shadow-emerald-950/20'
+                  : 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white border border-emerald-400/20 hover:shadow-emerald-500/10 shadow-xl'
+              }`}
+            >
+              {copied ? (
+                <>
+                  <Check className="w-4.5 h-4.5 animate-bounce" /> Berhasil Disalin!
+                </>
+              ) : (
+                <>
+                  <Copy className="w-4.5 h-4.5" /> Salin Ringkasan (WhatsApp)
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
