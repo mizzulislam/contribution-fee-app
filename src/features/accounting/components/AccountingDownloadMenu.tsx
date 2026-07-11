@@ -141,7 +141,7 @@ export default function AccountingDownloadMenu({
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-full z-30 mt-2 w-44 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl shadow-gray-200/60">
+        <div className="absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl shadow-gray-200/60">
           <button
             type="button"
             onClick={handleDownloadCsv}

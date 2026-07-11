@@ -251,6 +251,15 @@ export default function JournalEntryForm({ onSuccess, editingEntry }: JournalEnt
   }
 
   if (isSuccessOpen) {
+    const formattedSuccessDate = (() => {
+      const d = new Date(date)
+      if (isNaN(d.getTime())) return date
+      const day = String(d.getDate()).padStart(2, '0')
+      const month = String(d.getMonth() + 1).padStart(2, '0')
+      const year = d.getFullYear()
+      return `${day}/${month}/${year}`
+    })()
+
     return (
       <div className="bg-white p-8 sm:p-10 md:p-12 w-full flex flex-col items-center justify-center text-center animate-in fade-in duration-300 min-h-[450px]">
         <div className="mb-6 inline-flex h-20 w-20 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100 shadow-sm animate-bounce">
@@ -258,7 +267,7 @@ export default function JournalEntryForm({ onSuccess, editingEntry }: JournalEnt
         </div>
         <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Transaksi Berhasil Direkam!</h3>
         <p className="text-gray-500 max-w-md mb-6 leading-relaxed text-xs sm:text-sm">
-          Entri jurnal untuk transaksi <span className="font-semibold text-gray-800">"{description || 'Tanpa Deskripsi'}"</span> pada tanggal <span className="font-semibold text-gray-800">{new Date(date).toLocaleDateString('id-ID')}</span> telah dicatat secara aman ke sistem akuntansi.
+          Entri jurnal untuk transaksi <span className="font-semibold text-gray-800">"{description || 'Tanpa Deskripsi'}"</span> pada tanggal <span className="font-semibold text-gray-800">{formattedSuccessDate}</span> telah dicatat secara aman ke sistem akuntansi.
         </p>
         <div className="w-full max-w-md bg-gray-50 border border-gray-100 rounded-2xl p-5 mb-8 text-left space-y-3 shadow-sm">
           <div className="flex justify-between items-center text-sm border-b border-gray-200/60 pb-2.5">

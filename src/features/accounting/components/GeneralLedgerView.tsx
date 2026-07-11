@@ -47,22 +47,30 @@ export default function GeneralLedgerView({ period }: GeneralLedgerViewProps) {
   const periodLabel = getPeriodLabel(period)
   const periodSlug = periodLabel.toLowerCase().replace(/[^a-z0-9]+/gi, '-').replace(/(^-|-$)/g, '') || 'semua-periode'
   const formatAmountText = (val: number) => `Rp ${new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(val)}`
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr)
+    if (isNaN(date.getTime())) return dateStr
+    const day = String(date.getDate()).padStart(2, '0')
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const year = date.getFullYear()
+    return `${day}/${month}/${year}`
+  }
   const ledgerExportRows = isAllAccounts
     ? allLedgerEntries.map(entry => [
-      new Date(entry.date).toLocaleDateString('id-ID'),
-      `${entry.accountNumber} - ${entry.accountName}`,
-      entry.description,
-      entry.debit > 0 ? formatAmountText(entry.debit) : '-',
-      entry.credit > 0 ? formatAmountText(entry.credit) : '-',
-      formatAmountText(entry.balance),
-    ])
+        formatDate(entry.date),
+        `${entry.accountNumber} - ${entry.accountName}`,
+        entry.description,
+        entry.debit > 0 ? formatAmountText(entry.debit) : '-',
+        entry.credit > 0 ? formatAmountText(entry.credit) : '-',
+        formatAmountText(entry.balance),
+      ])
     : visibleLedgerEntries.map(entry => [
-      new Date(entry.date).toLocaleDateString('id-ID'),
-      entry.description,
-      entry.debit > 0 ? formatAmountText(entry.debit) : '-',
-      entry.credit > 0 ? formatAmountText(entry.credit) : '-',
-      formatAmountText(entry.balance),
-    ])
+        formatDate(entry.date),
+        entry.description,
+        entry.debit > 0 ? formatAmountText(entry.debit) : '-',
+        entry.credit > 0 ? formatAmountText(entry.credit) : '-',
+        formatAmountText(entry.balance),
+      ])
 
   const formatCurrency = (val: number) => {
     return (
@@ -121,16 +129,16 @@ export default function GeneralLedgerView({ period }: GeneralLedgerViewProps) {
                     <tr>
                       <th className="px-3 py-2 border-r border-gray-200 font-bold text-center">Tanggal</th>
                       <th className="px-3 py-2 border-r border-gray-200 font-bold text-center">Keterangan</th>
-                      <th className="px-3 py-2 border-r border-gray-200 font-bold text-right">Debit</th>
-                      <th className="px-3 py-2 border-r border-gray-200 font-bold text-right">Kredit</th>
-                      <th className="px-3 py-2 font-bold text-right">Saldo Berjalan</th>
+                      <th className="px-3 py-2 border-r border-gray-200 font-bold text-center">Debit</th>
+                      <th className="px-3 py-2 border-r border-gray-200 font-bold text-center">Kredit</th>
+                      <th className="px-3 py-2 font-bold text-center">Saldo Berjalan</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 bg-white">
                     {sortedEntries.map((entry, idx) => (
                       <tr key={idx} className="border-b border-gray-200">
                         <td className="px-3 py-2 border-r border-gray-200 text-center">
-                          {new Date(entry.date).toLocaleDateString('id-ID')}
+                          {formatDate(entry.date)}
                         </td>
                         <td className="px-3 py-2 border-r border-gray-200">{entry.description}</td>
                         <td className="px-3 py-2 border-r border-gray-200 text-right">
@@ -180,9 +188,9 @@ export default function GeneralLedgerView({ period }: GeneralLedgerViewProps) {
               <tr>
                 <th className="px-3 py-2 border-r border-gray-200 font-bold text-center">Tanggal</th>
                 <th className="px-3 py-2 border-r border-gray-200 font-bold text-center">Keterangan</th>
-                <th className="px-3 py-2 border-r border-gray-200 font-bold text-right">Debit</th>
-                <th className="px-3 py-2 border-r border-gray-200 font-bold text-right">Kredit</th>
-                <th className="px-3 py-2 font-bold text-right">Saldo Berjalan</th>
+                <th className="px-3 py-2 border-r border-gray-200 font-bold text-center">Debit</th>
+                <th className="px-3 py-2 border-r border-gray-200 font-bold text-center">Kredit</th>
+                <th className="px-3 py-2 font-bold text-center">Saldo Berjalan</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white">
@@ -198,7 +206,7 @@ export default function GeneralLedgerView({ period }: GeneralLedgerViewProps) {
                   .map((entry, idx) => (
                     <tr key={idx} className="border-b border-gray-200">
                       <td className="px-3 py-2 border-r border-gray-200 text-center">
-                        {new Date(entry.date).toLocaleDateString('id-ID')}
+                        {formatDate(entry.date)}
                       </td>
                       <td className="px-3 py-2 border-r border-gray-200">{entry.description}</td>
                       <td className="px-3 py-2 border-r border-gray-200 text-right">
@@ -286,11 +294,11 @@ export default function GeneralLedgerView({ period }: GeneralLedgerViewProps) {
                   <table className="min-w-[820px] w-full text-left text-sm">
                     <thead className="bg-[#F3F4F6] border-b border-border text-gray-600 text-xs uppercase font-semibold">
                       <tr>
-                        <th className="px-6 py-3 font-semibold whitespace-nowrap">Tanggal</th>
-                        <th className="px-6 py-3 font-semibold whitespace-nowrap">Keterangan</th>
-                        <th className="px-6 py-3 font-semibold text-right">Debit</th>
-                        <th className="px-6 py-3 font-semibold text-right">Kredit</th>
-                        <th className="px-6 py-3 font-semibold text-right">Saldo Berjalan</th>
+                        <th className="px-6 py-3 font-semibold whitespace-nowrap text-center">Tanggal</th>
+                        <th className="px-6 py-3 font-semibold whitespace-nowrap text-center">Keterangan</th>
+                        <th className="px-6 py-3 font-semibold text-center">Debit</th>
+                        <th className="px-6 py-3 font-semibold text-center">Kredit</th>
+                        <th className="px-6 py-3 font-semibold text-center">Saldo Berjalan</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border text-gray-700 bg-white">
@@ -305,7 +313,7 @@ export default function GeneralLedgerView({ period }: GeneralLedgerViewProps) {
                           .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
                           .map((entry, idx) => (
                             <tr key={idx} className="hover:bg-gray-50">
-                              <td className="px-6 py-4">{new Date(entry.date).toLocaleDateString('id-ID')}</td>
+                              <td className="px-6 py-4 text-center">{formatDate(entry.date)}</td>
                               <td className="px-6 py-4">{entry.description}</td>
                               <td className="px-6 py-4 text-right">{entry.debit > 0 ? formatCurrency(entry.debit) : '-'}</td>
                               <td className="px-6 py-4 text-right">{entry.credit > 0 ? formatCurrency(entry.credit) : '-'}</td>
@@ -360,17 +368,17 @@ export default function GeneralLedgerView({ period }: GeneralLedgerViewProps) {
                           <table className="min-w-[780px] w-full text-left text-sm">
                             <thead className="bg-gray-50/80 border-b border-border text-gray-600 text-xs uppercase">
                               <tr>
-                                <th className="px-6 py-2.5 font-semibold whitespace-nowrap">Tanggal</th>
-                                <th className="px-6 py-2.5 font-semibold whitespace-nowrap">Keterangan</th>
-                                <th className="px-6 py-2.5 font-semibold text-right">Debit</th>
-                                <th className="px-6 py-2.5 font-semibold text-right">Kredit</th>
-                                <th className="px-6 py-2.5 font-semibold text-right">Saldo Berjalan</th>
+                                <th className="px-6 py-2.5 font-semibold whitespace-nowrap text-center">Tanggal</th>
+                                <th className="px-6 py-2.5 font-semibold whitespace-nowrap text-center">Keterangan</th>
+                                <th className="px-6 py-2.5 font-semibold text-center">Debit</th>
+                                <th className="px-6 py-2.5 font-semibold text-center">Kredit</th>
+                                <th className="px-6 py-2.5 font-semibold text-center">Saldo Berjalan</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-border text-gray-700 bg-white">
                               {sortedEntries.map((entry, idx) => (
                                 <tr key={idx} className="hover:bg-gray-50/30 transition-colors">
-                                  <td className="px-6 py-3">{new Date(entry.date).toLocaleDateString('id-ID')}</td>
+                                  <td className="px-6 py-3 text-center">{formatDate(entry.date)}</td>
                                   <td className="px-6 py-3">{entry.description}</td>
                                   <td className="px-6 py-3 text-right">{entry.debit > 0 ? formatCurrency(entry.debit) : '-'}</td>
                                   <td className="px-6 py-3 text-right">{entry.credit > 0 ? formatCurrency(entry.credit) : '-'}</td>
