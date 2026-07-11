@@ -572,13 +572,13 @@ export default function AdjustingEntriesView({ period }: AdjustingEntriesViewPro
           <table className="min-w-full text-left text-xs text-gray-700 bg-white">
             <thead className="bg-[#F8FAFC] border-b border-gray-200 text-gray-600 text-xs uppercase font-semibold">
               <tr>
-                <th className="px-4 py-3 font-semibold">ID Aset</th>
-                <th className="px-4 py-3 font-semibold">Nama Aset</th>
-                <th className="px-4 py-3 font-semibold text-center">Tgl Perolehan</th>
-                <th className="px-4 py-3 font-semibold text-right">Harga Perolehan</th>
-                <th className="px-4 py-3 font-semibold text-right">Estimasi Nilai Residu</th>
-                <th className="px-4 py-3 font-semibold text-center">Umur Ekonomis</th>
-                <th className="px-4 py-3 font-semibold text-right">Penyusutan/Bulan</th>
+                <th className="px-4 py-4 font-semibold text-center">ID Aset</th>
+                <th className="px-4 py-4 font-semibold text-center">Nama Aset</th>
+                <th className="px-4 py-4 font-semibold text-center">Tgl Perolehan</th>
+                <th className="px-4 py-4 font-semibold text-center">Harga Perolehan</th>
+                <th className="px-4 py-4 font-semibold text-center">Estimasi Nilai Residu</th>
+                <th className="px-4 py-4 font-semibold text-center">Umur Ekonomis</th>
+                <th className="px-4 py-4 font-semibold text-center">Penyusutan/Bulan</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">

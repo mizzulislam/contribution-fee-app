@@ -175,10 +175,10 @@ export default function TrialBalanceView({ period }: TrialBalanceViewProps) {
           <table className="min-w-[720px] w-full text-left text-sm">
             <thead className="bg-[#F8FAFC] border-b border-border text-gray-600 text-xs uppercase font-semibold">
               <tr>
-                <th className="px-6 py-3 font-semibold whitespace-nowrap">No. Akun</th>
-                <th className="px-6 py-3 font-semibold whitespace-nowrap w-full">Nama Akun</th>
-                <th className="px-6 py-3 font-semibold text-right">Debit</th>
-                <th className="px-6 py-3 font-semibold text-right">Kredit</th>
+                <th className="px-6 py-4 font-semibold whitespace-nowrap text-center">No. Akun</th>
+                <th className="px-6 py-4 font-semibold whitespace-nowrap w-full text-center">Nama Akun</th>
+                <th className="px-6 py-4 font-semibold text-center">Debit</th>
+                <th className="px-6 py-4 font-semibold text-center">Kredit</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border text-gray-700 bg-white">
