@@ -256,7 +256,7 @@ export default function GeneralLedgerView({ period }: GeneralLedgerViewProps) {
         />
       </div>
 
-      <div className="card-container">
+      <div className="card-container overflow-hidden">
         <div className="max-w-md mb-6">
           <label className="block text-sm font-medium text-gray-700 mb-2">Pilih Akun</label>
           <Select 
@@ -290,15 +290,15 @@ export default function GeneralLedgerView({ period }: GeneralLedgerViewProps) {
                   </div>
                 </div>
 
-                <div className="overflow-x-auto overscroll-x-contain">
+                <div className="overflow-x-auto overscroll-x-contain -mx-4">
                   <table className="min-w-[820px] w-full text-left text-sm">
                     <thead className="bg-[#F3F4F6] border-b border-border text-gray-600 text-xs uppercase font-semibold">
                       <tr>
-                        <th className="px-6 py-3 font-semibold whitespace-nowrap text-center">Tanggal</th>
-                        <th className="px-6 py-3 font-semibold whitespace-nowrap text-center">Keterangan</th>
-                        <th className="px-6 py-3 font-semibold text-center">Debit</th>
-                        <th className="px-6 py-3 font-semibold text-center">Kredit</th>
-                        <th className="px-6 py-3 font-semibold text-center">Saldo Berjalan</th>
+                        <th className="pl-6 pr-4 py-3 font-semibold whitespace-nowrap text-center">Tanggal</th>
+                        <th className="px-4 py-3 font-semibold whitespace-nowrap text-center">Keterangan</th>
+                        <th className="px-4 py-3 font-semibold text-center">Debit</th>
+                        <th className="px-4 py-3 font-semibold text-center">Kredit</th>
+                        <th className="pl-4 pr-6 py-3 font-semibold text-center">Saldo Berjalan</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border text-gray-700 bg-white">
@@ -313,11 +313,11 @@ export default function GeneralLedgerView({ period }: GeneralLedgerViewProps) {
                           .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
                           .map((entry, idx) => (
                             <tr key={idx} className="hover:bg-gray-50">
-                              <td className="px-6 py-4 text-center">{formatDate(entry.date)}</td>
-                              <td className="px-6 py-4">{entry.description}</td>
-                              <td className="px-6 py-4 text-right">{entry.debit > 0 ? formatCurrency(entry.debit) : '-'}</td>
-                              <td className="px-6 py-4 text-right">{entry.credit > 0 ? formatCurrency(entry.credit) : '-'}</td>
-                              <td className="px-6 py-4 text-right font-medium">{formatCurrency(entry.balance)}</td>
+                              <td className="pl-6 pr-4 py-4 text-center">{formatDate(entry.date)}</td>
+                              <td className="px-4 py-4">{entry.description}</td>
+                              <td className="px-4 py-4 text-right">{entry.debit > 0 ? formatCurrency(entry.debit) : '-'}</td>
+                              <td className="px-4 py-4 text-right">{entry.credit > 0 ? formatCurrency(entry.credit) : '-'}</td>
+                              <td className="pl-4 pr-6 py-4 text-right font-medium">{formatCurrency(entry.balance)}</td>
                             </tr>
                           ))
                       )}
@@ -364,25 +364,25 @@ export default function GeneralLedgerView({ period }: GeneralLedgerViewProps) {
                           </div>
                         </div>
 
-                        <div className="overflow-x-auto overscroll-x-contain mt-2">
+                        <div className="overflow-x-auto overscroll-x-contain mt-2 -mx-4">
                           <table className="min-w-[780px] w-full text-left text-sm">
                             <thead className="bg-gray-50/80 border-b border-border text-gray-600 text-xs uppercase">
                               <tr>
-                                <th className="px-6 py-2.5 font-semibold whitespace-nowrap text-center">Tanggal</th>
-                                <th className="px-6 py-2.5 font-semibold whitespace-nowrap text-center">Keterangan</th>
-                                <th className="px-6 py-2.5 font-semibold text-center">Debit</th>
-                                <th className="px-6 py-2.5 font-semibold text-center">Kredit</th>
-                                <th className="px-6 py-2.5 font-semibold text-center">Saldo Berjalan</th>
+                                <th className="pl-6 pr-4 py-2.5 font-semibold whitespace-nowrap text-center">Tanggal</th>
+                                <th className="px-4 py-2.5 font-semibold whitespace-nowrap text-center">Keterangan</th>
+                                <th className="px-4 py-2.5 font-semibold text-center">Debit</th>
+                                <th className="px-4 py-2.5 font-semibold text-center">Kredit</th>
+                                <th className="pl-4 pr-6 py-2.5 font-semibold text-center">Saldo Berjalan</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-border text-gray-700 bg-white">
                               {sortedEntries.map((entry, idx) => (
                                 <tr key={idx} className="hover:bg-gray-50/30 transition-colors">
-                                  <td className="px-6 py-3 text-center">{formatDate(entry.date)}</td>
-                                  <td className="px-6 py-3">{entry.description}</td>
-                                  <td className="px-6 py-3 text-right">{entry.debit > 0 ? formatCurrency(entry.debit) : '-'}</td>
-                                  <td className="px-6 py-3 text-right">{entry.credit > 0 ? formatCurrency(entry.credit) : '-'}</td>
-                                  <td className="px-6 py-3 text-right font-medium">{formatCurrency(entry.balance)}</td>
+                                  <td className="pl-6 pr-4 py-3 text-center">{formatDate(entry.date)}</td>
+                                  <td className="px-4 py-3">{entry.description}</td>
+                                  <td className="px-4 py-3 text-right">{entry.debit > 0 ? formatCurrency(entry.debit) : '-'}</td>
+                                  <td className="px-4 py-3 text-right">{entry.credit > 0 ? formatCurrency(entry.credit) : '-'}</td>
+                                  <td className="pl-4 pr-6 py-3 text-right font-medium">{formatCurrency(entry.balance)}</td>
                                 </tr>
                               ))}
                             </tbody>
