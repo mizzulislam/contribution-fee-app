@@ -260,6 +260,10 @@ export default function AccountingDownloadMenu({
               white-space: nowrap !important;
             }
 
+            [data-accounting-print-area="${printAreaId}"] .print-center {
+              text-align: center !important;
+            }
+
             .page-break-before {
               page-break-before: always !important;
               break-before: page !important;

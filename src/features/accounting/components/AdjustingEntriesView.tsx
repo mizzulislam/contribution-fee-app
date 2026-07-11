@@ -387,8 +387,8 @@ export default function AdjustingEntriesView({ period }: AdjustingEntriesViewPro
       
       <table className="w-full table-fixed text-left text-[11.5px] border border-gray-200 border-collapse">
         <colgroup>
-          <col className="w-[10%]" />
-          <col className="w-[56%]" />
+          <col className="w-[12%]" />
+          <col className="w-[54%]" />
           <col className="w-[10%]" />
           <col className="w-[12%]" />
           <col className="w-[12%]" />
@@ -413,7 +413,7 @@ export default function AdjustingEntriesView({ period }: AdjustingEntriesViewPro
             sortedEntries.map((entry) => (
               <tr key={entry.id} className="align-top border-b border-gray-200">
 
-                <td className="px-3 py-2 border-r border-gray-200 text-center whitespace-nowrap">
+                <td className="px-3 py-2 border-r border-gray-200 text-center print-center whitespace-nowrap">
                   {formatDate(entry.date)}
                 </td>
                 <td className="px-3 py-2 border-r border-gray-200">
@@ -432,7 +432,7 @@ export default function AdjustingEntriesView({ period }: AdjustingEntriesViewPro
                     ({entry.description})
                   </div>
                 </td>
-                <td className="px-3 py-2 border-r border-gray-200 text-center text-gray-500">
+                <td className="px-3 py-2 border-r border-gray-200 text-center print-center text-gray-500">
                   <div className="space-y-1.5">
                     {entry.debits.map((d: any, i: number) => (
                       <div key={`dref-${i}`}>{d.accountNumber}</div>
@@ -697,8 +697,8 @@ export default function AdjustingEntriesView({ period }: AdjustingEntriesViewPro
           <table className="min-w-[850px] w-full table-fixed text-left text-sm">
             <colgroup>
               {isEditMode && <col className="w-16" />}
-              <col className="w-[10%]" />
-              <col className="w-[43%]" />
+              <col className="w-[12%]" />
+              <col className="w-[41%]" />
               <col className="w-[13%]" />
               <col className="w-[17%]" />
               <col className="w-[17%]" />
@@ -738,129 +738,147 @@ export default function AdjustingEntriesView({ period }: AdjustingEntriesViewPro
                   </td>
                 </tr>
               ) : (
-                sortedEntries.map((entry) => (
-                  <tr key={entry.id} className="hover:bg-gray-50/50 align-top transition-colors">
-                    {isEditMode && (
-                      <td className="px-4 py-5 text-center align-middle">
-                        <input
-                          type="checkbox"
-                          checked={selectedIds.includes(String(entry.id))}
-                          onChange={() => {
-                            const entryId = String(entry.id)
-                            if (selectedIds.includes(entryId)) {
-                              setSelectedIds(selectedIds.filter(id => id !== entryId))
-                            } else {
-                              setSelectedIds([...selectedIds, entryId])
-                            }
-                          }}
-                          className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
-                        />
-                      </td>
-                    )}
+                sortedEntries.map((entry) => {
+                  const journalRows = [
+                    ...entry.debits.map((d) => ({
+                      type: 'debit' as const,
+                      accountNumber: d.accountNumber,
+                      amount: d.amount,
+                    })),
+                    ...entry.credits.map((c) => ({
+                      type: 'credit' as const,
+                      accountNumber: c.accountNumber,
+                      amount: c.amount,
+                    }))
+                  ]
 
-                    <td className="px-4 py-5 whitespace-nowrap text-center">
-                      <div className="font-medium text-gray-900">{formatDate(entry.date)}</div>
-                    </td>
-                    <td className="px-4 py-5">
-                      <div className="space-y-2 text-[14px] leading-5">
-                        {entry.debits.map((d, i) => (
-                          <div key={`d-${i}`} className="text-gray-900 font-medium truncate">
-                            {getAccountName(d.accountNumber)}
-                          </div>
-                        ))}
-                        {entry.credits.map((c, i) => (
-                          <div key={`c-${i}`} className="text-gray-900 pl-6 truncate">
-                            {getAccountName(c.accountNumber)}
-                          </div>
-                        ))}
-                      </div>
-                      <div className="mt-2 max-w-full truncate text-[13px] leading-5 text-[#047857] italic font-medium">
-                        ({entry.description})
-                      </div>
-                    </td>
-                    <td className="px-4 py-5 text-center">
-                      <div className="space-y-2 text-[14px] leading-5">
-                        {entry.debits.map((d, i) => (
-                          <div key={`dref-${i}`} className="text-gray-500">{d.accountNumber}</div>
-                        ))}
-                        {entry.credits.map((c, i) => (
-                          <div key={`cref-${i}`} className="text-gray-500">{c.accountNumber}</div>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="px-5 py-5 text-right">
-                      <div className="space-y-2 text-[14px] leading-5">
-                        {entry.debits.map((d, i) => {
-                          const { symbol, amount } = formatCurrencyParts(d.amount)
-                          return (
-                            <div key={`da-${i}`} className="text-gray-900 font-medium flex justify-between w-full">
-                              <span className="text-gray-500 mr-2">{symbol}</span>
-                              <span>{amount}</span>
+                  return (
+                    <tr key={entry.id} className="hover:bg-gray-50/50 align-top transition-colors">
+                      {isEditMode && (
+                        <td className="px-4 py-5 text-center align-middle">
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.includes(String(entry.id))}
+                            onChange={() => {
+                              const entryId = String(entry.id)
+                              if (selectedIds.includes(entryId)) {
+                                setSelectedIds(selectedIds.filter(id => id !== entryId))
+                              } else {
+                                setSelectedIds([...selectedIds, entryId])
+                              }
+                            }}
+                            className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
+                          />
+                        </td>
+                      )}
+
+                      <td className="px-4 py-5 whitespace-nowrap text-center">
+                        <div className="font-medium text-gray-900">{formatDate(entry.date)}</div>
+                      </td>
+                      <td className="px-4 py-5">
+                        <div className="space-y-2 text-[14px] leading-5">
+                          {journalRows.map((row, idx) => (
+                            <div 
+                              key={idx} 
+                              className={`text-gray-900 font-medium truncate h-5 flex items-center ${row.type === 'credit' ? 'pl-6' : ''}`}
+                            >
+                              {getAccountName(row.accountNumber)}
                             </div>
-                          )
-                        })}
-                        {entry.credits.map((c, i) => (
-                          <div key={`ca-empty-${i}`} className="text-transparent select-none flex justify-between w-full">
-                            <span className="mr-2">Rp</span><span>0</span>
-                          </div>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="px-5 py-5 text-right">
-                      <div className="space-y-2 text-[14px] leading-5">
-                        {entry.debits.map((d, i) => (
-                          <div key={`ds-empty-${i}`} className="text-transparent select-none flex justify-between w-full">
-                            <span className="mr-2">Rp</span><span>0</span>
-                          </div>
-                        ))}
-                        {entry.credits.map((c, i) => {
-                          const { symbol, amount } = formatCurrencyParts(c.amount)
-                          return (
-                            <div key={`ca-${i}`} className="text-gray-900 flex justify-between w-full">
-                              <span className="text-gray-500 mr-2">{symbol}</span>
-                              <span>{amount}</span>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </td>
-                    {isEditMode && (
-                      <td className="px-4 py-5 text-center align-middle">
-                        <div className="flex justify-center items-center gap-1.5">
-                          <button 
-                            onClick={() => {
-                              setSelectedDetailEntry(entry)
-                            }}
-                            className="p-1.5 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 rounded-lg transition-colors border border-transparent hover:border-emerald-100"
-                            title="Detail jurnal penyesuaian"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => {
-                              setEditingEntry(entry)
-                              setIsModalOpen(true)
-                            }}
-                            className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-100"
-                            title="Edit jurnal penyesuaian"
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </button>
-                          <button 
-                            onClick={() => {
-                              setSelectedIds([entry.id])
-                              setIsDeleteDialogOpen(true)
-                            }}
-                            className="p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100"
-                            title="Hapus jurnal penyesuaian"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          ))}
+                        </div>
+                        <div className="mt-2 max-w-full truncate text-[13px] leading-5 text-[#047857] italic font-medium">
+                          ({entry.description})
                         </div>
                       </td>
-                    )}
-                  </tr>
-                ))
+                      <td className="px-4 py-5 text-center">
+                        <div className="space-y-2 text-[14px] leading-5">
+                          {journalRows.map((row, idx) => (
+                            <div key={idx} className="text-gray-500 h-5 flex items-center justify-center">
+                              {row.accountNumber}
+                            </div>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="px-5 py-5 text-right">
+                        <div className="space-y-2 text-[14px] leading-5">
+                          {journalRows.map((row, idx) => {
+                            if (row.type === 'debit') {
+                              const { symbol, amount } = formatCurrencyParts(row.amount)
+                              return (
+                                <div key={idx} className="text-gray-900 font-medium flex justify-between w-full h-5 items-center">
+                                  <span className="text-gray-500 mr-2">{symbol}</span>
+                                  <span>{amount}</span>
+                                </div>
+                              )
+                            } else {
+                              return (
+                                <div key={idx} className="text-transparent select-none flex justify-between w-full h-5 items-center">
+                                  <span className="mr-2">Rp</span><span>0</span>
+                                </div>
+                              )
+                            }
+                          })}
+                        </div>
+                      </td>
+                      <td className="px-5 py-5 text-right">
+                        <div className="space-y-2 text-[14px] leading-5">
+                          {journalRows.map((row, idx) => {
+                            if (row.type === 'credit') {
+                              const { symbol, amount } = formatCurrencyParts(row.amount)
+                              return (
+                                <div key={idx} className="text-gray-900 font-medium flex justify-between w-full h-5 items-center">
+                                  <span className="text-gray-500 mr-2">{symbol}</span>
+                                  <span>{amount}</span>
+                                </div>
+                              )
+                            } else {
+                              return (
+                                <div key={idx} className="text-transparent select-none flex justify-between w-full h-5 items-center">
+                                  <span className="mr-2">Rp</span><span>0</span>
+                                </div>
+                              )
+                            }
+                          })}
+                        </div>
+                      </td>
+                      {isEditMode && (
+                        <td className="px-4 py-5 text-center align-middle">
+                          <div className="flex justify-center items-center gap-1.5">
+                            <button 
+                              onClick={() => {
+                                setSelectedDetailEntry(entry)
+                              }}
+                              className="p-1.5 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 rounded-lg transition-colors border border-transparent hover:border-emerald-100"
+                              title="Detail jurnal penyesuaian"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                setEditingEntry(entry)
+                                setIsModalOpen(true)
+                              }}
+                              className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-100"
+                              title="Edit jurnal penyesuaian"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                            <button 
+                              onClick={() => {
+                                setSelectedIds([entry.id])
+                                setIsDeleteDialogOpen(true)
+                              }}
+                              className="p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100"
+                              title="Hapus jurnal penyesuaian"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  )
+                })
               )}
             </tbody>
           </table>
