@@ -376,7 +376,7 @@ export default function Verification({ period = defaultPeriod }: VerificationPro
 
         <div className="overflow-x-auto w-full scrollbar-thin scrollbar-thumb-gray-200">
           <table className="min-w-[700px] w-full table-fixed text-left text-sm text-gray-600">
-            <thead className="bg-[#F3F4F6] text-gray-700 text-xs uppercase font-semibold border-b border-border">
+            <thead className="bg-[#F8FAFC] text-gray-700 text-xs uppercase font-semibold border-b border-border">
               <tr>
                 <th className="px-4 py-3 font-semibold whitespace-nowrap w-16 text-center">Penghuni</th>
                 <th className="px-4 py-3 font-semibold whitespace-nowrap w-16 text-center">Tagihan</th>

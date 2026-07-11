@@ -507,7 +507,7 @@ export default function ContributionsList() {
         
         <div className="overflow-x-auto w-full scrollbar-thin scrollbar-thumb-gray-200">
           <table className="min-w-[700px] w-full table-fixed text-left text-sm">
-            <thead className="bg-[#F3F4F6] text-gray-700 text-xs uppercase font-semibold border-b border-border">
+            <thead className="bg-[#F8FAFC] text-gray-700 text-xs uppercase font-semibold border-b border-border">
               <tr>
                 <th className="px-6 py-3 font-semibold whitespace-nowrap text-center w-[16%]">Judul</th>
                 <th className="px-6 py-3 font-semibold whitespace-nowrap text-center w-[13%]">Kategori</th>

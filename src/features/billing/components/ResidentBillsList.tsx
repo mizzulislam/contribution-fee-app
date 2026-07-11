@@ -208,7 +208,7 @@ export default function ResidentBillsList() {
       <div className="card-container p-0 overflow-hidden">
         <div className="overflow-x-auto w-full scrollbar-thin scrollbar-thumb-gray-200">
           <table className="min-w-[650px] w-full text-left text-sm">
-            <thead className="bg-[#F3F4F6] border-b border-border text-gray-600">
+            <thead className="bg-[#F8FAFC] border-b border-border text-gray-600">
               <tr>
                 <th className="px-3 sm:px-6 py-3 font-semibold whitespace-nowrap text-left">Keterangan</th>
                 <th className="px-3 sm:px-6 py-3 font-semibold whitespace-nowrap text-left">Jatuh Tempo</th>

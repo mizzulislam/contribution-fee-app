@@ -71,7 +71,7 @@ export default function AuditLogs() {
 
         <div className="overflow-x-auto w-full rounded-b-[20px] border-t border-border scrollbar-thin scrollbar-thumb-gray-200">
           <table className="min-w-[650px] w-full text-left text-sm text-gray-600">
-            <thead className="bg-[#F3F4F6] text-gray-700 text-xs uppercase font-semibold border-b border-border">
+            <thead className="bg-[#F8FAFC] text-gray-700 text-xs uppercase font-semibold border-b border-border">
               <tr>
                 <th className="px-6 py-4 text-left">Waktu</th>
                 <th className="px-6 py-4 text-left">Pengguna</th>

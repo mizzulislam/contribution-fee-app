@@ -292,7 +292,7 @@ export default function GeneralLedgerView({ period }: GeneralLedgerViewProps) {
 
                 <div className="overflow-x-auto overscroll-x-contain -mx-4">
                   <table className="min-w-[820px] w-full text-left text-sm">
-                    <thead className="bg-[#F3F4F6] border-b border-border text-gray-600 text-xs uppercase font-semibold">
+                    <thead className="bg-[#F8FAFC] border-b border-border text-gray-600 text-xs uppercase font-semibold">
                       <tr>
                         <th className="pl-6 pr-4 py-3 font-semibold whitespace-nowrap text-center">Tanggal</th>
                         <th className="px-4 py-3 font-semibold whitespace-nowrap text-center">Keterangan</th>
@@ -366,7 +366,7 @@ export default function GeneralLedgerView({ period }: GeneralLedgerViewProps) {
 
                         <div className="overflow-x-auto overscroll-x-contain mt-2 -mx-4">
                           <table className="min-w-[780px] w-full text-left text-sm">
-                            <thead className="bg-gray-50/80 border-b border-border text-gray-600 text-xs uppercase">
+                            <thead className="bg-[#F8FAFC] border-b border-border text-gray-600 text-xs uppercase">
                               <tr>
                                 <th className="pl-6 pr-4 py-2.5 font-semibold whitespace-nowrap text-center">Tanggal</th>
                                 <th className="px-4 py-2.5 font-semibold whitespace-nowrap text-center">Keterangan</th>

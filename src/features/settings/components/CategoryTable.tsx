@@ -14,7 +14,7 @@ export function CategoryTable({ categories, loading, onEdit, onDelete }: Categor
     <div className="card-container">
       <div className="overflow-x-auto w-full">
         <table className="min-w-[650px] w-full text-left text-sm text-gray-600">
-          <thead className="bg-[#F3F4F6] text-gray-700 text-xs uppercase font-semibold border-b border-border">
+          <thead className="bg-[#F8FAFC] text-gray-700 text-xs uppercase font-semibold border-b border-border">
             <tr>
               <th className="px-6 py-4">Tipe Akun</th>
               <th className="px-6 py-4">No. Akun</th>
