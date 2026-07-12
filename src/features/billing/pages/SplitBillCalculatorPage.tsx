@@ -472,7 +472,7 @@ export default function SplitBillCalculator() {
     await new Promise(resolve => setTimeout(resolve, 100))
     try {
       const canvas = await html2canvas(element, {
-        backgroundColor: '#022c22', // Match the receipt theme
+        backgroundColor: '#ffffff', // Match the receipt theme
         scale: 2, // High DPI capture
         logging: false,
         useCORS: true,
@@ -587,53 +587,51 @@ export default function SplitBillCalculator() {
           </div>
 
           {/* Premium Receipt Card (Rendered Read-Only) */}
-          <div id="premium-receipt-card" className="bg-gradient-to-b from-emerald-950 via-[#064e3b] to-[#042f2c] rounded-[24px] text-white shadow-[0_20px_50px_rgba(4,120,87,0.25)] border border-emerald-800/40 relative overflow-hidden flex flex-col p-6 space-y-6">
-            <div className="absolute right-[-40px] top-[-40px] h-36 w-36 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none no-export" />
-            <div className="absolute left-[-20px] bottom-[-20px] h-36 w-36 bg-teal-500/10 rounded-full blur-3xl pointer-events-none no-export" />
+          <div id="premium-receipt-card" className="bg-white rounded-[24px] text-gray-800 shadow-[0_20px_50px_rgba(0,0,0,0.06)] border border-gray-200/80 relative overflow-hidden flex flex-col p-6 space-y-6">
             
-            <div className="flex justify-between items-center border-b border-white/10 pb-4">
-              <div className="flex items-center gap-2">
-                <Receipt className="w-5 h-5 text-emerald-400" />
-                <h2 className="text-base sm:text-lg font-extrabold tracking-wide text-white">Ringkasan Pembagian</h2>
+            <div className="flex justify-between items-center border-b border-gray-150 pb-4">
+              <div className="flex items-center gap-2.5">
+                <Receipt className="w-5 h-5 text-emerald-600 shrink-0" />
+                <h2 className="text-base sm:text-lg font-black tracking-wide text-gray-900 leading-none">Ringkasan Pembagian</h2>
               </div>
-              <span className="text-[10px] font-black uppercase tracking-wider bg-white/10 px-2.5 py-1 rounded-md text-emerald-300 border border-white/5">
+              <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-100/50 px-2.5 py-1 rounded-md inline-flex items-center justify-center h-6 leading-none">
                 {sharedSplitMode === 'equal' ? 'Bagi Rata' : 'Bagi Kustom'}
               </span>
             </div>
 
             <div className="space-y-3.5 text-sm">
-              <div className="flex justify-between items-center text-emerald-200/80">
-                <span className="font-medium">Subtotal Belanja</span>
-                <span className="font-bold text-white text-base">{formatCurrency(rawSubtotal)}</span>
+              <div className="flex justify-between items-center text-gray-500 font-medium">
+                <span>Subtotal Belanja</span>
+                <span className="font-bold text-gray-900 text-base">{formatCurrency(rawSubtotal)}</span>
               </div>
 
               {sharedTaxValue > 0 && (
-                <div className="flex justify-between items-center text-emerald-200/80">
-                  <span className="flex items-center gap-1">
-                    <Percent className="w-3.5 h-3.5 text-emerald-400" /> 
+                <div className="flex justify-between items-center text-gray-500 font-medium animate-in fade-in duration-200">
+                  <span className="flex items-center gap-2 leading-none">
+                    <Percent className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> 
                     Pajak (Tax {sharedTaxValueType === 'percentage' ? `${sharedTaxValue}%` : ''})
                   </span>
-                  <span className="font-bold text-white">+{formatCurrency(taxAmount)}</span>
+                  <span className="font-bold text-gray-900">+{formatCurrency(taxAmount)}</span>
                 </div>
               )}
 
               {sharedServiceValue > 0 && (
-                <div className="flex justify-between items-center text-emerald-200/80">
-                  <span className="flex items-center gap-1">
-                    <Percent className="w-3.5 h-3.5 text-emerald-400" /> 
+                <div className="flex justify-between items-center text-gray-500 font-medium animate-in fade-in duration-200">
+                  <span className="flex items-center gap-2 leading-none">
+                    <Percent className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> 
                     Layanan (Service {sharedServiceValueType === 'percentage' ? `${sharedServiceValue}%` : ''})
                   </span>
-                  <span className="font-bold text-white">+{formatCurrency(serviceAmount)}</span>
+                  <span className="font-bold text-gray-900">+{formatCurrency(serviceAmount)}</span>
                 </div>
               )}
 
               {sharedDiscountValue > 0 && (
-                <div className="flex justify-between items-center text-emerald-200/80">
-                  <span className="flex items-center gap-1">
-                    <Tag className="w-3.5 h-3.5 text-amber-400" /> 
+                <div className="flex justify-between items-center text-gray-500 font-medium animate-in fade-in duration-200">
+                  <span className="flex items-center gap-2 leading-none">
+                    <Tag className="w-3.5 h-3.5 text-amber-600 shrink-0" /> 
                     Diskon (Discount {sharedDiscountValueType === 'percentage' ? `${sharedDiscountValue}%` : ''})
                   </span>
-                  <span className="font-bold text-amber-400">-{formatCurrency(discountAmount)}</span>
+                  <span className="font-bold text-amber-600">-{formatCurrency(discountAmount)}</span>
                 </div>
               )}
 
@@ -647,64 +645,60 @@ export default function SplitBillCalculator() {
                 }
                 const isDiscount = adj.type === 'discount'
                 return (
-                  <div key={adj.id} className="flex justify-between items-center text-emerald-200/80">
-                    <span className="flex items-center gap-1">
+                  <div key={adj.id} className="flex justify-between items-center text-gray-500 font-medium animate-in fade-in duration-200">
+                    <span className="flex items-center gap-2 leading-none">
                       {isDiscount ? (
-                        <Tag className="w-3.5 h-3.5 text-amber-400" />
+                        <Tag className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                       ) : (
-                        <Receipt className="w-3.5 h-3.5 text-emerald-400" />
+                        <Receipt className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                       )}
                       {adj.name || (isDiscount ? 'Diskon Kustom' : 'Biaya Kustom')} 
                       {adj.valueType === 'percentage' && ` (${adj.value}%)`}
                     </span>
-                    <span className={`font-bold ${isDiscount ? 'text-amber-400' : 'text-white'}`}>
+                    <span className={`font-bold ${isDiscount ? 'text-amber-600' : 'text-gray-900'}`}>
                       {isDiscount ? '-' : '+'}{formatCurrency(amount)}
                     </span>
                   </div>
                 )
               })}
 
-              <div className="flex justify-between items-baseline border-t border-white/10 pt-4">
-                <span className="text-xs font-extrabold uppercase tracking-wider text-emerald-400">Total Akhir</span>
-                <span className="text-3xl font-black tracking-tight text-white">
+              <div className="flex justify-between items-baseline border-t border-gray-150 pt-4">
+                <span className="text-xs font-black uppercase tracking-wider text-emerald-600">Total Akhir</span>
+                <span className="text-3xl font-black tracking-tight text-gray-900">
                   {formatCurrency(grandTotal)}
                 </span>
               </div>
             </div>
 
-            <div className="relative my-1 flex items-center justify-between gap-1.5 overflow-hidden opacity-20 select-none pointer-events-none">
-              {Array.from({ length: 30 }).map((_, i) => (
-                <div key={i} className="w-1.5 h-1.5 bg-white rounded-full shrink-0" />
-              ))}
-            </div>
+            <div className="border-t-2 border-dashed border-gray-200 my-2 select-none pointer-events-none" />
 
             <div className="flex-1 flex flex-col space-y-3">
-              <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400 block">Rincian Pembayaran:</span>
+              <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 block">Rincian Pembayaran:</span>
               <div className="space-y-2.5">
                 {shares.map((share: any) => (
-                  <div key={share.id} className="flex justify-between items-center bg-white/5 p-3 rounded-xl border border-white/5 hover:bg-white/[0.08] hover:border-white/10 transition-all duration-200">
+                  <div key={share.id} className="flex justify-between items-center bg-gray-50 hover:bg-gray-100/80 p-3.5 rounded-xl border border-gray-200/80 transition-all duration-200">
                     <div className="min-w-0 pr-3 flex-grow">
-                      <p className="font-extrabold text-xs sm:text-sm text-white flex items-center gap-1.5">
+                      <p className="font-extrabold text-xs sm:text-sm text-gray-800 flex items-center gap-2 leading-none">
                         {share.name}
                         {share.phone && (
-                          <span className="text-[9px] text-emerald-300 font-bold bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-800/40">
+                          <span className="text-[9px] text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">
                             {share.phone}
                           </span>
                         )}
                       </p>
-                      <p className="text-[10px] text-emerald-300/70 mt-0.5">
+                      <p className="text-[10px] text-gray-400 mt-1">
                         Murni: {formatCurrency(share.subtotal)} 
                         {sharedTaxValue > 0 || sharedServiceValue > 0 || sharedDiscountValue > 0 || customAdjustmentsTotal !== 0 ? ' + Penyesuaian' : ''}
                       </p>
                     </div>
-                    <span className="font-black text-xs sm:text-base text-emerald-300">{formatCurrency(share.total)}</span>
+                    <span className="font-black text-xs sm:text-base text-gray-900">{formatCurrency(share.total)}</span>
                   </div>
                 ))}
               </div>
             </div>
             
-            <div className="bg-emerald-950/40 backdrop-blur-sm p-3 rounded-xl border border-white/5 flex items-start gap-2.5 text-[10.5px] text-emerald-200/90 leading-relaxed no-export">
-              <Info className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+            <div className="bg-gray-50 p-3 rounded-xl border border-gray-200/80 flex items-start gap-2.5 text-[10.5px] text-gray-500 leading-relaxed no-export">
+              <Info className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
               <p>Pajak, biaya layanan, dan diskon dialokasikan secara proporsional sesuai porsi belanja masing-masing peserta.</p>
             </div>
 
@@ -1164,20 +1158,17 @@ export default function SplitBillCalculator() {
         </div>
              {/* Right Column: Premium Receipt Card */}
         <div className="lg:col-span-5 flex flex-col">
-          <div id="premium-receipt-card" className={`bg-gradient-to-b from-emerald-950 via-[#064e3b] to-[#042f2c] rounded-[24px] text-white shadow-[0_20px_50px_rgba(4,120,87,0.12)] border border-emerald-800/40 relative overflow-hidden flex flex-col ${isExporting ? 'h-auto' : 'h-full'}`}>
-            {/* Background blur patterns */}
-            <div className="absolute right-[-40px] top-[-40px] h-36 w-36 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none no-export" />
-            <div className="absolute left-[-20px] bottom-[-20px] h-36 w-36 bg-teal-500/10 rounded-full blur-3xl pointer-events-none no-export" />
+          <div id="premium-receipt-card" className={`bg-white rounded-[24px] text-gray-800 shadow-[0_20px_50px_rgba(0,0,0,0.06)] border border-gray-200/80 relative overflow-hidden flex flex-col ${isExporting ? 'h-auto' : 'h-full'}`}>
             
             {/* Card Title Header (aligned with left tab bar) */}
-            <div className="h-[60px] flex justify-between items-center px-6 border-b border-white/10 shrink-0 bg-white/[0.02]">
-              <div className="flex items-center gap-2">
-                <Receipt className="w-5 h-5 text-emerald-400" />
-                <h2 className="text-base sm:text-lg font-extrabold tracking-wide text-white">
+            <div className="h-[60px] flex justify-between items-center px-6 border-b border-gray-150 shrink-0 bg-gray-50/50">
+              <div className="flex items-center gap-2.5">
+                <Receipt className="w-5 h-5 text-emerald-600 shrink-0" />
+                <h2 className="text-base sm:text-lg font-black tracking-wide text-gray-900 leading-none">
                   Ringkasan Pembagian
                 </h2>
               </div>
-              <span className="text-[10px] font-black uppercase tracking-wider bg-white/10 px-2.5 py-1 rounded-md text-emerald-300 border border-white/5">
+              <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-100/50 px-2.5 py-1 rounded-md inline-flex items-center justify-center h-6 leading-none">
                 {splitMode === 'equal' ? 'Bagi Rata' : 'Bagi Kustom'}
               </span>
             </div>
@@ -1185,38 +1176,38 @@ export default function SplitBillCalculator() {
             <div className="p-6 space-y-6 flex-1 flex flex-col">
               {/* Calculations List */}
               <div className="space-y-3.5 text-sm">
-                <div className="flex justify-between items-center text-emerald-200/80">
-                  <span className="font-medium">Subtotal Belanja</span>
-                  <span className="font-bold text-white text-base">{formatCurrency(rawSubtotal)}</span>
+                <div className="flex justify-between items-center text-gray-500 font-medium">
+                  <span>Subtotal Belanja</span>
+                  <span className="font-bold text-gray-900 text-base">{formatCurrency(rawSubtotal)}</span>
                 </div>
 
                 {taxValue > 0 && (
-                  <div className="flex justify-between items-center text-emerald-200/80">
-                    <span className="flex items-center gap-1">
-                      <Percent className="w-3.5 h-3.5 text-emerald-400" /> 
+                  <div className="flex justify-between items-center text-gray-500 font-medium animate-in fade-in duration-200">
+                    <span className="flex items-center gap-2 leading-none">
+                      <Percent className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> 
                       Pajak (Tax {taxValueType === 'percentage' ? `${taxValue}%` : ''})
                     </span>
-                    <span className="font-bold text-white">+{formatCurrency(taxAmount)}</span>
+                    <span className="font-bold text-gray-900">+{formatCurrency(taxAmount)}</span>
                   </div>
                 )}
 
                 {serviceValue > 0 && (
-                  <div className="flex justify-between items-center text-emerald-200/80">
-                    <span className="flex items-center gap-1">
-                      <Percent className="w-3.5 h-3.5 text-emerald-400" /> 
+                  <div className="flex justify-between items-center text-gray-500 font-medium animate-in fade-in duration-200">
+                    <span className="flex items-center gap-2 leading-none">
+                      <Percent className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> 
                       Layanan (Service {serviceValueType === 'percentage' ? `${serviceValue}%` : ''})
                     </span>
-                    <span className="font-bold text-white">+{formatCurrency(serviceAmount)}</span>
+                    <span className="font-bold text-gray-900">+{formatCurrency(serviceAmount)}</span>
                   </div>
                 )}
 
                 {discountValue > 0 && (
-                  <div className="flex justify-between items-center text-emerald-200/80">
-                    <span className="flex items-center gap-1">
-                      <Tag className="w-3.5 h-3.5 text-amber-400" /> 
+                  <div className="flex justify-between items-center text-gray-500 font-medium animate-in fade-in duration-200">
+                    <span className="flex items-center gap-2 leading-none">
+                      <Tag className="w-3.5 h-3.5 text-amber-600 shrink-0" /> 
                       Diskon (Discount {discountValueType === 'percentage' ? `${discountValue}%` : ''})
                     </span>
-                    <span className="font-bold text-amber-400">-{formatCurrency(discountAmount)}</span>
+                    <span className="font-bold text-amber-600">-{formatCurrency(discountAmount)}</span>
                   </div>
                 )}
 
@@ -1230,17 +1221,17 @@ export default function SplitBillCalculator() {
                   }
                   const isDiscount = adj.type === 'discount'
                   return (
-                    <div key={adj.id} className="flex justify-between items-center text-emerald-200/80 animate-in fade-in duration-200">
-                      <span className="flex items-center gap-1">
+                    <div key={adj.id} className="flex justify-between items-center text-gray-500 font-medium animate-in fade-in duration-200">
+                      <span className="flex items-center gap-2 leading-none">
                         {isDiscount ? (
-                          <Tag className="w-3.5 h-3.5 text-amber-400" />
+                          <Tag className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                         ) : (
-                          <Receipt className="w-3.5 h-3.5 text-emerald-400" />
+                          <Receipt className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                         )}
                         {adj.name || (isDiscount ? 'Diskon Kustom' : 'Biaya Kustom')} 
                         {adj.valueType === 'percentage' && ` (${adj.value}%)`}
                       </span>
-                      <span className={`font-bold ${isDiscount ? 'text-amber-400' : 'text-white'}`}>
+                      <span className={`font-bold ${isDiscount ? 'text-amber-600' : 'text-gray-900'}`}>
                         {isDiscount ? '-' : '+'}{formatCurrency(amount)}
                       </span>
                     </div>
@@ -1249,49 +1240,49 @@ export default function SplitBillCalculator() {
 
                 {/* Total Display */}
                 <div className="flex justify-between items-baseline border-t border-white/10 pt-4">
-                  <span className="text-xs font-extrabold uppercase tracking-wider text-emerald-400">Total Akhir</span>
-                  <span className="text-3xl font-black tracking-tight text-white">
+                  <span className="text-xs font-black uppercase tracking-wider text-emerald-600">Total Akhir</span>
+                  <span className="text-3xl font-black tracking-tight text-gray-900">
                     {formatCurrency(grandTotal)}
                   </span>
                 </div>
               </div>
 
               {/* Serrated Border Separator */}
-              <div className="border-t-2 border-dashed border-white/20 my-2 select-none pointer-events-none" />
+              <div className="border-t-2 border-dashed border-gray-200 my-2 select-none pointer-events-none" />
 
               {/* Shares Detail list */}
               <div className="flex-1 flex flex-col space-y-3 min-h-[220px]">
-                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400 block">Rincian Pembayaran:</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 block">Rincian Pembayaran:</span>
                 
-                <div className={isExporting ? "space-y-2.5" : "flex-1 space-y-2.5 overflow-y-auto pr-1 max-h-[250px] lg:max-h-[300px] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-white/20"}>
+                <div className={isExporting ? "space-y-2.5" : "flex-1 space-y-2.5 overflow-y-auto pr-1.5 max-h-[250px] lg:max-h-[300px] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-200 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-emerald-300"}>
                   {shares.length === 0 ? (
-                    <div className="text-center text-xs text-emerald-300/60 py-8 flex flex-col items-center gap-2">
+                    <div className="text-center text-xs text-emerald-600/60 py-8 flex flex-col items-center gap-2">
                       <Users className="w-8 h-8 opacity-30" />
                       Belum ada peserta terdaftar.
                     </div>
                   ) : (
                     shares.map(share => (
-                      <div key={share.id} className="flex justify-between items-center bg-white/5 p-3 rounded-xl border border-white/5 hover:bg-white/[0.08] hover:border-white/10 transition-all duration-200 animate-in fade-in duration-300">
+                      <div key={share.id} className="flex justify-between items-center bg-gray-50 hover:bg-gray-100/80 p-3.5 rounded-xl border border-gray-200/80 transition-all duration-200 animate-in fade-in duration-300">
                         <div className="min-w-0 pr-3 flex-grow">
-                          <p className="font-extrabold text-xs sm:text-sm truncate text-white flex items-center gap-1.5">
+                          <p className="font-extrabold text-xs sm:text-sm truncate text-gray-800 flex items-center gap-2 leading-none">
                             {share.name}
                             {share.phone && (
-                              <span className="text-[9px] text-emerald-300 font-bold bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-800/40">
+                              <span className="text-[9px] text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">
                                 {share.phone}
                               </span>
                             )}
                           </p>
-                          <p className="text-[10px] text-emerald-300/70 mt-0.5">
+                          <p className="text-[10px] text-gray-400 mt-1">
                             Murni: {formatCurrency(share.subtotal)} 
                             {taxValue > 0 || serviceValue > 0 || discountValue > 0 || customAdjustmentsTotal !== 0 ? ' + Penyesuaian' : ''}
                           </p>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
-                          <span className="font-black text-xs sm:text-base text-emerald-300 text-right">{formatCurrency(share.total)}</span>
+                          <span className="font-black text-xs sm:text-base text-gray-900 text-right">{formatCurrency(share.total)}</span>
                           <button
                             type="button"
                             onClick={() => handleSendIndividualWhatsApp(share)}
-                            className="p-1.5 text-emerald-400 hover:text-white hover:bg-emerald-500 rounded-lg transition-all border border-emerald-800/40 hover:border-emerald-500 cursor-pointer flex items-center justify-center no-export"
+                            className="p-1.5 text-emerald-600 hover:text-white hover:bg-emerald-600 rounded-lg transition-all border border-gray-200 hover:border-emerald-600 cursor-pointer flex items-center justify-center no-export"
                             title={`Kirim WA personal ke ${share.name}`}
                           >
                             <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
@@ -1306,8 +1297,8 @@ export default function SplitBillCalculator() {
               </div>
 
               {/* Info Message */}
-              <div className="bg-emerald-950/40 backdrop-blur-sm p-3 rounded-xl border border-white/5 flex items-start gap-2.5 text-[10.5px] text-emerald-200/90 leading-relaxed shadow-inner no-export">
-                <Info className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+              <div className="bg-gray-50 p-3 rounded-xl border border-gray-200/80 flex items-start gap-2.5 text-[10.5px] text-gray-500 leading-relaxed no-export">
+                <Info className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                 <p>Pajak, biaya layanan, dan diskon dialokasikan secara proporsional sesuai porsi belanja masing-masing peserta.</p>
               </div>
 
