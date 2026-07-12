@@ -555,10 +555,10 @@ export default function ClosingProcessView({ period }: ClosingProcessViewProps) 
             <colgroup>
               {isEditMode && <col className="w-16" />}
               <col className="w-[12%]" />
-              <col className="w-[41%]" />
-              <col className="w-[13%]" />
-              <col className="w-[17%]" />
-              <col className="w-[17%]" />
+              <col className="w-[44%]" />
+              <col className="w-[12%]" />
+              <col className="w-[16%]" />
+              <col className="w-[16%]" />
               {isEditMode && <col className="w-32" />}
             </colgroup>
             <thead className="bg-[#F8FAFC] border-b border-gray-200 text-gray-600 text-xs uppercase font-semibold">
@@ -582,8 +582,8 @@ export default function ClosingProcessView({ period }: ClosingProcessViewProps) 
                 <th className="h-[52px] px-4 py-0 font-semibold whitespace-nowrap text-center align-middle">Tanggal</th>
                 <th className="h-[52px] px-4 py-0 font-semibold text-center align-middle">Deskripsi</th>
                 <th className="h-[52px] px-4 py-0 font-semibold text-center align-middle">Ref</th>
-                <th className="h-[52px] px-5 py-0 font-semibold text-center align-middle">Debit</th>
-                <th className="h-[52px] px-5 py-0 font-semibold text-center align-middle">Kredit</th>
+                <th className="h-[52px] pl-5 pr-8 py-0 font-semibold text-center align-middle">Debit</th>
+                <th className="h-[52px] pl-5 pr-10 py-0 font-semibold text-center align-middle">Kredit</th>
                 {isEditMode && (
                   <th className="h-[52px] px-4 py-0 font-semibold text-center w-32 align-middle">
                     Aksi
@@ -660,7 +660,7 @@ export default function ClosingProcessView({ period }: ClosingProcessViewProps) 
                           ))}
                         </div>
                       </td>
-                      <td className="px-5 py-5 text-right">
+                      <td className="pl-5 pr-8 py-5 text-right">
                         <div className="space-y-2 text-[14px] leading-5">
                           {journalRows.map((row, idx) => {
                             if (row.type === 'debit') {
@@ -681,7 +681,7 @@ export default function ClosingProcessView({ period }: ClosingProcessViewProps) 
                           })}
                         </div>
                       </td>
-                      <td className="px-5 py-5 text-right">
+                      <td className="pl-5 pr-10 py-5 text-right">
                         <div className="space-y-2 text-[14px] leading-5">
                           {journalRows.map((row, idx) => {
                             if (row.type === 'credit') {
