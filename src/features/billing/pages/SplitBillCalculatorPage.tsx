@@ -21,12 +21,21 @@ interface Participant {
   amount: number // Used in itemized/custom split
 }
 
+interface CustomAdjustment {
+  id: string
+  name: string
+  type: 'charge' | 'discount'
+  valueType: 'nominal' | 'percentage'
+  value: number
+}
+
 export default function SplitBillCalculator() {
   const [splitMode, setSplitMode] = useState<'equal' | 'custom'>('equal')
   const [billAmount, setBillAmount] = useState<number>(0)
   const [taxPercent, setTaxPercent] = useState<number>(0)
   const [servicePercent, setServicePercent] = useState<number>(0)
   const [discountAmount, setDiscountAmount] = useState<number>(0)
+  const [customAdjustments, setCustomAdjustments] = useState<CustomAdjustment[]>([])
   
   const [participants, setParticipants] = useState<Participant[]>([
     { id: '1', name: 'Peserta 1', amount: 0 },
@@ -60,11 +69,36 @@ export default function SplitBillCalculator() {
     )
   }
 
+  // Handlers for custom adjustments
+  const handleAddCustomAdjustment = () => {
+    const newId = Date.now().toString()
+    setCustomAdjustments([...customAdjustments, { id: newId, name: '', type: 'charge', valueType: 'nominal', value: 0 }])
+  }
+
+  const handleRemoveCustomAdjustment = (id: string) => {
+    setCustomAdjustments(customAdjustments.filter(a => a.id !== id))
+  }
+
+  const handleCustomAdjustmentChange = (id: string, field: keyof CustomAdjustment, value: any) => {
+    setCustomAdjustments(
+      customAdjustments.map(a => {
+        if (a.id === id) {
+          return {
+            ...a,
+            [field]: value
+          }
+        }
+        return a
+      })
+    )
+  }
+
   const handleReset = () => {
     setBillAmount(0)
     setTaxPercent(0)
     setServicePercent(0)
     setDiscountAmount(0)
+    setCustomAdjustments([])
     setParticipants([
       { id: '1', name: 'Peserta 1', amount: 0 },
       { id: '2', name: 'Peserta 2', amount: 0 }
@@ -80,7 +114,18 @@ export default function SplitBillCalculator() {
   
   const taxAmount = (rawSubtotal * taxPercent) / 100
   const serviceAmount = (rawSubtotal * servicePercent) / 100
-  const grandTotal = Math.max(0, rawSubtotal + taxAmount + serviceAmount - discountAmount)
+
+  const customAdjustmentsTotal = customAdjustments.reduce((sum, adj) => {
+    let amount = 0
+    if (adj.valueType === 'percentage') {
+      amount = (rawSubtotal * adj.value) / 100
+    } else {
+      amount = adj.value
+    }
+    return sum + (adj.type === 'charge' ? amount : -amount)
+  }, 0)
+
+  const grandTotal = Math.max(0, rawSubtotal + taxAmount + serviceAmount - discountAmount + customAdjustmentsTotal)
 
   // Compute shares
   const shares = participants.map(p => {
@@ -91,12 +136,13 @@ export default function SplitBillCalculator() {
       personalSubtotal = p.amount
     }
 
-    // Proportional tax, service, and discount
+    // Proportional tax, service, discount, and custom adjustments
     const proportion = rawSubtotal > 0 ? personalSubtotal / rawSubtotal : 0
     const personalTax = taxAmount * proportion
     const personalService = serviceAmount * proportion
     const personalDiscount = discountAmount * proportion
-    const personalTotal = Math.max(0, personalSubtotal + personalTax + personalService - personalDiscount)
+    const personalCustom = customAdjustmentsTotal * proportion
+    const personalTotal = Math.max(0, personalSubtotal + personalTax + personalService - personalDiscount + personalCustom)
 
     return {
       ...p,
@@ -104,6 +150,7 @@ export default function SplitBillCalculator() {
       tax: personalTax,
       service: personalService,
       discount: personalDiscount,
+      custom: personalCustom,
       total: personalTotal
     }
   })
@@ -122,6 +169,21 @@ export default function SplitBillCalculator() {
     if (taxPercent > 0) text += `Pajak (${taxPercent}%): ${formatCurrency(taxAmount)}\n`
     if (servicePercent > 0) text += `Biaya Layanan (${servicePercent}%): ${formatCurrency(serviceAmount)}\n`
     if (discountAmount > 0) text += `Diskon: -${formatCurrency(discountAmount)}\n`
+
+    customAdjustments.forEach((adj) => {
+      if (adj.value <= 0) return
+      let amount = 0
+      if (adj.valueType === 'percentage') {
+        amount = (rawSubtotal * adj.value) / 100
+      } else {
+        amount = adj.value
+      }
+      const isDiscount = adj.type === 'discount'
+      const label = adj.name || (isDiscount ? 'Diskon Kustom' : 'Biaya Kustom')
+      const valueSuffix = adj.valueType === 'percentage' ? ` (${adj.value}%)` : ''
+      text += `${label}${valueSuffix}: ${isDiscount ? '-' : ''}${formatCurrency(amount)}\n`
+    })
+
     text += `*Total Akhir: ${formatCurrency(grandTotal)}*\n`
     text += `-------------------------------------------\n`
     text += `*Rincian Pembayaran per Orang:*\n\n`
@@ -129,8 +191,12 @@ export default function SplitBillCalculator() {
     shares.forEach((share, idx) => {
       text += `${idx + 1}. *${share.name}*\n`
       text += `   - Belanja: ${formatCurrency(share.subtotal)}\n`
-      if (taxPercent > 0 || servicePercent > 0 || discountAmount > 0) {
-        text += `   - Tambahan (Pajak/Layanan/Diskon): ${formatCurrency(share.tax + share.service - share.discount)}\n`
+      
+      const totalAdditions = taxAmount + serviceAmount - discountAmount + customAdjustmentsTotal
+      if (totalAdditions !== 0) {
+        const proportion = rawSubtotal > 0 ? share.subtotal / rawSubtotal : 0
+        const personalAdditions = totalAdditions * proportion
+        text += `   - Tambahan (Pajak/Layanan/Biaya/Diskon): ${formatCurrency(personalAdditions)}\n`
       }
       text += `   - *Total: ${formatCurrency(share.total)}*\n\n`
     })
@@ -219,7 +285,7 @@ export default function SplitBillCalculator() {
               )}
 
               {/* Adjustments Section */}
-              <div className="space-y-2.5">
+              <div className="space-y-3">
                 <span className="block text-xs font-extrabold text-gray-400 uppercase tracking-wider">Tambahan & Penyesuaian</span>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-gray-50/40 p-3 rounded-2xl border border-gray-150">
                   {/* Tax */}
@@ -272,6 +338,115 @@ export default function SplitBillCalculator() {
                       />
                     </div>
                   </div>
+                </div>
+
+                {/* Custom Adjustments List */}
+                {customAdjustments.length > 0 && (
+                  <div className="space-y-2 pt-1 animate-in fade-in duration-300">
+                    {customAdjustments.map((adj) => (
+                      <div key={adj.id} className="flex flex-col sm:flex-row items-center gap-3 bg-gray-50/35 p-3 rounded-xl border border-gray-200 hover:border-emerald-300/40 transition-all">
+                        {/* Name Input */}
+                        <input
+                          type="text"
+                          className="bg-white border border-gray-200 focus:border-emerald-500 focus:bg-white rounded-lg px-3 py-2 text-xs sm:text-sm font-semibold text-gray-800 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/10 flex-1 min-w-[120px]"
+                          placeholder="Nama biaya (misal: Ongkir)..."
+                          value={adj.name}
+                          onChange={e => handleCustomAdjustmentChange(adj.id, 'name', e.target.value)}
+                        />
+                        
+                        {/* Type Toggle: Charge / Discount */}
+                        <div className="flex bg-gray-200/60 p-0.5 rounded-lg shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => handleCustomAdjustmentChange(adj.id, 'type', 'charge')}
+                            className={`px-2.5 py-1 rounded-md text-[10px] sm:text-xs font-bold transition-all cursor-pointer ${
+                              adj.type === 'charge'
+                                ? 'bg-emerald-600 text-white shadow-sm'
+                                : 'text-gray-500 hover:text-gray-700'
+                            }`}
+                          >
+                            Biaya (+)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleCustomAdjustmentChange(adj.id, 'type', 'discount')}
+                            className={`px-2.5 py-1 rounded-md text-[10px] sm:text-xs font-bold transition-all cursor-pointer ${
+                              adj.type === 'discount'
+                                ? 'bg-amber-600 text-white shadow-sm'
+                                : 'text-gray-500 hover:text-gray-700'
+                            }`}
+                          >
+                            Diskon (-)
+                          </button>
+                        </div>
+
+                        {/* Value Type Toggle: Nominal / Percentage */}
+                        <div className="flex bg-gray-200/60 p-0.5 rounded-lg shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => handleCustomAdjustmentChange(adj.id, 'valueType', 'nominal')}
+                            className={`px-2.5 py-1 rounded-md text-[10px] sm:text-xs font-bold transition-all cursor-pointer ${
+                              adj.valueType === 'nominal'
+                                ? 'bg-white text-gray-800 shadow-sm border border-gray-150'
+                                : 'text-gray-500 hover:text-gray-700'
+                            }`}
+                          >
+                            Rp
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleCustomAdjustmentChange(adj.id, 'valueType', 'percentage')}
+                            className={`px-2.5 py-1 rounded-md text-[10px] sm:text-xs font-bold transition-all cursor-pointer ${
+                              adj.valueType === 'percentage'
+                                ? 'bg-white text-gray-800 shadow-sm border border-gray-150'
+                                : 'text-gray-500 hover:text-gray-700'
+                            }`}
+                          >
+                            %
+                          </button>
+                        </div>
+
+                        {/* Value Input */}
+                        <div className="relative bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 flex items-center w-28 sm:w-32 shrink-0 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/10 transition-all">
+                          {adj.valueType === 'nominal' && (
+                            <span className="text-gray-400 font-bold text-xs mr-1 select-none">Rp</span>
+                          )}
+                          <input
+                            type="number"
+                            className="w-full text-xs sm:text-sm font-semibold text-gray-800 bg-transparent border-0 p-0 text-right focus:ring-0 focus:outline-none placeholder-gray-300"
+                            placeholder="0"
+                            value={adj.value || ''}
+                            onChange={e => handleCustomAdjustmentChange(adj.id, 'value', Number(e.target.value))}
+                          />
+                          {adj.valueType === 'percentage' && (
+                            <span className="text-gray-400 font-bold text-xs ml-1 select-none">%</span>
+                          )}
+                        </div>
+
+                        {/* Delete Button */}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveCustomAdjustment(adj.id)}
+                          className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all border border-transparent hover:border-red-100 cursor-pointer shrink-0"
+                          title="Hapus penyesuaian"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Add Custom Adjustment Button */}
+                <div className="pt-1">
+                  <button
+                    type="button"
+                    onClick={handleAddCustomAdjustment}
+                    className="group text-xs font-bold text-emerald-600 hover:text-white bg-emerald-50 hover:bg-emerald-500 transition-all px-4 py-2.5 rounded-xl border border-emerald-200/50 flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5 transition-transform duration-300 group-hover:scale-110" />
+                    Tambah Biaya / Diskon Lainnya
+                  </button>
                 </div>
               </div>
 
@@ -392,6 +567,33 @@ export default function SplitBillCalculator() {
                     <span className="font-bold text-amber-400">-{formatCurrency(discountAmount)}</span>
                   </div>
                 )}
+
+                {customAdjustments.map((adj) => {
+                  if (adj.value <= 0) return null
+                  let amount = 0
+                  if (adj.valueType === 'percentage') {
+                    amount = (rawSubtotal * adj.value) / 100
+                  } else {
+                    amount = adj.value
+                  }
+                  const isDiscount = adj.type === 'discount'
+                  return (
+                    <div key={adj.id} className="flex justify-between items-center text-emerald-200/80 animate-in fade-in duration-200">
+                      <span className="flex items-center gap-1">
+                        {isDiscount ? (
+                          <Tag className="w-3.5 h-3.5 text-amber-400" />
+                        ) : (
+                          <Receipt className="w-3.5 h-3.5 text-emerald-400" />
+                        )}
+                        {adj.name || (isDiscount ? 'Diskon Kustom' : 'Biaya Kustom')} 
+                        {adj.valueType === 'percentage' && ` (${adj.value}%)`}
+                      </span>
+                      <span className={`font-bold ${isDiscount ? 'text-amber-400' : 'text-white'}`}>
+                        {isDiscount ? '-' : '+'}{formatCurrency(amount)}
+                      </span>
+                    </div>
+                  )
+                })}
 
                 {/* Total Display */}
                 <div className="flex justify-between items-baseline border-t border-white/10 pt-4">
