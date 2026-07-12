@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import html2canvas from 'html2canvas'
@@ -44,6 +45,7 @@ export default function SplitBillCalculator() {
 
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
+  const [isExporting, setIsExporting] = useState(false)
 
   const { profile } = useAuth()
   const navigate = useNavigate()
@@ -465,6 +467,9 @@ export default function SplitBillCalculator() {
   const handleDownloadPNG = async () => {
     const element = document.getElementById('premium-receipt-card')
     if (!element) return
+    setIsExporting(true)
+    // Wait for React to apply layout changes (height: auto, no scroll height limit)
+    await new Promise(resolve => setTimeout(resolve, 100))
     try {
       const canvas = await html2canvas(element, {
         backgroundColor: '#022c22', // Match the receipt theme
@@ -481,6 +486,8 @@ export default function SplitBillCalculator() {
     } catch (err) {
       console.error('Gagal mengunduh gambar PNG:', err)
       alertShared('Gagal membuat gambar PNG. Silakan coba lagi.')
+    } finally {
+      setIsExporting(false)
     }
   }
 
@@ -1157,7 +1164,7 @@ export default function SplitBillCalculator() {
         </div>
              {/* Right Column: Premium Receipt Card */}
         <div className="lg:col-span-5 flex flex-col">
-          <div id="premium-receipt-card" className="bg-gradient-to-b from-emerald-950 via-[#064e3b] to-[#042f2c] rounded-[24px] text-white shadow-[0_20px_50px_rgba(4,120,87,0.12)] border border-emerald-800/40 relative overflow-hidden flex flex-col h-full">
+          <div id="premium-receipt-card" className={`bg-gradient-to-b from-emerald-950 via-[#064e3b] to-[#042f2c] rounded-[24px] text-white shadow-[0_20px_50px_rgba(4,120,87,0.12)] border border-emerald-800/40 relative overflow-hidden flex flex-col ${isExporting ? 'h-auto' : 'h-full'}`}>
             {/* Background blur patterns */}
             <div className="absolute right-[-40px] top-[-40px] h-36 w-36 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none no-export" />
             <div className="absolute left-[-20px] bottom-[-20px] h-36 w-36 bg-teal-500/10 rounded-full blur-3xl pointer-events-none no-export" />
@@ -1250,17 +1257,13 @@ export default function SplitBillCalculator() {
               </div>
 
               {/* Serrated Border Separator */}
-              <div className="relative my-1 flex items-center justify-between gap-1.5 overflow-hidden opacity-20 select-none pointer-events-none">
-                {Array.from({ length: 30 }).map((_, i) => (
-                  <div key={i} className="w-1.5 h-1.5 bg-white rounded-full shrink-0" />
-                ))}
-              </div>
+              <div className="border-t-2 border-dashed border-white/20 my-2 select-none pointer-events-none" />
 
               {/* Shares Detail list */}
               <div className="flex-1 flex flex-col space-y-3 min-h-[220px]">
                 <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400 block">Rincian Pembayaran:</span>
                 
-                <div className="flex-1 space-y-2.5 overflow-y-auto pr-1 max-h-[250px] lg:max-h-[300px] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-white/20">
+                <div className={isExporting ? "space-y-2.5" : "flex-1 space-y-2.5 overflow-y-auto pr-1 max-h-[250px] lg:max-h-[300px] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-white/20"}>
                   {shares.length === 0 ? (
                     <div className="text-center text-xs text-emerald-300/60 py-8 flex flex-col items-center gap-2">
                       <Users className="w-8 h-8 opacity-30" />
@@ -1324,7 +1327,7 @@ export default function SplitBillCalculator() {
       </div>
 
       {/* Share Modal Dialog */}
-      {isShareModalOpen && (
+      {isShareModalOpen && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white border border-gray-150 rounded-2xl max-w-md w-full p-6 shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-200">
             <h3 className="text-lg font-extrabold text-gray-900 mb-4 flex items-center gap-2">
@@ -1445,15 +1448,17 @@ export default function SplitBillCalculator() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Shared Toast Notification */}
-      {toastMessage && (
+      {toastMessage && createPortal(
         <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[100] bg-gray-900 text-white text-xs font-extrabold px-4 py-2.5 rounded-xl shadow-xl flex items-center gap-2 animate-in slide-in-from-top-4 duration-300">
           <Check className="w-4 h-4 text-emerald-400" />
           {toastMessage}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )
