@@ -32,9 +32,16 @@ interface CustomAdjustment {
 export default function SplitBillCalculator() {
   const [splitMode, setSplitMode] = useState<'equal' | 'custom'>('equal')
   const [billAmount, setBillAmount] = useState<number>(0)
-  const [taxPercent, setTaxPercent] = useState<number>(0)
-  const [servicePercent, setServicePercent] = useState<number>(0)
-  const [discountAmount, setDiscountAmount] = useState<number>(0)
+  
+  const [taxValue, setTaxValue] = useState<number>(0)
+  const [taxValueType, setTaxValueType] = useState<'percentage' | 'nominal'>('percentage')
+  
+  const [serviceValue, setServiceValue] = useState<number>(0)
+  const [serviceValueType, setServiceValueType] = useState<'percentage' | 'nominal'>('percentage')
+  
+  const [discountValue, setDiscountValue] = useState<number>(0)
+  const [discountValueType, setDiscountValueType] = useState<'nominal' | 'percentage'>('nominal')
+
   const [customAdjustments, setCustomAdjustments] = useState<CustomAdjustment[]>([])
   
   const [participants, setParticipants] = useState<Participant[]>([
@@ -95,9 +102,12 @@ export default function SplitBillCalculator() {
 
   const handleReset = () => {
     setBillAmount(0)
-    setTaxPercent(0)
-    setServicePercent(0)
-    setDiscountAmount(0)
+    setTaxValue(0)
+    setTaxValueType('percentage')
+    setServiceValue(0)
+    setServiceValueType('percentage')
+    setDiscountValue(0)
+    setDiscountValueType('nominal')
     setCustomAdjustments([])
     setParticipants([
       { id: '1', name: 'Peserta 1', amount: 0 },
@@ -112,8 +122,9 @@ export default function SplitBillCalculator() {
   // Subtotal calculation based on mode
   const rawSubtotal = splitMode === 'equal' ? billAmount : participants.reduce((sum, p) => sum + p.amount, 0)
   
-  const taxAmount = (rawSubtotal * taxPercent) / 100
-  const serviceAmount = (rawSubtotal * servicePercent) / 100
+  const taxAmount = taxValueType === 'percentage' ? (rawSubtotal * taxValue) / 100 : taxValue
+  const serviceAmount = serviceValueType === 'percentage' ? (rawSubtotal * serviceValue) / 100 : serviceValue
+  const discountAmount = discountValueType === 'percentage' ? (rawSubtotal * discountValue) / 100 : discountValue
 
   const customAdjustmentsTotal = customAdjustments.reduce((sum, adj) => {
     let amount = 0
@@ -166,9 +177,18 @@ export default function SplitBillCalculator() {
     text += `Mode: ${modeLabel}\n`
     text += `-------------------------------------------\n`
     text += `Subtotal: ${formatCurrency(rawSubtotal)}\n`
-    if (taxPercent > 0) text += `Pajak (${taxPercent}%): ${formatCurrency(taxAmount)}\n`
-    if (servicePercent > 0) text += `Biaya Layanan (${servicePercent}%): ${formatCurrency(serviceAmount)}\n`
-    if (discountAmount > 0) text += `Diskon: -${formatCurrency(discountAmount)}\n`
+    if (taxValue > 0) {
+      const typeSuffix = taxValueType === 'percentage' ? ` (${taxValue}%)` : ''
+      text += `Pajak${typeSuffix}: ${formatCurrency(taxAmount)}\n`
+    }
+    if (serviceValue > 0) {
+      const typeSuffix = serviceValueType === 'percentage' ? ` (${serviceValue}%)` : ''
+      text += `Biaya Layanan${typeSuffix}: ${formatCurrency(serviceAmount)}\n`
+    }
+    if (discountValue > 0) {
+      const typeSuffix = discountValueType === 'percentage' ? ` (${discountValue}%)` : ''
+      text += `Diskon${typeSuffix}: -${formatCurrency(discountAmount)}\n`
+    }
 
     customAdjustments.forEach((adj) => {
       if (adj.value <= 0) return
@@ -289,53 +309,95 @@ export default function SplitBillCalculator() {
                 <span className="block text-xs font-extrabold text-gray-400 uppercase tracking-wider">Tambahan & Penyesuaian</span>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-gray-50/40 p-3 rounded-2xl border border-gray-150">
                   {/* Tax */}
-                  <div className="relative bg-white border border-gray-200 rounded-xl p-2.5 focus-within:border-emerald-500 focus-within:ring-4 focus-within:ring-emerald-500/10 transition-all flex flex-col">
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide flex items-center gap-1">
-                      <Percent className="w-3 h-3 text-emerald-500" /> Pajak (Tax)
-                    </span>
+                  <div className="relative bg-white border border-gray-200 rounded-xl p-2.5 focus-within:border-emerald-500 focus-within:ring-4 focus-within:ring-emerald-500/10 transition-all flex flex-col justify-between min-h-[76px]">
+                    <div className="flex justify-between items-center w-full">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide flex items-center gap-1">
+                        <Percent className="w-3 h-3 text-emerald-500" /> Pajak (Tax)
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setTaxValueType(taxValueType === 'percentage' ? 'nominal' : 'percentage')}
+                        className="text-[10px] font-extrabold text-emerald-600 hover:text-white hover:bg-emerald-500 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/20 transition-all select-none cursor-pointer"
+                      >
+                        {taxValueType === 'percentage' ? '%' : 'Rp'}
+                      </button>
+                    </div>
                     <div className="relative mt-1 flex items-center">
+                      {taxValueType === 'nominal' && (
+                        <span className="text-gray-400 font-bold text-xs mr-1 select-none">Rp</span>
+                      )}
                       <input
                         type="number"
                         className="w-full text-sm font-bold text-gray-800 bg-transparent border-0 p-0 focus:ring-0 focus:outline-none placeholder-gray-300"
                         placeholder="0"
-                        value={taxPercent || ''}
-                        onChange={e => setTaxPercent(Math.max(0, Number(e.target.value)))}
+                        value={taxValue || ''}
+                        onChange={e => setTaxValue(Math.max(0, Number(e.target.value)))}
                       />
-                      <span className="text-gray-400 font-bold text-xs ml-1">%</span>
+                      {taxValueType === 'percentage' && (
+                        <span className="text-gray-400 font-bold text-xs ml-1 select-none">%</span>
+                      )}
                     </div>
                   </div>
 
                   {/* Service Charge */}
-                  <div className="relative bg-white border border-gray-200 rounded-xl p-2.5 focus-within:border-emerald-500 focus-within:ring-4 focus-within:ring-emerald-500/10 transition-all flex flex-col">
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide flex items-center gap-1">
-                      <Percent className="w-3 h-3 text-emerald-500" /> Layanan (Service)
-                    </span>
+                  <div className="relative bg-white border border-gray-200 rounded-xl p-2.5 focus-within:border-emerald-500 focus-within:ring-4 focus-within:ring-emerald-500/10 transition-all flex flex-col justify-between min-h-[76px]">
+                    <div className="flex justify-between items-center w-full">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide flex items-center gap-1">
+                        <Percent className="w-3 h-3 text-emerald-500" /> Layanan (Service)
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setServiceValueType(serviceValueType === 'percentage' ? 'nominal' : 'percentage')}
+                        className="text-[10px] font-extrabold text-emerald-600 hover:text-white hover:bg-emerald-500 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/20 transition-all select-none cursor-pointer"
+                      >
+                        {serviceValueType === 'percentage' ? '%' : 'Rp'}
+                      </button>
+                    </div>
                     <div className="relative mt-1 flex items-center">
+                      {serviceValueType === 'nominal' && (
+                        <span className="text-gray-400 font-bold text-xs mr-1 select-none">Rp</span>
+                      )}
                       <input
                         type="number"
                         className="w-full text-sm font-bold text-gray-800 bg-transparent border-0 p-0 focus:ring-0 focus:outline-none placeholder-gray-300"
                         placeholder="0"
-                        value={servicePercent || ''}
-                        onChange={e => setServicePercent(Math.max(0, Number(e.target.value)))}
+                        value={serviceValue || ''}
+                        onChange={e => setServiceValue(Math.max(0, Number(e.target.value)))}
                       />
-                      <span className="text-gray-400 font-bold text-xs ml-1">%</span>
+                      {serviceValueType === 'percentage' && (
+                        <span className="text-gray-400 font-bold text-xs ml-1 select-none">%</span>
+                      )}
                     </div>
                   </div>
 
                   {/* Discount */}
-                  <div className="relative bg-white border border-gray-200 rounded-xl p-2.5 focus-within:border-amber-500 focus-within:ring-4 focus-within:ring-amber-500/10 transition-all flex flex-col">
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide flex items-center gap-1">
-                      <Tag className="w-3 h-3 text-amber-500" /> Diskon (Discount)
-                    </span>
+                  <div className="relative bg-white border border-gray-200 rounded-xl p-2.5 focus-within:border-amber-500 focus-within:ring-4 focus-within:ring-amber-500/10 transition-all flex flex-col justify-between min-h-[76px]">
+                    <div className="flex justify-between items-center w-full">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide flex items-center gap-1">
+                        <Tag className="w-3 h-3 text-amber-500" /> Diskon (Discount)
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setDiscountValueType(discountValueType === 'nominal' ? 'percentage' : 'nominal')}
+                        className="text-[10px] font-extrabold text-amber-600 hover:text-white hover:bg-amber-500 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200/20 transition-all select-none cursor-pointer"
+                      >
+                        {discountValueType === 'nominal' ? 'Rp' : '%'}
+                      </button>
+                    </div>
                     <div className="relative mt-1 flex items-center">
-                      <span className="text-gray-400 font-bold text-xs mr-1">Rp</span>
+                      {discountValueType === 'nominal' && (
+                        <span className="text-gray-400 font-bold text-xs mr-1 select-none">Rp</span>
+                      )}
                       <input
                         type="number"
                         className="w-full text-sm font-bold text-gray-800 bg-transparent border-0 p-0 focus:ring-0 focus:outline-none placeholder-gray-300"
                         placeholder="0"
-                        value={discountAmount || ''}
-                        onChange={e => setDiscountAmount(Math.max(0, Number(e.target.value)))}
+                        value={discountValue || ''}
+                        onChange={e => setDiscountValue(Math.max(0, Number(e.target.value)))}
                       />
+                      {discountValueType === 'percentage' && (
+                        <span className="text-gray-400 font-bold text-xs ml-1 select-none">%</span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -547,23 +609,32 @@ export default function SplitBillCalculator() {
                   <span className="font-bold text-white text-base">{formatCurrency(rawSubtotal)}</span>
                 </div>
 
-                {taxPercent > 0 && (
+                {taxValue > 0 && (
                   <div className="flex justify-between items-center text-emerald-200/80">
-                    <span className="flex items-center gap-1"><Percent className="w-3.5 h-3.5 text-emerald-400" /> Pajak (Tax {taxPercent}%)</span>
+                    <span className="flex items-center gap-1">
+                      <Percent className="w-3.5 h-3.5 text-emerald-400" /> 
+                      Pajak (Tax {taxValueType === 'percentage' ? `${taxValue}%` : ''})
+                    </span>
                     <span className="font-bold text-white">+{formatCurrency(taxAmount)}</span>
                   </div>
                 )}
 
-                {servicePercent > 0 && (
+                {serviceValue > 0 && (
                   <div className="flex justify-between items-center text-emerald-200/80">
-                    <span className="flex items-center gap-1"><Percent className="w-3.5 h-3.5 text-emerald-400" /> Layanan (Service {servicePercent}%)</span>
+                    <span className="flex items-center gap-1">
+                      <Percent className="w-3.5 h-3.5 text-emerald-400" /> 
+                      Layanan (Service {serviceValueType === 'percentage' ? `${serviceValue}%` : ''})
+                    </span>
                     <span className="font-bold text-white">+{formatCurrency(serviceAmount)}</span>
                   </div>
                 )}
 
-                {discountAmount > 0 && (
+                {discountValue > 0 && (
                   <div className="flex justify-between items-center text-emerald-200/80">
-                    <span className="flex items-center gap-1"><Tag className="w-3.5 h-3.5 text-amber-400" /> Diskon (Discount)</span>
+                    <span className="flex items-center gap-1">
+                      <Tag className="w-3.5 h-3.5 text-amber-400" /> 
+                      Diskon (Discount {discountValueType === 'percentage' ? `${discountValue}%` : ''})
+                    </span>
                     <span className="font-bold text-amber-400">-{formatCurrency(discountAmount)}</span>
                   </div>
                 )}
@@ -628,7 +699,7 @@ export default function SplitBillCalculator() {
                           <p className="font-extrabold text-xs sm:text-sm truncate text-white">{share.name}</p>
                           <p className="text-[10px] text-emerald-300/70 mt-0.5">
                             Murni: {formatCurrency(share.subtotal)} 
-                            {taxPercent > 0 || servicePercent > 0 || discountAmount > 0 ? ' + Penyesuaian' : ''}
+                            {taxValue > 0 || serviceValue > 0 || discountValue > 0 || customAdjustmentsTotal !== 0 ? ' + Penyesuaian' : ''}
                           </p>
                         </div>
                         <span className="font-black text-xs sm:text-base text-emerald-300 text-right shrink-0">{formatCurrency(share.total)}</span>
