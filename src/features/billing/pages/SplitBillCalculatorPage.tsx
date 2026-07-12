@@ -235,7 +235,7 @@ export default function SplitBillCalculator() {
 
   // Copy result to clipboard
   const handleCopySummary = () => {
-    const modeLabel = splitMode === 'equal' ? 'Bagi Rata (Equal Split)' : 'Bagi Kustom (Itemized Split)'
+    const modeLabel = splitMode === 'equal' ? 'Bagi Rata' : 'Bagi Kustom'
     let text = `*⚡ RINGKASAN SPLIT BILL - SPLITZ ⚡*\n`
     text += `Mode: ${modeLabel}\n`
     text += `-------------------------------------------\n`
@@ -329,7 +329,7 @@ export default function SplitBillCalculator() {
                 }`}
                 onClick={() => setActiveTab('equal')}
               >
-                <Users className={`w-4 h-4 shrink-0 ${activeTab === 'equal' ? 'text-emerald-500' : 'text-gray-400'}`} /> Bagi Rata (Equal Split)
+                <Users className={`w-4 h-4 shrink-0 ${activeTab === 'equal' ? 'text-emerald-500' : 'text-gray-400'}`} /> Bagi Rata
               </button>
               <button
                 type="button"
@@ -483,7 +483,7 @@ export default function SplitBillCalculator() {
                         </div>
                         <input
                           type="number"
-                          className="bg-gray-50/50 border border-gray-200 hover:border-gray-300 focus:border-emerald-500 focus:bg-white rounded-xl pl-12 pr-4 h-14 w-full text-lg font-bold text-gray-800 transition-all focus:outline-none focus:ring-4 focus:ring-emerald-500/10"
+                          className="bg-gray-50/50 border border-gray-200 hover:border-gray-300 focus:border-emerald-500 focus:bg-white rounded-xl pl-12 pr-4 h-14 w-full text-lg font-bold text-gray-800 placeholder:font-medium placeholder-gray-300 transition-all focus:outline-none focus:ring-4 focus:ring-emerald-500/10"
                           placeholder="Masukkan nominal tagihan utama..."
                           value={billAmount || ''}
                           onChange={e => setBillAmount(Number(e.target.value))}
