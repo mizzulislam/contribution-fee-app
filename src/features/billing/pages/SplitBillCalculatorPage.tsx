@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import html2canvas from 'html2canvas'
 import { 
   Calculator, 
   Users, 
@@ -35,6 +37,20 @@ interface CustomAdjustment {
 }
 
 export default function SplitBillCalculator() {
+  const [searchParams] = useSearchParams()
+  const viewMode = searchParams.get('view')
+  const rawData = searchParams.get('data')
+
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false)
+  const [toastMessage, setToastMessage] = useState<string | null>(null)
+
+  const alertShared = (msg: string) => {
+    setToastMessage(msg)
+    setTimeout(() => {
+      setToastMessage(null)
+    }, 2500)
+  }
+
   const [activeTab, setActiveTab] = useState<'equal' | 'custom' | 'manage'>('equal')
   const splitMode = activeTab === 'custom' ? 'custom' : 'equal'
   const [billAmount, setBillAmount] = useState<number>(0)
@@ -416,6 +432,279 @@ export default function SplitBillCalculator() {
     navigator.clipboard.writeText(text)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  const generateShareLink = () => {
+    const shareState = {
+      b: billAmount,
+      t: taxValue,
+      tt: taxValueType,
+      s: serviceValue,
+      st: serviceValueType,
+      d: discountValue,
+      dt: discountValueType,
+      ca: customAdjustments.map(adj => ({ n: adj.name, t: adj.type, vt: adj.valueType, v: adj.value })),
+      p: participants.map(p => ({ n: p.name, a: p.amount, ph: p.phone })),
+      m: splitMode
+    }
+    const encoded = btoa(encodeURIComponent(JSON.stringify(shareState)))
+    const url = `${window.location.origin}${window.location.pathname}?view=receipt&data=${encoded}`
+    return url
+  }
+
+  const handleDownloadPNG = async () => {
+    const element = document.getElementById('premium-receipt-card')
+    if (!element) return
+    try {
+      const canvas = await html2canvas(element, {
+        backgroundColor: '#022c22', // Match the receipt theme
+        scale: 2, // High DPI capture
+        logging: false,
+        useCORS: true,
+        ignoreElements: (el) => el.classList.contains('no-export')
+      })
+      const dataUrl = canvas.toDataURL('image/png')
+      const link = document.createElement('a')
+      link.download = `split-bill-receipt-${Date.now()}.png`
+      link.href = dataUrl
+      link.click()
+    } catch (err) {
+      console.error('Gagal mengunduh gambar PNG:', err)
+      alertShared('Gagal membuat gambar PNG. Silakan coba lagi.')
+    }
+  }
+
+  let decodedState: any = null
+  if (viewMode === 'receipt' && rawData) {
+    try {
+      decodedState = JSON.parse(decodeURIComponent(atob(rawData)))
+    } catch (e) {
+      console.error('Failed to decode shared split bill data:', e)
+    }
+  }
+
+  if (viewMode === 'receipt' && decodedState) {
+    const sharedBillAmount = decodedState.b || 0
+    const sharedTaxValue = decodedState.t || 0
+    const sharedTaxValueType = decodedState.tt || 'percentage'
+    const sharedServiceValue = decodedState.s || 0
+    const sharedServiceValueType = decodedState.st || 'percentage'
+    const sharedDiscountValue = decodedState.d || 0
+    const sharedDiscountValueType = decodedState.dt || 'nominal'
+    const sharedCustomAdjustments = (decodedState.ca || []).map((adj: any, idx: number) => ({
+      id: idx.toString(),
+      name: adj.n,
+      type: adj.t,
+      valueType: adj.vt,
+      value: adj.v
+    }))
+    const sharedParticipants = (decodedState.p || []).map((p: any, idx: number) => ({
+      id: idx.toString(),
+      name: p.n,
+      amount: p.a,
+      phone: p.ph
+    }))
+    const sharedSplitMode = decodedState.m || 'equal'
+
+    // calculations for view-only receipt page
+    const numParticipants = sharedParticipants.length
+    const rawSubtotal = sharedSplitMode === 'equal' ? sharedBillAmount : sharedParticipants.reduce((sum: number, p: any) => sum + p.amount, 0)
+    const taxAmount = sharedTaxValueType === 'percentage' ? (rawSubtotal * sharedTaxValue) / 100 : sharedTaxValue
+    const serviceAmount = sharedServiceValueType === 'percentage' ? (rawSubtotal * sharedServiceValue) / 100 : sharedServiceValue
+    const discountAmount = sharedDiscountValueType === 'percentage' ? (rawSubtotal * sharedDiscountValue) / 100 : sharedDiscountValue
+
+    const customAdjustmentsTotal = sharedCustomAdjustments.reduce((sum: number, adj: any) => {
+      let amount = 0
+      if (adj.valueType === 'percentage') {
+        amount = (rawSubtotal * adj.value) / 100
+      } else {
+        amount = adj.value
+      }
+      return sum + (adj.type === 'charge' ? amount : -amount)
+    }, 0)
+
+    const grandTotal = Math.max(0, rawSubtotal + taxAmount + serviceAmount - discountAmount + customAdjustmentsTotal)
+
+    const shares = sharedParticipants.map((p: any) => {
+      let personalSubtotal = 0
+      if (sharedSplitMode === 'equal') {
+        personalSubtotal = numParticipants > 0 ? sharedBillAmount / numParticipants : 0
+      } else {
+        personalSubtotal = p.amount
+      }
+      const proportion = rawSubtotal > 0 ? personalSubtotal / rawSubtotal : 0
+      const personalTax = taxAmount * proportion
+      const personalService = serviceAmount * proportion
+      const personalDiscount = discountAmount * proportion
+      const personalCustom = customAdjustmentsTotal * proportion
+      const personalTotal = Math.max(0, personalSubtotal + personalTax + personalService - personalDiscount + personalCustom)
+
+      return {
+        ...p,
+        subtotal: personalSubtotal,
+        tax: personalTax,
+        service: personalService,
+        discount: personalDiscount,
+        custom: personalCustom,
+        total: personalTotal
+      }
+    })
+
+    return (
+      <div className="max-w-2xl mx-auto py-8 px-4 animate-in fade-in duration-300">
+        {toastMessage && (
+          <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[100] bg-gray-900 text-white text-xs font-extrabold px-4 py-2.5 rounded-xl shadow-xl flex items-center gap-2 animate-in slide-in-from-top-4 duration-300">
+            <Check className="w-4 h-4 text-emerald-400" />
+            {toastMessage}
+          </div>
+        )}
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-950 flex items-center gap-2">
+            <Calculator className="w-6 h-6 text-emerald-600" />
+            Detail Perhitungan Split Bill
+          </h1>
+          <button
+            onClick={() => window.location.href = window.location.pathname}
+            className="text-xs sm:text-sm font-bold text-emerald-600 hover:text-white hover:bg-emerald-600 bg-emerald-50 border border-emerald-200 px-3.5 py-2 rounded-xl transition-all cursor-pointer shadow-sm active:scale-95"
+          >
+            Buat Kalkulasi Baru
+          </button>
+        </div>
+
+        {/* Premium Receipt Card (Rendered Read-Only) */}
+        <div id="premium-receipt-card" className="bg-gradient-to-b from-emerald-950 via-[#064e3b] to-[#042f2c] rounded-[24px] text-white shadow-[0_20px_50px_rgba(4,120,87,0.12)] border border-emerald-800/40 relative overflow-hidden flex flex-col p-6 space-y-6">
+          <div className="absolute right-[-40px] top-[-40px] h-36 w-36 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute left-[-20px] bottom-[-20px] h-36 w-36 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
+          
+          <div className="flex justify-between items-center border-b border-white/10 pb-4">
+            <div className="flex items-center gap-2">
+              <Receipt className="w-5 h-5 text-emerald-400" />
+              <h2 className="text-base sm:text-lg font-extrabold tracking-wide text-white">Ringkasan Pembagian</h2>
+            </div>
+            <span className="text-[10px] font-black uppercase tracking-wider bg-white/10 px-2.5 py-1 rounded-md text-emerald-300 border border-white/5">
+              {sharedSplitMode === 'equal' ? 'Bagi Rata' : 'Bagi Kustom'}
+            </span>
+          </div>
+
+          <div className="space-y-3.5 text-sm">
+            <div className="flex justify-between items-center text-emerald-200/80">
+              <span className="font-medium">Subtotal Belanja</span>
+              <span className="font-bold text-white text-base">{formatCurrency(rawSubtotal)}</span>
+            </div>
+
+            {sharedTaxValue > 0 && (
+              <div className="flex justify-between items-center text-emerald-200/80">
+                <span className="flex items-center gap-1">
+                  <Percent className="w-3.5 h-3.5 text-emerald-400" /> 
+                  Pajak (Tax {sharedTaxValueType === 'percentage' ? `${sharedTaxValue}%` : ''})
+                </span>
+                <span className="font-bold text-white">+{formatCurrency(taxAmount)}</span>
+              </div>
+            )}
+
+            {sharedServiceValue > 0 && (
+              <div className="flex justify-between items-center text-emerald-200/80">
+                <span className="flex items-center gap-1">
+                  <Percent className="w-3.5 h-3.5 text-emerald-400" /> 
+                  Layanan (Service {sharedServiceValueType === 'percentage' ? `${sharedServiceValue}%` : ''})
+                </span>
+                <span className="font-bold text-white">+{formatCurrency(serviceAmount)}</span>
+              </div>
+            )}
+
+            {sharedDiscountValue > 0 && (
+              <div className="flex justify-between items-center text-emerald-200/80">
+                <span className="flex items-center gap-1">
+                  <Tag className="w-3.5 h-3.5 text-amber-400" /> 
+                  Diskon (Discount {sharedDiscountValueType === 'percentage' ? `${sharedDiscountValue}%` : ''})
+                </span>
+                <span className="font-bold text-amber-400">-{formatCurrency(discountAmount)}</span>
+              </div>
+            )}
+
+            {sharedCustomAdjustments.map((adj: any) => {
+              if (adj.value <= 0) return null
+              let amount = 0
+              if (adj.valueType === 'percentage') {
+                amount = (rawSubtotal * adj.value) / 100
+              } else {
+                amount = adj.value
+              }
+              const isDiscount = adj.type === 'discount'
+              return (
+                <div key={adj.id} className="flex justify-between items-center text-emerald-200/80">
+                  <span className="flex items-center gap-1">
+                    {isDiscount ? (
+                      <Tag className="w-3.5 h-3.5 text-amber-400" />
+                    ) : (
+                      <Receipt className="w-3.5 h-3.5 text-emerald-400" />
+                    )}
+                    {adj.name || (isDiscount ? 'Diskon Kustom' : 'Biaya Kustom')} 
+                    {adj.valueType === 'percentage' && ` (${adj.value}%)`}
+                  </span>
+                  <span className={`font-bold ${isDiscount ? 'text-amber-400' : 'text-white'}`}>
+                    {isDiscount ? '-' : '+'}{formatCurrency(amount)}
+                  </span>
+                </div>
+              )
+            })}
+
+            <div className="flex justify-between items-baseline border-t border-white/10 pt-4">
+              <span className="text-xs font-extrabold uppercase tracking-wider text-emerald-400">Total Akhir</span>
+              <span className="text-3xl font-black tracking-tight bg-gradient-to-r from-white via-emerald-100 to-teal-200 bg-clip-text text-transparent">
+                {formatCurrency(grandTotal)}
+              </span>
+            </div>
+          </div>
+
+          <div className="relative my-1 flex items-center justify-between gap-1.5 overflow-hidden opacity-20 select-none">
+            {Array.from({ length: 30 }).map((_, i) => (
+              <div key={i} className="w-1.5 h-1.5 bg-white rounded-full shrink-0" />
+            ))}
+          </div>
+
+          <div className="flex-1 flex flex-col space-y-3">
+            <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400 block">Rincian Pembayaran:</span>
+            <div className="space-y-2.5">
+              {shares.map((share: any) => (
+                <div key={share.id} className="flex justify-between items-center bg-white/5 p-3 rounded-xl border border-white/5">
+                  <div className="min-w-0 pr-3 flex-grow">
+                    <p className="font-extrabold text-xs sm:text-sm text-white flex items-center gap-1.5">
+                      {share.name}
+                      {share.phone && (
+                        <span className="text-[9px] text-emerald-300 font-bold bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-800/40">
+                          {share.phone}
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-[10px] text-emerald-300/70 mt-0.5">
+                      Murni: {formatCurrency(share.subtotal)} 
+                      {sharedTaxValue > 0 || sharedServiceValue > 0 || sharedDiscountValue > 0 || customAdjustmentsTotal !== 0 ? ' + Penyesuaian' : ''}
+                    </p>
+                  </div>
+                  <span className="font-black text-xs sm:text-base text-emerald-300">{formatCurrency(share.total)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          
+          <div className="bg-emerald-950/40 backdrop-blur-sm p-3 rounded-xl border border-white/5 flex items-start gap-2.5 text-[10.5px] text-emerald-200/90 leading-relaxed no-export">
+            <Info className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+            <p>Pajak, biaya layanan, dan diskon dialokasikan secara proporsional sesuai porsi belanja masing-masing peserta.</p>
+          </div>
+
+          {/* Download button for shared page */}
+          <div className="no-export pt-2">
+            <button
+              onClick={handleDownloadPNG}
+              className="w-full py-3 rounded-xl font-extrabold text-xs tracking-wide shadow-lg transition-all duration-300 flex items-center justify-center gap-2 active:scale-98 cursor-pointer bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white border border-emerald-400/20 hover:shadow-emerald-500/10 shadow-xl"
+            >
+              Unduh Gambar (PNG)
+            </button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -857,10 +1146,9 @@ export default function SplitBillCalculator() {
             </div>
           </div>
         </div>
-
-        {/* Right Column: Premium Receipt Card */}
+             {/* Right Column: Premium Receipt Card */}
         <div className="lg:col-span-5 flex flex-col">
-          <div className="bg-gradient-to-b from-emerald-950 via-[#064e3b] to-[#042f2c] rounded-[24px] text-white shadow-[0_20px_50px_rgba(4,120,87,0.12)] border border-emerald-800/40 relative overflow-hidden flex flex-col h-full">
+          <div id="premium-receipt-card" className="bg-gradient-to-b from-emerald-950 via-[#064e3b] to-[#042f2c] rounded-[24px] text-white shadow-[0_20px_50px_rgba(4,120,87,0.12)] border border-emerald-800/40 relative overflow-hidden flex flex-col h-full">
             {/* Background blur patterns */}
             <div className="absolute right-[-40px] top-[-40px] h-36 w-36 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
             <div className="absolute left-[-20px] bottom-[-20px] h-36 w-36 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -991,10 +1279,12 @@ export default function SplitBillCalculator() {
                           <button
                             type="button"
                             onClick={() => handleSendIndividualWhatsApp(share)}
-                            className="p-1.5 text-emerald-400 hover:text-white hover:bg-emerald-500 rounded-lg transition-all border border-emerald-800/40 hover:border-emerald-500 cursor-pointer"
+                            className="p-1.5 text-emerald-400 hover:text-white hover:bg-emerald-500 rounded-lg transition-all border border-emerald-800/40 hover:border-emerald-500 cursor-pointer flex items-center justify-center no-export"
                             title={`Kirim WA personal ke ${share.name}`}
                           >
-                            <MessageSquare className="w-3.5 h-3.5" />
+                            <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+                              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.746.953 3.71 1.458 5.704 1.46h.005c6.56 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                            </svg>
                           </button>
                         </div>
                       </div>
@@ -1004,13 +1294,13 @@ export default function SplitBillCalculator() {
               </div>
 
               {/* Info Message */}
-              <div className="bg-emerald-950/40 backdrop-blur-sm p-3 rounded-xl border border-white/5 flex items-start gap-2.5 text-[10.5px] text-emerald-200/90 leading-relaxed shadow-inner">
+              <div className="bg-emerald-950/40 backdrop-blur-sm p-3 rounded-xl border border-white/5 flex items-start gap-2.5 text-[10.5px] text-emerald-200/90 leading-relaxed shadow-inner no-export">
                 <Info className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                 <p>Pajak, biaya layanan, dan diskon dialokasikan secara proporsional sesuai porsi belanja masing-masing peserta.</p>
               </div>
 
               {/* Actions button */}
-              <div className="flex flex-col sm:flex-row gap-2">
+              <div className="flex flex-col sm:flex-row gap-2 no-export">
                 <button
                   type="button"
                   onClick={handleCopySummary}
@@ -1022,7 +1312,7 @@ export default function SplitBillCalculator() {
                 >
                   {copied ? (
                     <>
-                      <Check className="w-4 h-4 animate-bounce" /> Berhasil Disalin!
+                      <Check className="w-4 h-4 animate-bounce" /> Belhasil Disalin!
                     </>
                   ) : (
                     <>
@@ -1033,16 +1323,149 @@ export default function SplitBillCalculator() {
                 
                 <button
                   type="button"
-                  onClick={handleSendWhatsAppGeneral}
+                  onClick={() => setIsShareModalOpen(true)}
                   className="flex-grow py-3 rounded-xl font-extrabold text-xs tracking-wide shadow-lg transition-all duration-300 flex items-center justify-center gap-2 active:scale-98 cursor-pointer bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white border border-emerald-400/20 hover:shadow-emerald-500/10 shadow-xl"
                 >
-                  <Send className="w-4 h-4" /> Kirim WhatsApp
+                  <Send className="w-4 h-4" /> Bagikan
                 </button>
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Share Modal Dialog */}
+      {isShareModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white border border-gray-150 rounded-2xl max-w-md w-full p-6 shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-200">
+            <h3 className="text-lg font-extrabold text-gray-900 mb-4 flex items-center gap-2">
+              <Send className="w-5 h-5 text-emerald-600" />
+              Bagikan Hasil Perhitungan
+            </h3>
+            
+            <p className="text-xs text-gray-500 mb-5">
+              Pilih saluran untuk membagikan ringkasan tagihan atau simpan sebagai gambar PNG.
+            </p>
+
+            <div className="space-y-4">
+              {/* Section 1: Saluran Berbagi */}
+              <div className="space-y-2.5">
+                <span className="text-[10px] font-black uppercase tracking-wider text-gray-400 block">Saluran Berbagi</span>
+                
+                <button
+                  onClick={() => {
+                    handleSendWhatsAppGeneral()
+                    setIsShareModalOpen(false)
+                  }}
+                  className="w-full flex items-center justify-between p-3 rounded-xl border border-gray-200 hover:border-emerald-500 hover:bg-emerald-50/20 transition-all cursor-pointer group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600 group-hover:scale-105 transition-all">
+                      <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.746.953 3.71 1.458 5.704 1.46h.005c6.56 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                      </svg>
+                    </div>
+                    <div className="text-left">
+                      <p className="text-xs font-bold text-gray-800">WhatsApp</p>
+                      <p className="text-[10px] text-gray-400">Bagikan seluruh rincian langsung ke chat WA</p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-extrabold text-emerald-600 opacity-0 group-hover:opacity-100 transition-all mr-2">Buka &rarr;</span>
+                </button>
+
+                {/* Copy Link Button */}
+                <button
+                  onClick={() => {
+                    const link = generateShareLink()
+                    navigator.clipboard.writeText(link)
+                    setIsShareModalOpen(false)
+                    alertShared('Link interaktif berhasil disalin!')
+                  }}
+                  className="w-full flex items-center justify-between p-3 rounded-xl border border-gray-200 hover:border-emerald-500 hover:bg-emerald-50/20 transition-all cursor-pointer group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600 group-hover:scale-105 transition-all">
+                      <svg className="w-4 h-4 fill-none stroke-current stroke-2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                      </svg>
+                    </div>
+                    <div className="text-left">
+                      <p className="text-xs font-bold text-gray-800">Salin Link Hasil</p>
+                      <p className="text-[10px] text-gray-400">Link interaktif (view-only) tanpa form input</p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-extrabold text-blue-600 opacity-0 group-hover:opacity-100 transition-all mr-2">Salin &rarr;</span>
+                </button>
+
+                {/* Copy Text Summary */}
+                <button
+                  onClick={() => {
+                    handleCopySummary()
+                    setIsShareModalOpen(false)
+                    alertShared('Ringkasan teks berhasil disalin!')
+                  }}
+                  className="w-full flex items-center justify-between p-3 rounded-xl border border-gray-200 hover:border-emerald-500 hover:bg-emerald-50/20 transition-all cursor-pointer group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-600 group-hover:scale-105 transition-all">
+                      <Copy className="w-4 h-4" />
+                    </div>
+                    <div className="text-left">
+                      <p className="text-xs font-bold text-gray-800">Salin Teks Ringkasan</p>
+                      <p className="text-[10px] text-gray-400">Salin seluruh rincian teks ke clipboard</p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-extrabold text-gray-600 opacity-0 group-hover:opacity-100 transition-all mr-2">Salin &rarr;</span>
+                </button>
+              </div>
+
+              {/* Section 2: Ekspor Gambar */}
+              <div className="space-y-2.5 pt-2 border-t border-gray-150">
+                <span className="text-[10px] font-black uppercase tracking-wider text-gray-400 block">Ekspor File</span>
+                
+                <button
+                  onClick={() => {
+                    handleDownloadPNG()
+                    setIsShareModalOpen(false)
+                  }}
+                  className="w-full flex items-center justify-between p-3 rounded-xl border border-gray-200 hover:border-emerald-500 hover:bg-emerald-50/20 transition-all cursor-pointer group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center text-amber-600 group-hover:scale-105 transition-all">
+                      <svg className="w-4 h-4 fill-none stroke-current stroke-2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
+                    </div>
+                    <div className="text-left">
+                      <p className="text-xs font-bold text-gray-800">Unduh Struk (PNG)</p>
+                      <p className="text-[10px] text-gray-400">Unduh gambar struk pembagian resolusi tinggi</p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-extrabold text-amber-600 opacity-0 group-hover:opacity-100 transition-all mr-2">Unduh &rarr;</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Footer / Close Button */}
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={() => setIsShareModalOpen(false)}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-250 text-gray-700 text-xs font-bold rounded-xl transition-all cursor-pointer"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Shared Toast Notification */}
+      {toastMessage && (
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[100] bg-gray-900 text-white text-xs font-extrabold px-4 py-2.5 rounded-xl shadow-xl flex items-center gap-2 animate-in slide-in-from-top-4 duration-300">
+          <Check className="w-4 h-4 text-emerald-400" />
+          {toastMessage}
+        </div>
+      )}
     </div>
   )
 }
