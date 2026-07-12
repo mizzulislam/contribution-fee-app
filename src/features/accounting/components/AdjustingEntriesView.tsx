@@ -696,18 +696,18 @@ export default function AdjustingEntriesView({ period }: AdjustingEntriesViewPro
         <div className="overflow-x-auto w-full">
           <table className="min-w-[850px] w-full table-fixed text-left text-sm">
             <colgroup>
-              {isEditMode && <col className="w-16" />}
+              <col className="w-12" />
               <col className="w-[12%]" />
-              <col className="w-[41%]" />
-              <col className="w-[13%]" />
-              <col className="w-[17%]" />
-              <col className="w-[17%]" />
-              {isEditMode && <col className="w-32" />}
+              <col className="w-[36%]" />
+              <col className="w-[11%]" />
+              <col className="w-[15%]" />
+              <col className="w-[15%]" />
+              <col className="w-28" />
             </colgroup>
             <thead className="bg-[#F8FAFC] border-b border-gray-200 text-gray-600 text-xs uppercase font-semibold">
               <tr>
-                {isEditMode && (
-                  <th className="px-4 py-4 text-center w-12">
+                <th className="px-4 py-4 text-center w-12">
+                  {isEditMode && (
                     <input
                       type="checkbox"
                       checked={sortedEntries.length > 0 && selectedIds.length === sortedEntries.length}
@@ -720,20 +720,22 @@ export default function AdjustingEntriesView({ period }: AdjustingEntriesViewPro
                       }}
                       className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
                     />
-                  </th>
-                )}
+                  )}
+                </th>
                 <th className="px-4 py-4 font-semibold whitespace-nowrap text-center">Tanggal</th>
                 <th className="px-4 py-4 font-semibold text-center">Deskripsi</th>
                 <th className="px-4 py-4 font-semibold text-center">Ref</th>
                 <th className="px-5 py-4 font-semibold text-center">Debit</th>
                 <th className="px-5 py-4 font-semibold text-center">Kredit</th>
-                {isEditMode && <th className="px-4 py-4 font-semibold text-center w-32">Aksi</th>}
+                <th className="px-4 py-4 font-semibold text-center w-28">
+                  {isEditMode && 'Aksi'}
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 text-gray-700 bg-white">
               {sortedEntries.length === 0 ? (
                 <tr>
-                  <td colSpan={isEditMode ? 7 : 5} className="px-6 py-12 text-center text-text-muted">
+                  <td colSpan={7} className="px-6 py-12 text-center text-text-muted">
                     Belum ada entri jurnal penyesuaian pada periode ini.
                   </td>
                 </tr>
@@ -754,8 +756,8 @@ export default function AdjustingEntriesView({ period }: AdjustingEntriesViewPro
 
                   return (
                     <tr key={entry.id} className="hover:bg-gray-50/50 align-top transition-colors">
-                      {isEditMode && (
-                        <td className="px-4 py-5 text-center align-middle">
+                      <td className="px-4 py-5 text-center align-middle">
+                        {isEditMode && (
                           <input
                             type="checkbox"
                             checked={selectedIds.includes(String(entry.id))}
@@ -769,8 +771,8 @@ export default function AdjustingEntriesView({ period }: AdjustingEntriesViewPro
                             }}
                             className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
                           />
-                        </td>
-                      )}
+                        )}
+                      </td>
 
                       <td className="px-4 py-5 whitespace-nowrap text-center">
                         <div className="font-medium text-gray-900">{formatDate(entry.date)}</div>
@@ -841,8 +843,8 @@ export default function AdjustingEntriesView({ period }: AdjustingEntriesViewPro
                           })}
                         </div>
                       </td>
-                      {isEditMode && (
-                        <td className="px-4 py-5 text-center align-middle">
+                      <td className="px-4 py-5 text-center align-middle">
+                        {isEditMode && (
                           <div className="flex justify-center items-center gap-1.5">
                             <button 
                               onClick={() => {
@@ -874,8 +876,8 @@ export default function AdjustingEntriesView({ period }: AdjustingEntriesViewPro
                               <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
-                        </td>
-                      )}
+                        )}
+                      </td>
                     </tr>
                   )
                 })

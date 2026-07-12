@@ -187,72 +187,96 @@ export default function GeneralJournalView({ period }: GeneralJournalViewProps) 
               </td>
             </tr>
           ) : (
-            sortedEntries.map((entry) => (
-              <tr key={entry.id} className="align-top border-b border-gray-200">
+            sortedEntries.map((entry) => {
+              const journalRows = [
+                ...entry.debits.map((d) => ({
+                  type: 'debit' as const,
+                  accountNumber: d.accountNumber,
+                  amount: d.amount,
+                })),
+                ...entry.credits.map((c) => ({
+                  type: 'credit' as const,
+                  accountNumber: c.accountNumber,
+                  amount: c.amount,
+                }))
+              ]
 
-                <td className="px-3 py-2 border-r border-gray-200 text-center print-center whitespace-nowrap">
-                  {formatDate(entry.date)}
-                </td>
-                <td className="px-3 py-2 border-r border-gray-200">
-                  <div className="space-y-1.5 text-[11px] leading-relaxed">
-                    {/* Debits */}
-                    {entry.debits.map((d, i) => {
-                      const acc = accounts.find(a => a.accountNumber === d.accountNumber)
-                      return <div key={`d-${i}`} className="text-gray-900 font-semibold">{acc?.accountName}</div>
-                    })}
-                    {/* Credits (Indented) */}
-                    {entry.credits.map((c, i) => {
-                      const acc = accounts.find(a => a.accountNumber === c.accountNumber)
-                      return <div key={`c-${i}`} className="text-gray-900 pl-4">{acc?.accountName}</div>
-                    })}
-                  </div>
-                  {/* Keterangan di baris paling bawah ayat jurnal */}
-                  <div className="mt-1 text-[10px] leading-normal text-[#047857] italic font-semibold">
-                    ({entry.description})
-                  </div>
-                </td>
-                <td className="px-3 py-2 border-r border-gray-200 text-center print-center text-gray-500">
-                  <div className="space-y-1.5">
-                    {entry.debits.map((d, i) => (
-                      <div key={`dref-${i}`}>{d.accountNumber}</div>
-                    ))}
-                    {entry.credits.map((c, i) => (
-                      <div key={`cref-${i}`}>{c.accountNumber}</div>
-                    ))}
-                  </div>
-                </td>
-                <td className="px-3 py-2 border-r border-gray-200">
-                  <div className="space-y-1.5 text-right">
-                    {entry.debits.map((d, i) => (
-                      <div key={`da-${i}`} className="text-gray-900 font-semibold flex justify-between w-full">
-                        <span className="text-gray-400 font-normal">Rp</span>
-                        <span>{formatAmount(d.amount)}</span>
-                      </div>
-                    ))}
-                    {entry.credits.map((c, i) => (
-                      <div key={`ca-${i}`} className="text-transparent select-none flex justify-between w-full">
-                        <span>Rp</span><span>0</span>
-                      </div>
-                    ))}
-                  </div>
-                </td>
-                <td className="px-3 py-2">
-                  <div className="space-y-1.5 text-right">
-                    {entry.debits.map((d, i) => (
-                      <div key={`ds-${i}`} className="text-transparent select-none flex justify-between w-full">
-                        <span>Rp</span><span>0</span>
-                      </div>
-                    ))}
-                    {entry.credits.map((c, i) => (
-                      <div key={`ca-${i}`} className="text-gray-900 font-semibold flex justify-between w-full">
-                        <span className="text-gray-400 font-normal">Rp</span>
-                        <span>{formatAmount(c.amount)}</span>
-                      </div>
-                    ))}
-                  </div>
-                </td>
-              </tr>
-            ))
+              return (
+                <tr key={entry.id} className="align-top border-b border-gray-200">
+                  <td className="px-3 py-2 border-r border-gray-200 text-center print-center whitespace-nowrap">
+                    {formatDate(entry.date)}
+                  </td>
+                  <td className="px-3 py-2 border-r border-gray-200">
+                    <div className="space-y-1.5 text-[11px] leading-relaxed">
+                      {journalRows.map((row, idx) => {
+                        const acc = accounts.find(a => a.accountNumber === row.accountNumber)
+                        return (
+                          <div 
+                            key={idx} 
+                            className={`text-gray-900 font-medium truncate h-[16.5px] flex items-center ${row.type === 'credit' ? 'pl-4' : ''}`}
+                          >
+                            {acc?.accountName}
+                          </div>
+                        )
+                      })}
+                    </div>
+                    {/* Keterangan di baris paling bawah ayat jurnal */}
+                    <div className="mt-1 text-[10px] leading-normal text-[#047857] italic font-medium">
+                      ({entry.description})
+                    </div>
+                  </td>
+                  <td className="px-3 py-2 border-r border-gray-200 text-center print-center text-gray-500">
+                    <div className="space-y-1.5">
+                      {journalRows.map((row, idx) => (
+                        <div key={idx} className="text-gray-500 h-[16.5px] flex items-center justify-center">
+                          {row.accountNumber}
+                        </div>
+                      ))}
+                    </div>
+                  </td>
+                  <td className="px-3 py-2 border-r border-gray-200">
+                    <div className="space-y-1.5 text-right">
+                      {journalRows.map((row, idx) => {
+                        if (row.type === 'debit') {
+                          return (
+                            <div key={idx} className="text-gray-900 font-medium flex justify-between w-full h-[16.5px] items-center">
+                              <span className="text-gray-400 font-normal mr-2">Rp</span>
+                              <span>{formatAmount(row.amount)}</span>
+                            </div>
+                          )
+                        } else {
+                          return (
+                            <div key={idx} className="text-transparent select-none flex justify-between w-full h-[16.5px] items-center">
+                              <span className="mr-2">Rp</span><span>0</span>
+                            </div>
+                          )
+                        }
+                      })}
+                    </div>
+                  </td>
+                  <td className="px-3 py-2">
+                    <div className="space-y-1.5 text-right">
+                      {journalRows.map((row, idx) => {
+                        if (row.type === 'credit') {
+                          return (
+                            <div key={idx} className="text-gray-900 font-medium flex justify-between w-full h-[16.5px] items-center">
+                              <span className="text-gray-400 font-normal mr-2">Rp</span>
+                              <span>{formatAmount(row.amount)}</span>
+                            </div>
+                          )
+                        } else {
+                          return (
+                            <div key={idx} className="text-transparent select-none flex justify-between w-full h-[16.5px] items-center">
+                              <span className="mr-2">Rp</span><span>0</span>
+                            </div>
+                          )
+                        }
+                      })}
+                    </div>
+                  </td>
+                </tr>
+              )
+            })
           )}
         </tbody>
       </table>
@@ -340,18 +364,18 @@ export default function GeneralJournalView({ period }: GeneralJournalViewProps) 
         <div className="overflow-x-auto w-full">
           <table className="min-w-[850px] w-full table-fixed text-left text-sm">
             <colgroup>
-              {isEditMode && <col className="w-16" />}
+              <col className="w-12" />
               <col className="w-[12%]" />
-              <col className="w-[41%]" />
-              <col className="w-[13%]" />
-              <col className="w-[17%]" />
-              <col className="w-[17%]" />
-              {isEditMode && <col className="w-32" />}
+              <col className="w-[36%]" />
+              <col className="w-[11%]" />
+              <col className="w-[15%]" />
+              <col className="w-[15%]" />
+              <col className="w-28" />
             </colgroup>
             <thead className="bg-[#F8FAFC] border-b border-gray-200 text-gray-600 text-xs uppercase font-semibold">
               <tr>
-                {isEditMode && (
-                  <th className="px-4 py-4 text-center w-12">
+                <th className="px-4 py-4 text-center w-12">
+                  {isEditMode && (
                     <input 
                       type="checkbox"
                       checked={sortedEntries.length > 0 && selectedIds.length === sortedEntries.length}
@@ -364,20 +388,22 @@ export default function GeneralJournalView({ period }: GeneralJournalViewProps) 
                       }}
                       className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
                     />
-                  </th>
-                )}
+                  )}
+                </th>
                 <th className="px-4 py-4 font-semibold whitespace-nowrap text-center">Tanggal</th>
                 <th className="px-4 py-4 font-semibold text-center">Deskripsi</th>
                 <th className="px-4 py-4 font-semibold text-center">Ref</th>
                 <th className="px-5 py-4 font-semibold text-center">Debit</th>
                 <th className="px-5 py-4 font-semibold text-center">Kredit</th>
-                {isEditMode && <th className="px-6 py-4 font-semibold text-center w-32">Aksi</th>}
+                <th className="px-6 py-4 font-semibold text-center w-28">
+                  {isEditMode && 'Aksi'}
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 text-gray-700 bg-white">
               {sortedEntries.length === 0 ? (
                 <tr>
-                  <td colSpan={isEditMode ? 7 : 5} className="px-6 py-12 text-center text-text-muted">
+                  <td colSpan={7} className="px-6 py-12 text-center text-text-muted">
                     {isSyncing ? 'Memuat data transaksi...' : 'Belum ada transaksi pada periode ini.'}
                   </td>
                 </tr>
@@ -398,8 +424,8 @@ export default function GeneralJournalView({ period }: GeneralJournalViewProps) 
 
                   return (
                     <tr key={entry.id} className="hover:bg-gray-50/50 align-top transition-colors">
-                      {isEditMode && (
-                        <td className="px-4 py-5 text-center align-middle">
+                      <td className="px-4 py-5 text-center align-middle">
+                        {isEditMode && (
                           <input 
                             type="checkbox"
                             checked={selectedIds.includes(entry.id)}
@@ -412,8 +438,8 @@ export default function GeneralJournalView({ period }: GeneralJournalViewProps) 
                             }}
                             className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
                           />
-                        </td>
-                      )}
+                        )}
+                      </td>
 
                       <td className="px-4 py-5 whitespace-nowrap text-center">
                         <div className="font-medium text-gray-900">{formatDate(entry.date)}</div>
@@ -488,8 +514,8 @@ export default function GeneralJournalView({ period }: GeneralJournalViewProps) 
                           })}
                         </div>
                       </td>
-                      {isEditMode && (
-                        <td className="px-6 py-5 text-center align-middle">
+                      <td className="px-6 py-5 text-center align-middle">
+                        {isEditMode && (
                           <div className="flex justify-center items-center gap-1.5">
                             <button 
                               onClick={() => {
@@ -521,8 +547,8 @@ export default function GeneralJournalView({ period }: GeneralJournalViewProps) 
                               <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
-                        </td>
-                      )}
+                        )}
+                      </td>
                     </tr>
                   )
                 })
