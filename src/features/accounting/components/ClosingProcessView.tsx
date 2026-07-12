@@ -553,18 +553,18 @@ export default function ClosingProcessView({ period }: ClosingProcessViewProps) 
         <div className="overflow-x-auto w-full">
           <table className="min-w-[850px] w-full table-fixed text-left text-sm">
             <colgroup>
-              <col className="w-12" />
+              {isEditMode && <col className="w-16" />}
               <col className="w-[12%]" />
-              <col className="w-[36%]" />
-              <col className="w-[11%]" />
-              <col className="w-[15%]" />
-              <col className="w-[15%]" />
-              <col className="w-28" />
+              <col className="w-[41%]" />
+              <col className="w-[13%]" />
+              <col className="w-[17%]" />
+              <col className="w-[17%]" />
+              {isEditMode && <col className="w-32" />}
             </colgroup>
             <thead className="bg-[#F8FAFC] border-b border-gray-200 text-gray-600 text-xs uppercase font-semibold">
               <tr>
-                <th className="px-4 py-4 text-center w-12">
-                  {isEditMode && (
+                {isEditMode && (
+                  <th className="h-[52px] px-4 py-0 text-center w-16 align-middle">
                     <input
                       type="checkbox"
                       checked={sortedClosingEntries.length > 0 && selectedIds.length === sortedClosingEntries.length}
@@ -577,22 +577,24 @@ export default function ClosingProcessView({ period }: ClosingProcessViewProps) 
                       }}
                       className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
                     />
-                  )}
-                </th>
-                <th className="px-4 py-4 font-semibold whitespace-nowrap text-center">Tanggal</th>
-                <th className="px-4 py-4 font-semibold text-center">Deskripsi</th>
-                <th className="px-4 py-4 font-semibold text-center">Ref</th>
-                <th className="px-5 py-4 font-semibold text-center">Debit</th>
-                <th className="px-5 py-4 font-semibold text-center">Kredit</th>
-                <th className="px-4 py-4 font-semibold text-center w-28">
-                  {isEditMode && 'Aksi'}
-                </th>
+                  </th>
+                )}
+                <th className="h-[52px] px-4 py-0 font-semibold whitespace-nowrap text-center align-middle">Tanggal</th>
+                <th className="h-[52px] px-4 py-0 font-semibold text-center align-middle">Deskripsi</th>
+                <th className="h-[52px] px-4 py-0 font-semibold text-center align-middle">Ref</th>
+                <th className="h-[52px] px-5 py-0 font-semibold text-center align-middle">Debit</th>
+                <th className="h-[52px] px-5 py-0 font-semibold text-center align-middle">Kredit</th>
+                {isEditMode && (
+                  <th className="h-[52px] px-4 py-0 font-semibold text-center w-32 align-middle">
+                    Aksi
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 text-gray-700 bg-white">
               {sortedClosingEntries.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-text-muted">
+                  <td colSpan={isEditMode ? 7 : 5} className="px-6 py-12 text-center text-text-muted">
                     Belum ada jurnal penutup aktual pada periode ini.
                   </td>
                 </tr>
@@ -613,8 +615,8 @@ export default function ClosingProcessView({ period }: ClosingProcessViewProps) 
 
                   return (
                     <tr key={entry.id} className="hover:bg-gray-50/50 align-top transition-colors">
-                      <td className="px-4 py-5 text-center align-middle">
-                        {isEditMode && (
+                      {isEditMode && (
+                        <td className="px-4 py-5 text-center align-middle">
                           <input
                             type="checkbox"
                             checked={selectedIds.includes(String(entry.id))}
@@ -628,8 +630,8 @@ export default function ClosingProcessView({ period }: ClosingProcessViewProps) 
                             }}
                             className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
                           />
-                        )}
-                      </td>
+                        </td>
+                      )}
 
                       <td className="px-4 py-5 whitespace-nowrap text-center">
                         <div className="font-medium text-gray-900">{formatDate(entry.date)}</div>
@@ -700,8 +702,8 @@ export default function ClosingProcessView({ period }: ClosingProcessViewProps) 
                           })}
                         </div>
                       </td>
-                      <td className="px-4 py-5 text-center align-middle">
-                        {isEditMode && (
+                      {isEditMode && (
+                        <td className="px-4 py-5 text-center align-middle">
                           <div className="flex justify-center items-center gap-1.5">
                             <button 
                               onClick={() => {
@@ -733,8 +735,8 @@ export default function ClosingProcessView({ period }: ClosingProcessViewProps) 
                               <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
-                        )}
-                      </td>
+                        </td>
+                      )}
                     </tr>
                   )
                 })
