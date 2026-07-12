@@ -65,7 +65,11 @@ export default function SplitBillCalculator() {
   const [customAdjustments, setCustomAdjustments] = useState<CustomAdjustment[]>(() => {
     try {
       const saved = localStorage.getItem('splitz_custom_adjustments')
-      return saved ? JSON.parse(saved) : []
+      if (saved) {
+        const parsed = JSON.parse(saved) as CustomAdjustment[]
+        return parsed.map(adj => ({ ...adj, value: 0 }))
+      }
+      return []
     } catch (e) {
       console.error('Error loading custom adjustments', e)
       return []
@@ -347,7 +351,7 @@ export default function SplitBillCalculator() {
                 }`}
                 onClick={() => setActiveTab('manage')}
               >
-                <Sliders className={`w-4 h-4 shrink-0 ${activeTab === 'manage' ? 'text-emerald-500' : 'text-gray-400'}`} /> Kelola Pocket
+                <Sliders className={`w-4 h-4 shrink-0 ${activeTab === 'manage' ? 'text-emerald-500' : 'text-gray-400'}`} /> Atur Penyesuaian
               </button>
             </div>
 
@@ -358,10 +362,10 @@ export default function SplitBillCalculator() {
                   <div>
                     <h3 className="text-sm font-extrabold text-gray-700 flex items-center gap-2">
                       <Sliders className="w-4 h-4 text-emerald-500" />
-                      Daftar Pocket Biaya & Diskon
+                      Daftar Penyesuaian Kustom
                     </h3>
                     <p className="text-xs text-gray-400 mt-1">
-                      Pocket yang Anda buat di sini akan muncul sebagai field input tambahan pada tab Bagi Rata dan Bagi Kustom.
+                      Penyesuaian yang Anda buat di sini akan muncul sebagai field input tambahan pada tab Bagi Rata dan Bagi Kustom.
                     </p>
                   </div>
 
@@ -376,7 +380,7 @@ export default function SplitBillCalculator() {
                         <input
                           type="text"
                           className="bg-gray-50/50 border border-gray-200 hover:border-gray-300 focus:border-emerald-500 focus:bg-white rounded-lg px-3 py-2 text-xs sm:text-sm font-semibold text-gray-800 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/10 flex-1 min-w-[120px]"
-                          placeholder="Nama pocket (misal: Ongkir)..."
+                          placeholder="Nama penyesuaian (misal: Ongkir)..."
                           value={adj.name}
                           onChange={e => handleCustomAdjustmentChange(adj.id, 'name', e.target.value)}
                         />
@@ -438,7 +442,7 @@ export default function SplitBillCalculator() {
                           type="button"
                           onClick={() => handleRemoveCustomAdjustment(adj.id)}
                           className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all border border-transparent hover:border-red-100 cursor-pointer shrink-0"
-                          title="Hapus pocket"
+                          title="Hapus penyesuaian"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -447,7 +451,7 @@ export default function SplitBillCalculator() {
 
                     {customAdjustments.length === 0 && (
                       <div className="text-center py-10 border-2 border-dashed border-gray-200 rounded-2xl text-gray-400 text-xs">
-                        Belum ada pocket tambahan. Klik tombol di bawah untuk membuat pocket baru.
+                        Belum ada penyesuaian tambahan. Klik tombol di bawah untuk membuat penyesuaian baru.
                       </div>
                     )}
                   </div>
@@ -459,7 +463,7 @@ export default function SplitBillCalculator() {
                       className="group w-full text-xs font-bold text-emerald-600 hover:text-white bg-emerald-50 hover:bg-emerald-500 transition-all py-3 rounded-xl border border-emerald-250 flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer shadow-sm"
                     >
                       <Plus className="w-4 h-4 transition-transform duration-300 group-hover:scale-110" />
-                      Tambah Pocket Baru
+                      Tambah Penyesuaian Baru
                     </button>
                   </div>
                 </div>
@@ -490,7 +494,18 @@ export default function SplitBillCalculator() {
 
                   {/* Adjustments Section */}
                   <div className="space-y-3">
-                    <span className="block text-xs font-extrabold text-gray-400 uppercase tracking-wider">Tambahan & Penyesuaian</span>
+                    <div className="flex justify-between items-center">
+                      <span className="block text-xs font-extrabold text-gray-400 uppercase tracking-wider">Tambahan & Penyesuaian</span>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('manage')}
+                        className="text-[10px] font-extrabold text-emerald-600 hover:text-white hover:bg-emerald-500 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-250 flex items-center gap-1 transition-all duration-300 cursor-pointer shadow-sm active:scale-95"
+                        title="Klik untuk menambah atau mengedit field biaya/diskon baru"
+                      >
+                        <Sliders className="w-3 h-3 text-emerald-500 group-hover:text-white" />
+                        Atur Penyesuaian
+                      </button>
+                    </div>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-gray-50/40 p-3 rounded-2xl border border-gray-150">
                       {/* Tax */}
                       <div className="relative bg-white border border-gray-200 rounded-xl p-2.5 focus-within:border-emerald-500 focus-within:ring-4 focus-within:ring-emerald-500/10 transition-all flex flex-col justify-between min-h-[76px]">
