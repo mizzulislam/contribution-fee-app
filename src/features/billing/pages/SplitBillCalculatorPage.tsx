@@ -12,7 +12,8 @@ import {
   UserPlus, 
   Sparkles, 
   Tag, 
-  Info 
+  Info,
+  Sliders
 } from 'lucide-react'
 
 interface Participant {
@@ -30,7 +31,8 @@ interface CustomAdjustment {
 }
 
 export default function SplitBillCalculator() {
-  const [splitMode, setSplitMode] = useState<'equal' | 'custom'>('equal')
+  const [activeTab, setActiveTab] = useState<'equal' | 'custom' | 'manage'>('equal')
+  const splitMode = activeTab === 'custom' ? 'custom' : 'equal'
   const [billAmount, setBillAmount] = useState<number>(0)
   
   const [taxValue, setTaxValue] = useState<number>(0)
@@ -313,172 +315,78 @@ export default function SplitBillCalculator() {
         <div className="lg:col-span-7 flex flex-col">
           <div className="bg-white border border-gray-200 shadow-[0_8px_30px_rgb(0,0,0,0.03)] rounded-2xl flex flex-col h-full overflow-hidden">
             {/* Mode Switch Tabs (Segmented Control) */}
-            <div className="bg-gray-50/70 p-2 border-b border-gray-150 flex gap-2.5">
+            <div className="bg-gray-50/70 p-2 border-b border-gray-150 flex gap-2.5 overflow-x-auto [&::-webkit-scrollbar]:hidden">
               <button
                 type="button"
-                className={`flex-grow py-3 px-4 rounded-xl font-extrabold text-xs sm:text-sm transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer ${
-                  splitMode === 'equal'
+                className={`flex-grow py-3 px-4 rounded-xl font-extrabold text-xs sm:text-sm transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap ${
+                  activeTab === 'equal'
                     ? 'bg-white text-emerald-600 shadow-sm border border-emerald-100/50'
                     : 'text-gray-400 hover:text-gray-600 hover:bg-white/40'
                 }`}
-                onClick={() => setSplitMode('equal')}
+                onClick={() => setActiveTab('equal')}
               >
-                <Users className={`w-4 h-4 ${splitMode === 'equal' ? 'text-emerald-500' : 'text-gray-400'}`} /> Bagi Rata (Equal Split)
+                <Users className={`w-4 h-4 shrink-0 ${activeTab === 'equal' ? 'text-emerald-500' : 'text-gray-400'}`} /> Bagi Rata (Equal Split)
               </button>
               <button
                 type="button"
-                className={`flex-grow py-3 px-4 rounded-xl font-extrabold text-xs sm:text-sm transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer ${
-                  splitMode === 'custom'
+                className={`flex-grow py-3 px-4 rounded-xl font-extrabold text-xs sm:text-sm transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap ${
+                  activeTab === 'custom'
                     ? 'bg-white text-emerald-600 shadow-sm border border-emerald-100/50'
                     : 'text-gray-400 hover:text-gray-600 hover:bg-white/40'
                 }`}
-                onClick={() => setSplitMode('custom')}
+                onClick={() => setActiveTab('custom')}
               >
-                <Sparkles className={`w-4 h-4 ${splitMode === 'custom' ? 'text-emerald-500' : 'text-gray-400'}`} /> Bagi Kustom (Itemized/Proportional)
+                <Sparkles className={`w-4 h-4 shrink-0 ${activeTab === 'custom' ? 'text-emerald-500' : 'text-gray-400'}`} /> Bagi Kustom
+              </button>
+              <button
+                type="button"
+                className={`flex-grow py-3 px-4 rounded-xl font-extrabold text-xs sm:text-sm transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap ${
+                  activeTab === 'manage'
+                    ? 'bg-white text-emerald-600 shadow-sm border border-emerald-100/50'
+                    : 'text-gray-400 hover:text-gray-600 hover:bg-white/40'
+                }`}
+                onClick={() => setActiveTab('manage')}
+              >
+                <Sliders className={`w-4 h-4 shrink-0 ${activeTab === 'manage' ? 'text-emerald-500' : 'text-gray-400'}`} /> Kelola Pocket
               </button>
             </div>
 
             <div className="p-6 flex flex-col flex-1 space-y-6">
-              {/* Billing Input (Equal Split only) */}
-              {splitMode === 'equal' && (
-                <div className="space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
-                  <label className="block text-xs font-extrabold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
-                    <Receipt className="w-3.5 h-3.5 text-emerald-500" />
-                    Total Tagihan (Subtotal)
-                  </label>
-                  <div className="relative flex items-center">
-                    <div className="absolute left-4 text-emerald-600 font-extrabold text-lg select-none">
-                      Rp
-                    </div>
-                    <input
-                      type="number"
-                      className="bg-gray-50/50 border border-gray-200 hover:border-gray-300 focus:border-emerald-500 focus:bg-white rounded-xl pl-12 pr-4 h-14 w-full text-lg font-bold text-gray-800 transition-all focus:outline-none focus:ring-4 focus:ring-emerald-500/10"
-                      placeholder="Masukkan nominal tagihan utama..."
-                      value={billAmount || ''}
-                      onChange={e => setBillAmount(Number(e.target.value))}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Adjustments Section */}
-              <div className="space-y-3">
-                <span className="block text-xs font-extrabold text-gray-400 uppercase tracking-wider">Tambahan & Penyesuaian</span>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-gray-50/40 p-3 rounded-2xl border border-gray-150">
-                  {/* Tax */}
-                  <div className="relative bg-white border border-gray-200 rounded-xl p-2.5 focus-within:border-emerald-500 focus-within:ring-4 focus-within:ring-emerald-500/10 transition-all flex flex-col justify-between min-h-[76px]">
-                    <div className="flex justify-between items-center w-full">
-                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide flex items-center gap-1">
-                        <Percent className="w-3 h-3 text-emerald-500" /> Pajak (Tax)
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setTaxValueType(taxValueType === 'percentage' ? 'nominal' : 'percentage')}
-                        className="text-[10px] font-extrabold text-emerald-600 hover:text-white hover:bg-emerald-500 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/20 transition-all select-none cursor-pointer"
-                      >
-                        {taxValueType === 'percentage' ? '%' : 'Rp'}
-                      </button>
-                    </div>
-                    <div className="relative mt-1 flex items-center">
-                      {taxValueType === 'nominal' && (
-                        <span className="text-gray-400 font-bold text-xs mr-1 select-none">Rp</span>
-                      )}
-                      <input
-                        type="number"
-                        className="w-full text-sm font-bold text-gray-800 bg-transparent border-0 p-0 focus:ring-0 focus:outline-none placeholder-gray-300"
-                        placeholder="0"
-                        value={taxValue || ''}
-                        onChange={e => setTaxValue(Math.max(0, Number(e.target.value)))}
-                      />
-                      {taxValueType === 'percentage' && (
-                        <span className="text-gray-400 font-bold text-xs ml-1 select-none">%</span>
-                      )}
-                    </div>
+              {activeTab === 'manage' ? (
+                /* Manage Pockets View */
+                <div className="space-y-4 flex flex-col flex-1">
+                  <div>
+                    <h3 className="text-sm font-extrabold text-gray-700 flex items-center gap-2">
+                      <Sliders className="w-4 h-4 text-emerald-500" />
+                      Daftar Pocket Biaya & Diskon
+                    </h3>
+                    <p className="text-xs text-gray-400 mt-1">
+                      Pocket yang Anda buat di sini akan muncul sebagai field input tambahan pada tab Bagi Rata dan Bagi Kustom.
+                    </p>
                   </div>
 
-                  {/* Service Charge */}
-                  <div className="relative bg-white border border-gray-200 rounded-xl p-2.5 focus-within:border-emerald-500 focus-within:ring-4 focus-within:ring-emerald-500/10 transition-all flex flex-col justify-between min-h-[76px]">
-                    <div className="flex justify-between items-center w-full">
-                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide flex items-center gap-1">
-                        <Percent className="w-3 h-3 text-emerald-500" /> Layanan (Service)
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setServiceValueType(serviceValueType === 'percentage' ? 'nominal' : 'percentage')}
-                        className="text-[10px] font-extrabold text-emerald-600 hover:text-white hover:bg-emerald-500 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/20 transition-all select-none cursor-pointer"
-                      >
-                        {serviceValueType === 'percentage' ? '%' : 'Rp'}
-                      </button>
-                    </div>
-                    <div className="relative mt-1 flex items-center">
-                      {serviceValueType === 'nominal' && (
-                        <span className="text-gray-400 font-bold text-xs mr-1 select-none">Rp</span>
-                      )}
-                      <input
-                        type="number"
-                        className="w-full text-sm font-bold text-gray-800 bg-transparent border-0 p-0 focus:ring-0 focus:outline-none placeholder-gray-300"
-                        placeholder="0"
-                        value={serviceValue || ''}
-                        onChange={e => setServiceValue(Math.max(0, Number(e.target.value)))}
-                      />
-                      {serviceValueType === 'percentage' && (
-                        <span className="text-gray-400 font-bold text-xs ml-1 select-none">%</span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Discount */}
-                  <div className="relative bg-white border border-gray-200 rounded-xl p-2.5 focus-within:border-amber-500 focus-within:ring-4 focus-within:ring-amber-500/10 transition-all flex flex-col justify-between min-h-[76px]">
-                    <div className="flex justify-between items-center w-full">
-                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide flex items-center gap-1">
-                        <Tag className="w-3 h-3 text-amber-500" /> Diskon (Discount)
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setDiscountValueType(discountValueType === 'nominal' ? 'percentage' : 'nominal')}
-                        className="text-[10px] font-extrabold text-amber-600 hover:text-white hover:bg-amber-500 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200/20 transition-all select-none cursor-pointer"
-                      >
-                        {discountValueType === 'nominal' ? 'Rp' : '%'}
-                      </button>
-                    </div>
-                    <div className="relative mt-1 flex items-center">
-                      {discountValueType === 'nominal' && (
-                        <span className="text-gray-400 font-bold text-xs mr-1 select-none">Rp</span>
-                      )}
-                      <input
-                        type="number"
-                        className="w-full text-sm font-bold text-gray-800 bg-transparent border-0 p-0 focus:ring-0 focus:outline-none placeholder-gray-300"
-                        placeholder="0"
-                        value={discountValue || ''}
-                        onChange={e => setDiscountValue(Math.max(0, Number(e.target.value)))}
-                      />
-                      {discountValueType === 'percentage' && (
-                        <span className="text-gray-400 font-bold text-xs ml-1 select-none">%</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Custom Adjustments List */}
-                {customAdjustments.length > 0 && (
-                  <div className="space-y-2 pt-1 animate-in fade-in duration-300">
-                    {customAdjustments.map((adj) => (
-                      <div key={adj.id} className="flex flex-col sm:flex-row items-center gap-3 bg-gray-50/35 p-3 rounded-xl border border-gray-200 hover:border-emerald-300/40 transition-all">
+                  <div className="space-y-3 flex-grow overflow-y-auto pr-1 max-h-[360px] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-[#E5E7EB] [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-emerald-300">
+                    {customAdjustments.map((adj, idx) => (
+                      <div key={adj.id} className="flex flex-col sm:flex-row items-center gap-3 bg-white p-3 rounded-xl border border-gray-200 shadow-sm hover:border-emerald-300/40 transition-all duration-200 animate-in fade-in duration-200">
+                        <span className="text-xs font-bold text-emerald-600 bg-emerald-50/60 w-7 h-7 flex items-center justify-center rounded-lg border border-emerald-100/30 shrink-0 select-none">
+                          {idx + 1}
+                        </span>
+                        
                         {/* Name Input */}
                         <input
                           type="text"
-                          className="bg-white border border-gray-200 focus:border-emerald-500 focus:bg-white rounded-lg px-3 py-2 text-xs sm:text-sm font-semibold text-gray-800 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/10 flex-1 min-w-[120px]"
-                          placeholder="Nama biaya (misal: Ongkir)..."
+                          className="bg-gray-50/50 border border-gray-200 hover:border-gray-300 focus:border-emerald-500 focus:bg-white rounded-lg px-3 py-2 text-xs sm:text-sm font-semibold text-gray-800 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/10 flex-1 min-w-[120px]"
+                          placeholder="Nama pocket (misal: Ongkir)..."
                           value={adj.name}
                           onChange={e => handleCustomAdjustmentChange(adj.id, 'name', e.target.value)}
                         />
                         
                         {/* Type Toggle: Charge / Discount */}
-                        <div className="flex bg-gray-200/60 p-0.5 rounded-lg shrink-0">
+                        <div className="flex bg-gray-100 p-0.5 rounded-lg shrink-0">
                           <button
                             type="button"
                             onClick={() => handleCustomAdjustmentChange(adj.id, 'type', 'charge')}
-                            className={`px-2.5 py-1 rounded-md text-[10px] sm:text-xs font-bold transition-all cursor-pointer ${
+                            className={`px-2.5 py-1.5 rounded-md text-[10px] sm:text-xs font-bold transition-all cursor-pointer ${
                               adj.type === 'charge'
                                 ? 'bg-emerald-600 text-white shadow-sm'
                                 : 'text-gray-500 hover:text-gray-700'
@@ -489,7 +397,7 @@ export default function SplitBillCalculator() {
                           <button
                             type="button"
                             onClick={() => handleCustomAdjustmentChange(adj.id, 'type', 'discount')}
-                            className={`px-2.5 py-1 rounded-md text-[10px] sm:text-xs font-bold transition-all cursor-pointer ${
+                            className={`px-2.5 py-1.5 rounded-md text-[10px] sm:text-xs font-bold transition-all cursor-pointer ${
                               adj.type === 'discount'
                                 ? 'bg-amber-600 text-white shadow-sm'
                                 : 'text-gray-500 hover:text-gray-700'
@@ -500,11 +408,11 @@ export default function SplitBillCalculator() {
                         </div>
 
                         {/* Value Type Toggle: Nominal / Percentage */}
-                        <div className="flex bg-gray-200/60 p-0.5 rounded-lg shrink-0">
+                        <div className="flex bg-gray-100 p-0.5 rounded-lg shrink-0">
                           <button
                             type="button"
                             onClick={() => handleCustomAdjustmentChange(adj.id, 'valueType', 'nominal')}
-                            className={`px-2.5 py-1 rounded-md text-[10px] sm:text-xs font-bold transition-all cursor-pointer ${
+                            className={`px-2.5 py-1.5 rounded-md text-[10px] sm:text-xs font-bold transition-all cursor-pointer ${
                               adj.valueType === 'nominal'
                                 ? 'bg-white text-gray-800 shadow-sm border border-gray-150'
                                 : 'text-gray-500 hover:text-gray-700'
@@ -515,7 +423,7 @@ export default function SplitBillCalculator() {
                           <button
                             type="button"
                             onClick={() => handleCustomAdjustmentChange(adj.id, 'valueType', 'percentage')}
-                            className={`px-2.5 py-1 rounded-md text-[10px] sm:text-xs font-bold transition-all cursor-pointer ${
+                            className={`px-2.5 py-1.5 rounded-md text-[10px] sm:text-xs font-bold transition-all cursor-pointer ${
                               adj.valueType === 'percentage'
                                 ? 'bg-white text-gray-800 shadow-sm border border-gray-150'
                                 : 'text-gray-500 hover:text-gray-700'
@@ -525,115 +433,273 @@ export default function SplitBillCalculator() {
                           </button>
                         </div>
 
-                        {/* Value Input */}
-                        <div className="relative bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 flex items-center w-28 sm:w-32 shrink-0 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/10 transition-all">
-                          {adj.valueType === 'nominal' && (
-                            <span className="text-gray-400 font-bold text-xs mr-1 select-none">Rp</span>
-                          )}
-                          <input
-                            type="number"
-                            className="w-full text-xs sm:text-sm font-semibold text-gray-800 bg-transparent border-0 p-0 text-right focus:ring-0 focus:outline-none placeholder-gray-300"
-                            placeholder="0"
-                            value={adj.value || ''}
-                            onChange={e => handleCustomAdjustmentChange(adj.id, 'value', Number(e.target.value))}
-                          />
-                          {adj.valueType === 'percentage' && (
-                            <span className="text-gray-400 font-bold text-xs ml-1 select-none">%</span>
-                          )}
-                        </div>
-
                         {/* Delete Button */}
                         <button
                           type="button"
                           onClick={() => handleRemoveCustomAdjustment(adj.id)}
                           className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all border border-transparent hover:border-red-100 cursor-pointer shrink-0"
-                          title="Hapus penyesuaian"
+                          title="Hapus pocket"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     ))}
+
+                    {customAdjustments.length === 0 && (
+                      <div className="text-center py-10 border-2 border-dashed border-gray-200 rounded-2xl text-gray-400 text-xs">
+                        Belum ada pocket tambahan. Klik tombol di bawah untuk membuat pocket baru.
+                      </div>
+                    )}
                   </div>
-                )}
 
-                {/* Add Custom Adjustment Button */}
-                <div className="pt-1">
-                  <button
-                    type="button"
-                    onClick={handleAddCustomAdjustment}
-                    className="group text-xs font-bold text-emerald-600 hover:text-white bg-emerald-50 hover:bg-emerald-500 transition-all px-4 py-2.5 rounded-xl border border-emerald-200/50 flex items-center gap-1.5 active:scale-95 cursor-pointer"
-                  >
-                    <Plus className="w-3.5 h-3.5 transition-transform duration-300 group-hover:scale-110" />
-                    Tambah Biaya / Diskon Lainnya
-                  </button>
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      onClick={handleAddCustomAdjustment}
+                      className="group w-full text-xs font-bold text-emerald-600 hover:text-white bg-emerald-50 hover:bg-emerald-500 transition-all py-3 rounded-xl border border-emerald-250 flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer shadow-sm"
+                    >
+                      <Plus className="w-4 h-4 transition-transform duration-300 group-hover:scale-110" />
+                      Tambah Pocket Baru
+                    </button>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                /* Main Split Bill Inputs View */
+                <>
+                  {/* Billing Input (Equal Split only) */}
+                  {splitMode === 'equal' && (
+                    <div className="space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                      <label className="block text-xs font-extrabold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+                        <Receipt className="w-3.5 h-3.5 text-emerald-500" />
+                        Total Tagihan (Subtotal)
+                      </label>
+                      <div className="relative flex items-center">
+                        <div className="absolute left-4 text-emerald-600 font-extrabold text-lg select-none">
+                          Rp
+                        </div>
+                        <input
+                          type="number"
+                          className="bg-gray-50/50 border border-gray-200 hover:border-gray-300 focus:border-emerald-500 focus:bg-white rounded-xl pl-12 pr-4 h-14 w-full text-lg font-bold text-gray-800 transition-all focus:outline-none focus:ring-4 focus:ring-emerald-500/10"
+                          placeholder="Masukkan nominal tagihan utama..."
+                          value={billAmount || ''}
+                          onChange={e => setBillAmount(Number(e.target.value))}
+                        />
+                      </div>
+                    </div>
+                  )}
 
-              {/* Participants Section */}
-              <div className="space-y-4 pt-2 flex flex-col flex-1">
-                <div className="flex justify-between items-center border-b pb-3 border-gray-150">
-                  <h3 className="text-sm font-extrabold text-gray-700 flex items-center gap-2">
-                    <Users className="w-4 h-4 text-emerald-500" /> 
-                    Daftar Peserta
-                    <span className="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-lg border border-emerald-100 font-bold ml-1">
-                      {numParticipants} Orang
-                    </span>
-                  </h3>
-                  <button
-                    type="button"
-                    onClick={handleAddParticipant}
-                    className="group text-xs font-bold text-emerald-600 hover:text-white bg-emerald-50 hover:bg-emerald-500 transition-all px-3.5 py-2 rounded-xl border border-emerald-200/50 flex items-center gap-1.5 active:scale-95 cursor-pointer"
-                  >
-                    <UserPlus className="w-3.5 h-3.5 transition-transform duration-300 group-hover:scale-110" /> Tambah Peserta
-                  </button>
-                </div>
-
-                {/* Participant Row List */}
-                <div className="space-y-2.5 flex-grow overflow-y-auto pr-1 max-h-[300px] lg:max-h-[340px] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-[#E5E7EB] [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-emerald-300">
-                  {participants.map((p, idx) => (
-                    <div key={p.id} className="flex items-center gap-3 bg-white p-2.5 rounded-xl border border-gray-200 hover:border-emerald-200 hover:shadow-[0_4px_16px_rgba(16,185,129,0.03)] transition-all">
-                      {/* Badge Index */}
-                      <span className="text-xs font-bold text-emerald-600 bg-emerald-50/60 w-7 h-7 flex items-center justify-center rounded-lg border border-emerald-100/30 shrink-0">
-                        {idx + 1}
-                      </span>
-                      
-                      {/* Name input */}
-                      <input
-                        type="text"
-                        className="bg-gray-50/50 border border-gray-200 hover:border-gray-300 focus:border-emerald-500 focus:bg-white rounded-lg px-3 py-2 text-xs sm:text-sm font-semibold text-gray-800 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/10 flex-1"
-                        placeholder="Nama Peserta..."
-                        value={p.name}
-                        onChange={e => handleParticipantChange(p.id, 'name', e.target.value)}
-                      />
-
-                      {/* Spent Amount input (Custom Split only) */}
-                      {splitMode === 'custom' && (
-                        <div className="relative bg-gray-50/50 border border-gray-200 hover:border-gray-300 focus-within:border-emerald-500 focus-within:bg-white transition-all rounded-lg px-2.5 py-2 flex items-center w-36 sm:w-44 shrink-0">
-                          <span className="text-gray-400 font-bold text-xs mr-1">Rp</span>
+                  {/* Adjustments Section */}
+                  <div className="space-y-3">
+                    <span className="block text-xs font-extrabold text-gray-400 uppercase tracking-wider">Tambahan & Penyesuaian</span>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-gray-50/40 p-3 rounded-2xl border border-gray-150">
+                      {/* Tax */}
+                      <div className="relative bg-white border border-gray-200 rounded-xl p-2.5 focus-within:border-emerald-500 focus-within:ring-4 focus-within:ring-emerald-500/10 transition-all flex flex-col justify-between min-h-[76px]">
+                        <div className="flex justify-between items-center w-full">
+                          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide flex items-center gap-1">
+                            <Percent className="w-3 h-3 text-emerald-500" /> Pajak (Tax)
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setTaxValueType(taxValueType === 'percentage' ? 'nominal' : 'percentage')}
+                            className="text-[10px] font-extrabold text-emerald-600 hover:text-white hover:bg-emerald-500 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/20 transition-all select-none cursor-pointer"
+                          >
+                            {taxValueType === 'percentage' ? '%' : 'Rp'}
+                          </button>
+                        </div>
+                        <div className="relative mt-1 flex items-center">
+                          {taxValueType === 'nominal' && (
+                            <span className="text-gray-400 font-bold text-xs mr-1 select-none">Rp</span>
+                          )}
                           <input
                             type="number"
-                            className="w-full text-xs sm:text-sm font-semibold text-gray-800 bg-transparent border-0 p-0 text-right focus:ring-0 focus:outline-none placeholder-gray-300"
-                            placeholder="Nominal..."
-                            value={p.amount || ''}
-                            onChange={e => handleParticipantChange(p.id, 'amount', e.target.value)}
+                            className="w-full text-sm font-bold text-gray-800 bg-transparent border-0 p-0 focus:ring-0 focus:outline-none placeholder-gray-300"
+                            placeholder="0"
+                            value={taxValue || ''}
+                            onChange={e => setTaxValue(Math.max(0, Number(e.target.value)))}
                           />
+                          {taxValueType === 'percentage' && (
+                            <span className="text-gray-400 font-bold text-xs ml-1 select-none">%</span>
+                          )}
                         </div>
-                      )}
+                      </div>
 
-                      {/* Delete button */}
+                      {/* Service Charge */}
+                      <div className="relative bg-white border border-gray-200 rounded-xl p-2.5 focus-within:border-emerald-500 focus-within:ring-4 focus-within:ring-emerald-500/10 transition-all flex flex-col justify-between min-h-[76px]">
+                        <div className="flex justify-between items-center w-full">
+                          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide flex items-center gap-1">
+                            <Percent className="w-3 h-3 text-emerald-500" /> Layanan (Service)
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setServiceValueType(serviceValueType === 'percentage' ? 'nominal' : 'percentage')}
+                            className="text-[10px] font-extrabold text-emerald-600 hover:text-white hover:bg-emerald-500 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/20 transition-all select-none cursor-pointer"
+                          >
+                            {serviceValueType === 'percentage' ? '%' : 'Rp'}
+                          </button>
+                        </div>
+                        <div className="relative mt-1 flex items-center">
+                          {serviceValueType === 'nominal' && (
+                            <span className="text-gray-400 font-bold text-xs mr-1 select-none">Rp</span>
+                          )}
+                          <input
+                            type="number"
+                            className="w-full text-sm font-bold text-gray-800 bg-transparent border-0 p-0 focus:ring-0 focus:outline-none placeholder-gray-300"
+                            placeholder="0"
+                            value={serviceValue || ''}
+                            onChange={e => setServiceValue(Math.max(0, Number(e.target.value)))}
+                          />
+                          {serviceValueType === 'percentage' && (
+                            <span className="text-gray-400 font-bold text-xs ml-1 select-none">%</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Discount */}
+                      <div className="relative bg-white border border-gray-200 rounded-xl p-2.5 focus-within:border-amber-500 focus-within:ring-4 focus-within:ring-amber-500/10 transition-all flex flex-col justify-between min-h-[76px]">
+                        <div className="flex justify-between items-center w-full">
+                          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide flex items-center gap-1">
+                            <Tag className="w-3 h-3 text-amber-500" /> Diskon (Discount)
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setDiscountValueType(discountValueType === 'nominal' ? 'percentage' : 'nominal')}
+                            className="text-[10px] font-extrabold text-amber-600 hover:text-white hover:bg-amber-500 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200/20 transition-all select-none cursor-pointer"
+                          >
+                            {discountValueType === 'nominal' ? 'Rp' : '%'}
+                          </button>
+                        </div>
+                        <div className="relative mt-1 flex items-center">
+                          {discountValueType === 'nominal' && (
+                            <span className="text-gray-400 font-bold text-xs mr-1 select-none">Rp</span>
+                          )}
+                          <input
+                            type="number"
+                            className="w-full text-sm font-bold text-gray-800 bg-transparent border-0 p-0 focus:ring-0 focus:outline-none placeholder-gray-300"
+                            placeholder="0"
+                            value={discountValue || ''}
+                            onChange={e => setDiscountValue(Math.max(0, Number(e.target.value)))}
+                          />
+                          {discountValueType === 'percentage' && (
+                            <span className="text-gray-400 font-bold text-xs ml-1 select-none">%</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Custom Pockets */}
+                      {customAdjustments.map((adj) => {
+                        const isDiscount = adj.type === 'discount'
+                        const ringColor = isDiscount ? 'focus-within:border-amber-500 focus-within:ring-amber-500/10' : 'focus-within:border-emerald-500 focus-within:ring-emerald-500/10'
+                        return (
+                          <div key={adj.id} className={`relative bg-white border border-gray-200 rounded-xl p-2.5 focus-within:border transition-all flex flex-col justify-between min-h-[76px] ${ringColor} hover:border-gray-300`}>
+                            <div className="flex justify-between items-center w-full">
+                              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide flex items-center gap-1 truncate max-w-[80%]" title={adj.name}>
+                                {isDiscount ? (
+                                  <Tag className="w-3 h-3 text-amber-500 shrink-0" />
+                                ) : (
+                                  <Receipt className="w-3 h-3 text-emerald-500 shrink-0" />
+                                )} 
+                                {adj.name || (isDiscount ? 'Diskon Kustom' : 'Biaya Kustom')}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleCustomAdjustmentChange(adj.id, 'valueType', adj.valueType === 'percentage' ? 'nominal' : 'percentage')}
+                                className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded border transition-all select-none cursor-pointer ${
+                                  isDiscount 
+                                    ? 'text-amber-600 hover:text-white hover:bg-amber-500 bg-amber-50 border-amber-200/20' 
+                                    : 'text-emerald-600 hover:text-white hover:bg-emerald-500 bg-emerald-50 border-emerald-200/20'
+                                }`}
+                              >
+                                {adj.valueType === 'percentage' ? '%' : 'Rp'}
+                              </button>
+                            </div>
+                            <div className="relative mt-1 flex items-center">
+                              {adj.valueType === 'nominal' && (
+                                <span className="text-gray-400 font-bold text-xs mr-1 select-none">Rp</span>
+                              )}
+                              <input
+                                type="number"
+                                className="w-full text-sm font-bold text-gray-800 bg-transparent border-0 p-0 focus:ring-0 focus:outline-none placeholder-gray-300"
+                                placeholder="0"
+                                value={adj.value || ''}
+                                onChange={e => handleCustomAdjustmentChange(adj.id, 'value', Math.max(0, Number(e.target.value)))}
+                              />
+                              {adj.valueType === 'percentage' && (
+                                <span className="text-gray-400 font-bold text-xs ml-1 select-none">%</span>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Participants Section */}
+                  <div className="space-y-4 pt-2 flex flex-col flex-1">
+                    <div className="flex justify-between items-center border-b pb-3 border-gray-150">
+                      <h3 className="text-sm font-extrabold text-gray-700 flex items-center gap-2">
+                        <Users className="w-4 h-4 text-emerald-500" /> 
+                        Daftar Peserta
+                        <span className="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-lg border border-emerald-100 font-bold ml-1">
+                          {numParticipants} Orang
+                        </span>
+                      </h3>
                       <button
                         type="button"
-                        disabled={participants.length <= 1}
-                        onClick={() => handleRemoveParticipant(p.id)}
-                        className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all border border-transparent hover:border-red-100 disabled:opacity-20 cursor-pointer shrink-0"
-                        title="Hapus peserta"
+                        onClick={handleAddParticipant}
+                        className="group text-xs font-bold text-emerald-600 hover:text-white bg-emerald-50 hover:bg-emerald-500 transition-all px-3.5 py-2 rounded-xl border border-emerald-200/50 flex items-center gap-1.5 active:scale-95 cursor-pointer"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <UserPlus className="w-3.5 h-3.5 transition-transform duration-300 group-hover:scale-110" /> Tambah Peserta
                       </button>
                     </div>
-                  ))}
-                </div>
-              </div>
+
+                    {/* Participant Row List */}
+                    <div className="space-y-2.5 flex-grow overflow-y-auto pr-1 max-h-[300px] lg:max-h-[340px] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-[#E5E7EB] [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-emerald-300">
+                      {participants.map((p, idx) => (
+                        <div key={p.id} className="flex items-center gap-3 bg-white p-2.5 rounded-xl border border-gray-200 hover:border-emerald-200 hover:shadow-[0_4px_16px_rgba(16,185,129,0.03)] transition-all">
+                          {/* Badge Index */}
+                          <span className="text-xs font-bold text-emerald-600 bg-emerald-50/60 w-7 h-7 flex items-center justify-center rounded-lg border border-emerald-100/30 shrink-0">
+                            {idx + 1}
+                          </span>
+                          
+                          {/* Name input */}
+                          <input
+                            type="text"
+                            className="bg-gray-50/50 border border-gray-200 hover:border-gray-300 focus:border-emerald-500 focus:bg-white rounded-lg px-3 py-2 text-xs sm:text-sm font-semibold text-gray-800 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/10 flex-1"
+                            placeholder="Nama Peserta..."
+                            value={p.name}
+                            onChange={e => handleParticipantChange(p.id, 'name', e.target.value)}
+                          />
+
+                          {/* Spent Amount input (Custom Split only) */}
+                          {splitMode === 'custom' && (
+                            <div className="relative bg-gray-50/50 border border-gray-200 hover:border-gray-300 focus-within:border-emerald-500 focus-within:bg-white transition-all rounded-lg px-2.5 py-2 flex items-center w-36 sm:w-44 shrink-0">
+                              <span className="text-gray-400 font-bold text-xs mr-1">Rp</span>
+                              <input
+                                type="number"
+                                className="w-full text-xs sm:text-sm font-semibold text-gray-800 bg-transparent border-0 p-0 text-right focus:ring-0 focus:outline-none placeholder-gray-300"
+                                placeholder="Nominal..."
+                                value={p.amount || ''}
+                                onChange={e => handleParticipantChange(p.id, 'amount', e.target.value)}
+                              />
+                            </div>
+                          )}
+
+                          {/* Delete button */}
+                          <button
+                            type="button"
+                            disabled={participants.length <= 1}
+                            onClick={() => handleRemoveParticipant(p.id)}
+                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all border border-transparent hover:border-red-100 disabled:opacity-20 cursor-pointer shrink-0"
+                            title="Hapus peserta"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
