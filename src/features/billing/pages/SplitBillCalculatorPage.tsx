@@ -35,17 +35,29 @@ export default function SplitBillCalculator() {
   
   const [taxValue, setTaxValue] = useState<number>(0)
   const [taxValueType, setTaxValueType] = useState<'percentage' | 'nominal'>(() => {
-    return (localStorage.getItem('splitz_tax_value_type') as 'percentage' | 'nominal') || 'percentage'
+    try {
+      return (localStorage.getItem('splitz_tax_value_type') as 'percentage' | 'nominal') || 'percentage'
+    } catch (e) {
+      return 'percentage'
+    }
   })
   
   const [serviceValue, setServiceValue] = useState<number>(0)
   const [serviceValueType, setServiceValueType] = useState<'percentage' | 'nominal'>(() => {
-    return (localStorage.getItem('splitz_service_value_type') as 'percentage' | 'nominal') || 'percentage'
+    try {
+      return (localStorage.getItem('splitz_service_value_type') as 'percentage' | 'nominal') || 'percentage'
+    } catch (e) {
+      return 'percentage'
+    }
   })
   
   const [discountValue, setDiscountValue] = useState<number>(0)
   const [discountValueType, setDiscountValueType] = useState<'nominal' | 'percentage'>(() => {
-    return (localStorage.getItem('splitz_discount_value_type') as 'nominal' | 'percentage') || 'nominal'
+    try {
+      return (localStorage.getItem('splitz_discount_value_type') as 'nominal' | 'percentage') || 'nominal'
+    } catch (e) {
+      return 'nominal'
+    }
   })
 
   const [customAdjustments, setCustomAdjustments] = useState<CustomAdjustment[]>(() => {
@@ -65,17 +77,29 @@ export default function SplitBillCalculator() {
 
   const [copied, setCopied] = useState(false)
 
-  // Persist toggles and custom adjustments to localStorage
+  // Persist toggles and custom adjustments to localStorage with try-catch safety
   useEffect(() => {
-    localStorage.setItem('splitz_tax_value_type', taxValueType)
+    try {
+      localStorage.setItem('splitz_tax_value_type', taxValueType)
+    } catch (e) {
+      console.error(e)
+    }
   }, [taxValueType])
 
   useEffect(() => {
-    localStorage.setItem('splitz_service_value_type', serviceValueType)
+    try {
+      localStorage.setItem('splitz_service_value_type', serviceValueType)
+    } catch (e) {
+      console.error(e)
+    }
   }, [serviceValueType])
 
   useEffect(() => {
-    localStorage.setItem('splitz_discount_value_type', discountValueType)
+    try {
+      localStorage.setItem('splitz_discount_value_type', discountValueType)
+    } catch (e) {
+      console.error(e)
+    }
   }, [discountValueType])
 
   useEffect(() => {
