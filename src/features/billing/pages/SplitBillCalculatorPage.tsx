@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { 
   Calculator, 
   Users, 
@@ -34,15 +34,29 @@ export default function SplitBillCalculator() {
   const [billAmount, setBillAmount] = useState<number>(0)
   
   const [taxValue, setTaxValue] = useState<number>(0)
-  const [taxValueType, setTaxValueType] = useState<'percentage' | 'nominal'>('percentage')
+  const [taxValueType, setTaxValueType] = useState<'percentage' | 'nominal'>(() => {
+    return (localStorage.getItem('splitz_tax_value_type') as 'percentage' | 'nominal') || 'percentage'
+  })
   
   const [serviceValue, setServiceValue] = useState<number>(0)
-  const [serviceValueType, setServiceValueType] = useState<'percentage' | 'nominal'>('percentage')
+  const [serviceValueType, setServiceValueType] = useState<'percentage' | 'nominal'>(() => {
+    return (localStorage.getItem('splitz_service_value_type') as 'percentage' | 'nominal') || 'percentage'
+  })
   
   const [discountValue, setDiscountValue] = useState<number>(0)
-  const [discountValueType, setDiscountValueType] = useState<'nominal' | 'percentage'>('nominal')
+  const [discountValueType, setDiscountValueType] = useState<'nominal' | 'percentage'>(() => {
+    return (localStorage.getItem('splitz_discount_value_type') as 'nominal' | 'percentage') || 'nominal'
+  })
 
-  const [customAdjustments, setCustomAdjustments] = useState<CustomAdjustment[]>([])
+  const [customAdjustments, setCustomAdjustments] = useState<CustomAdjustment[]>(() => {
+    try {
+      const saved = localStorage.getItem('splitz_custom_adjustments')
+      return saved ? JSON.parse(saved) : []
+    } catch (e) {
+      console.error('Error loading custom adjustments', e)
+      return []
+    }
+  })
   
   const [participants, setParticipants] = useState<Participant[]>([
     { id: '1', name: 'Peserta 1', amount: 0 },
@@ -50,6 +64,27 @@ export default function SplitBillCalculator() {
   ])
 
   const [copied, setCopied] = useState(false)
+
+  // Persist toggles and custom adjustments to localStorage
+  useEffect(() => {
+    localStorage.setItem('splitz_tax_value_type', taxValueType)
+  }, [taxValueType])
+
+  useEffect(() => {
+    localStorage.setItem('splitz_service_value_type', serviceValueType)
+  }, [serviceValueType])
+
+  useEffect(() => {
+    localStorage.setItem('splitz_discount_value_type', discountValueType)
+  }, [discountValueType])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('splitz_custom_adjustments', JSON.stringify(customAdjustments))
+    } catch (e) {
+      console.error('Error saving custom adjustments', e)
+    }
+  }, [customAdjustments])
 
   // Handlers for participants
   const handleAddParticipant = () => {
@@ -103,12 +138,10 @@ export default function SplitBillCalculator() {
   const handleReset = () => {
     setBillAmount(0)
     setTaxValue(0)
-    setTaxValueType('percentage')
     setServiceValue(0)
-    setServiceValueType('percentage')
     setDiscountValue(0)
-    setDiscountValueType('nominal')
-    setCustomAdjustments([])
+    // Keep custom adjustment pocket templates but reset values to 0
+    setCustomAdjustments(prev => prev.map(adj => ({ ...adj, value: 0 })))
     setParticipants([
       { id: '1', name: 'Peserta 1', amount: 0 },
       { id: '2', name: 'Peserta 2', amount: 0 }
