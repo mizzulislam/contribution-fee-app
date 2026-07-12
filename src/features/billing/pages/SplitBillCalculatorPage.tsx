@@ -13,13 +13,17 @@ import {
   Sparkles, 
   Tag, 
   Info,
-  Sliders
+  Sliders,
+  MessageSquare,
+  Send
 } from 'lucide-react'
+import { spreadsheetApi } from '@/services/sheets-client'
 
 interface Participant {
   id: string
   name: string
   amount: number // Used in itemized/custom split
+  phone?: string
 }
 
 interface CustomAdjustment {
@@ -77,11 +81,27 @@ export default function SplitBillCalculator() {
   })
   
   const [participants, setParticipants] = useState<Participant[]>([
-    { id: '1', name: 'Peserta 1', amount: 0 },
-    { id: '2', name: 'Peserta 2', amount: 0 }
+    { id: '1', name: 'Peserta 1', amount: 0, phone: '' },
+    { id: '2', name: 'Peserta 2', amount: 0, phone: '' }
   ])
 
+  const [systemUsers, setSystemUsers] = useState<any[]>([])
   const [copied, setCopied] = useState(false)
+
+  // Load system users on mount
+  useEffect(() => {
+    async function loadSystemUsers() {
+      try {
+        const { data } = await spreadsheetApi.get('Users')
+        if (data && Array.isArray(data)) {
+          setSystemUsers(data)
+        }
+      } catch (e) {
+        console.error('Gagal memuat daftar pengguna sistem:', e)
+      }
+    }
+    loadSystemUsers()
+  }, [])
 
   // Persist toggles and custom adjustments to localStorage with try-catch safety
   useEffect(() => {
@@ -116,10 +136,22 @@ export default function SplitBillCalculator() {
     }
   }, [customAdjustments])
 
+  // Helper to find system user phone
+  const findSystemUserPhone = (name: string) => {
+    if (!name) return ''
+    const cleanName = name.trim().toLowerCase()
+    const found = systemUsers.find(u => {
+      const uFullName = (u.full_name || '').trim().toLowerCase()
+      const uNickname = (u.nickname || '').trim().toLowerCase()
+      return uFullName === cleanName || uNickname === cleanName
+    })
+    return found ? (found.phone_number || '') : ''
+  }
+
   // Handlers for participants
   const handleAddParticipant = () => {
     const nextId = (participants.length + 1).toString()
-    setParticipants([...participants, { id: nextId, name: `Peserta ${nextId}`, amount: 0 }])
+    setParticipants([...participants, { id: nextId, name: `Peserta ${nextId}`, amount: 0, phone: '' }])
   }
 
   const handleRemoveParticipant = (id: string) => {
@@ -127,14 +159,21 @@ export default function SplitBillCalculator() {
     setParticipants(participants.filter(p => p.id !== id))
   }
 
-  const handleParticipantChange = (id: string, field: 'name' | 'amount', value: string | number) => {
-    setParticipants(
-      participants.map(p => {
+  const handleParticipantChange = (id: string, field: 'name' | 'amount' | 'phone', value: string | number) => {
+    setParticipants(prev =>
+      prev.map(p => {
         if (p.id === id) {
-          return {
+          const updated = {
             ...p,
             [field]: field === 'amount' ? Number(value) : value
           }
+          if (field === 'name') {
+            const phone = findSystemUserPhone(value as string)
+            if (phone) {
+              updated.phone = phone
+            }
+          }
+          return updated
         }
         return p
       })
@@ -173,8 +212,8 @@ export default function SplitBillCalculator() {
     // Keep custom adjustment pocket templates but reset values to 0
     setCustomAdjustments(prev => prev.map(adj => ({ ...adj, value: 0 })))
     setParticipants([
-      { id: '1', name: 'Peserta 1', amount: 0 },
-      { id: '2', name: 'Peserta 2', amount: 0 }
+      { id: '1', name: 'Peserta 1', amount: 0, phone: '' },
+      { id: '2', name: 'Peserta 2', amount: 0, phone: '' }
     ])
     setCopied(false)
   }
@@ -231,6 +270,94 @@ export default function SplitBillCalculator() {
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount)
+  }
+
+  const cleanPhoneNumber = (phone: string) => {
+    if (!phone) return ''
+    let cleaned = phone.replace(/[^0-9]/g, '')
+    if (cleaned.startsWith('0')) {
+      cleaned = '62' + cleaned.substring(1)
+    }
+    return cleaned
+  }
+
+  const handleSendIndividualWhatsApp = (share: any) => {
+    const phone = cleanPhoneNumber(share.phone || '')
+    let text = `Hi *${share.name}*,\n\n`
+    text += `Berikut rincian tagihan Anda untuk *Split Bill - ${splitMode === 'equal' ? 'Bagi Rata' : 'Bagi Kustom'}*:\n`
+    text += `-------------------------------------------\n`
+    text += `- Belanja Murni: ${formatCurrency(share.subtotal)}\n`
+    
+    const personalAdjustments = share.total - share.subtotal
+    if (personalAdjustments !== 0) {
+      text += `- Tambahan (Pajak/Biaya/Diskon): ${personalAdjustments > 0 ? '+' : ''}${formatCurrency(personalAdjustments)}\n`
+    }
+    
+    text += `-------------------------------------------\n`
+    text += `*Total yang Harus Dibayar: ${formatCurrency(share.total)}*\n\n`
+    text += `Terima kasih! 🙏`
+
+    const url = phone 
+      ? `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(text)}`
+      : `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`
+    
+    window.open(url, '_blank')
+  }
+
+  const handleSendWhatsAppGeneral = () => {
+    const modeLabel = splitMode === 'equal' ? 'Bagi Rata' : 'Bagi Kustom'
+    let text = `*⚡ RINGKASAN SPLIT BILL - SPLITZ ⚡*\n`
+    text += `Mode: ${modeLabel}\n`
+    text += `-------------------------------------------\n`
+    text += `Subtotal: ${formatCurrency(rawSubtotal)}\n`
+    if (taxValue > 0) {
+      const typeSuffix = taxValueType === 'percentage' ? ` (${taxValue}%)` : ''
+      text += `Pajak${typeSuffix}: ${formatCurrency(taxAmount)}\n`
+    }
+    if (serviceValue > 0) {
+      const typeSuffix = serviceValueType === 'percentage' ? ` (${serviceValue}%)` : ''
+      text += `Biaya Layanan${typeSuffix}: ${formatCurrency(serviceAmount)}\n`
+    }
+    if (discountValue > 0) {
+      const typeSuffix = discountValueType === 'percentage' ? ` (${discountValue}%)` : ''
+      text += `Diskon${typeSuffix}: -${formatCurrency(discountAmount)}\n`
+    }
+
+    customAdjustments.forEach((adj) => {
+      if (adj.value <= 0) return
+      let amount = 0
+      if (adj.valueType === 'percentage') {
+        amount = (rawSubtotal * adj.value) / 100
+      } else {
+        amount = adj.value
+      }
+      const isDiscount = adj.type === 'discount'
+      const label = adj.name || (isDiscount ? 'Diskon Kustom' : 'Biaya Kustom')
+      const valueSuffix = adj.valueType === 'percentage' ? ` (${adj.value}%)` : ''
+      text += `${label}${valueSuffix}: ${isDiscount ? '-' : ''}${formatCurrency(amount)}\n`
+    })
+
+    text += `*Total Akhir: ${formatCurrency(grandTotal)}*\n`
+    text += `-------------------------------------------\n`
+    text += `*Rincian Pembayaran per Orang:*\n\n`
+
+    shares.forEach((share, idx) => {
+      text += `${idx + 1}. *${share.name}*\n`
+      text += `   - Belanja: ${formatCurrency(share.subtotal)}\n`
+      
+      const totalAdditions = taxAmount + serviceAmount - discountAmount + customAdjustmentsTotal
+      if (totalAdditions !== 0) {
+        const proportion = rawSubtotal > 0 ? share.subtotal / rawSubtotal : 0
+        const personalAdditions = totalAdditions * proportion
+        text += `   - Tambahan (Pajak/Layanan/Biaya/Diskon): ${formatCurrency(personalAdditions)}\n`
+      }
+      text += `   - *Total: ${formatCurrency(share.total)}*\n\n`
+    })
+
+    text += `Dihitung menggunakan Aplikasi Splitz.`
+
+    const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`
+    window.open(url, '_blank')
   }
 
   // Copy result to clipboard
@@ -685,6 +812,18 @@ export default function SplitBillCalculator() {
                             onChange={e => handleParticipantChange(p.id, 'name', e.target.value)}
                           />
 
+                          {/* WhatsApp / Phone input */}
+                          <div className="relative bg-gray-50/50 border border-gray-200 hover:border-gray-300 focus-within:border-emerald-500 focus-within:bg-white transition-all rounded-lg px-2 py-1.5 flex items-center w-28 sm:w-36 shrink-0">
+                            <span className="text-gray-400 font-bold text-[10px] sm:text-[11px] mr-1 select-none">WA:</span>
+                            <input
+                              type="text"
+                              className="w-full text-xs sm:text-sm font-semibold text-gray-850 bg-transparent border-0 p-0 focus:ring-0 focus:outline-none placeholder-gray-300"
+                              placeholder="No. Telp..."
+                              value={p.phone || ''}
+                              onChange={e => handleParticipantChange(p.id, 'phone', e.target.value)}
+                            />
+                          </div>
+
                           {/* Spent Amount input (Custom Split only) */}
                           {splitMode === 'custom' && (
                             <div className="relative bg-gray-50/50 border border-gray-200 hover:border-gray-300 focus-within:border-emerald-500 focus-within:bg-white transition-all rounded-lg px-2.5 py-2 flex items-center w-36 sm:w-44 shrink-0">
@@ -833,14 +972,31 @@ export default function SplitBillCalculator() {
                   ) : (
                     shares.map(share => (
                       <div key={share.id} className="flex justify-between items-center bg-white/5 p-3 rounded-xl border border-white/5 hover:bg-white/[0.08] hover:border-white/10 transition-all duration-200 animate-in fade-in duration-300">
-                        <div className="min-w-0 pr-3">
-                          <p className="font-extrabold text-xs sm:text-sm truncate text-white">{share.name}</p>
+                        <div className="min-w-0 pr-3 flex-grow">
+                          <p className="font-extrabold text-xs sm:text-sm truncate text-white flex items-center gap-1.5">
+                            {share.name}
+                            {share.phone && (
+                              <span className="text-[9px] text-emerald-300 font-bold bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-800/40">
+                                {share.phone}
+                              </span>
+                            )}
+                          </p>
                           <p className="text-[10px] text-emerald-300/70 mt-0.5">
                             Murni: {formatCurrency(share.subtotal)} 
                             {taxValue > 0 || serviceValue > 0 || discountValue > 0 || customAdjustmentsTotal !== 0 ? ' + Penyesuaian' : ''}
                           </p>
                         </div>
-                        <span className="font-black text-xs sm:text-base text-emerald-300 text-right shrink-0">{formatCurrency(share.total)}</span>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="font-black text-xs sm:text-base text-emerald-300 text-right">{formatCurrency(share.total)}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleSendIndividualWhatsApp(share)}
+                            className="p-1.5 text-emerald-400 hover:text-white hover:bg-emerald-500 rounded-lg transition-all border border-emerald-800/40 hover:border-emerald-500 cursor-pointer"
+                            title={`Kirim WA personal ke ${share.name}`}
+                          >
+                            <MessageSquare className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
                     ))
                   )}
@@ -854,25 +1010,35 @@ export default function SplitBillCalculator() {
               </div>
 
               {/* Actions button */}
-              <button
-                type="button"
-                onClick={handleCopySummary}
-                className={`w-full py-3.5 rounded-xl font-extrabold text-sm tracking-wide shadow-lg transition-all duration-300 flex items-center justify-center gap-2 active:scale-98 cursor-pointer ${
-                  copied
-                    ? 'bg-white text-emerald-950 shadow-emerald-950/20'
-                    : 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white border border-emerald-400/20 hover:shadow-emerald-500/10 shadow-xl'
-                }`}
-              >
-                {copied ? (
-                  <>
-                    <Check className="w-4.5 h-4.5 animate-bounce" /> Belhasil Disalin!
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-4.5 h-4.5" /> Salin Ringkasan (WhatsApp)
-                  </>
-                )}
-              </button>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <button
+                  type="button"
+                  onClick={handleCopySummary}
+                  className={`flex-grow py-3 rounded-xl font-extrabold text-xs tracking-wide shadow-md transition-all duration-300 flex items-center justify-center gap-2 active:scale-98 cursor-pointer ${
+                    copied
+                      ? 'bg-white text-emerald-950 shadow-emerald-950/20'
+                      : 'bg-emerald-900 hover:bg-emerald-800 text-white border border-emerald-700/40'
+                  }`}
+                >
+                  {copied ? (
+                    <>
+                      <Check className="w-4 h-4 animate-bounce" /> Berhasil Disalin!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-4 h-4" /> Salin Ringkasan
+                    </>
+                  )}
+                </button>
+                
+                <button
+                  type="button"
+                  onClick={handleSendWhatsAppGeneral}
+                  className="flex-grow py-3 rounded-xl font-extrabold text-xs tracking-wide shadow-lg transition-all duration-300 flex items-center justify-center gap-2 active:scale-98 cursor-pointer bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white border border-emerald-400/20 hover:shadow-emerald-500/10 shadow-xl"
+                >
+                  <Send className="w-4 h-4" /> Kirim WhatsApp
+                </button>
+              </div>
             </div>
           </div>
         </div>
