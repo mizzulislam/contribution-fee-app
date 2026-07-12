@@ -107,6 +107,7 @@ export default function App() {
           <Route element={<AuthLayout />}>
             <Route path="/login" element={<Login />} />
           </Route>
+          <Route path="/split-bill-share" element={<SplitBillCalculator />} />
           
           {/* Protected Dashboard Routes */}
           <Route element={<DashboardLayout />}>
