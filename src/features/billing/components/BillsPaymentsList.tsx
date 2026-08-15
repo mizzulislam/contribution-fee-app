@@ -229,8 +229,11 @@ export default function BillsPayments({ period = defaultPeriod, residentFilter =
 
     Object.entries(groupedBills).forEach(([residentName, residentBills]) => {
       const roomNum = residentBills[0]?.room_number || '-'
+      const residentUser = users.find(u => u.full_name === residentName || (u as any).name === residentName)
+      const isInactive = residentUser && String(residentUser.status).toLowerCase() === 'nonaktif'
+
       // Header for this occupant
-      rows.push([`PENGHUNI: ${residentName} (Kamar ${roomNum})`, '', '', '', '', ''])
+      rows.push([`PENGHUNI: ${residentName} (Kamar ${roomNum})${isInactive ? ' [NONAKTIF]' : ''}`, '', '', '', '', ''])
       // Table headers for this occupant
       rows.push(['ID Tagihan', 'Jatuh Tempo', 'Keterangan', 'Nominal', 'Status', 'Metode Bayar'])
       
@@ -264,7 +267,7 @@ export default function BillsPayments({ period = defaultPeriod, residentFilter =
     })
 
     return rows
-  }, [groupedBills, getBillPaidAmount])
+  }, [groupedBills, getBillPaidAmount, users])
 
   const billingPrintContent = (
     <div className="space-y-8 text-[11px] text-gray-700 bg-white">
@@ -282,12 +285,19 @@ export default function BillsPayments({ period = defaultPeriod, residentFilter =
           const totalAmount = residentBills.reduce((sum, b) => sum + (Number(b.amount) || 0), 0)
           const paidAmount = residentBills.reduce((sum, b) => sum + getBillPaidAmount(b), 0)
           const unpaidAmount = totalAmount - paidAmount
+          const residentUser = users.find(u => u.full_name === residentName || (u as any).name === residentName)
+          const isInactive = residentUser && String(residentUser.status).toLowerCase() === 'nonaktif'
 
           return (
             <div key={residentName} className="mb-8 border border-gray-200 rounded-xl p-4 bg-white shadow-sm" style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
               <div className="flex justify-between items-center bg-gray-50 border-b border-gray-200 px-4 py-2.5 rounded-t-xl mb-3">
-                <span className="font-bold text-gray-800 text-sm">
+                <span className="font-bold text-gray-800 text-sm flex items-center gap-2">
                   Nama Penghuni: <span className="text-emerald-700">{residentName}</span>
+                  {isInactive && (
+                    <span className="px-2 py-0.5 text-[10px] bg-red-100 text-red-700 rounded-full font-semibold border border-red-200">
+                      Nonaktif
+                    </span>
+                  )}
                 </span>
                 <span className="font-semibold text-gray-500 text-xs">
                   Kamar: <span className="text-gray-800 font-bold">{roomNum}</span>
