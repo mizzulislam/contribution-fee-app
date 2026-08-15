@@ -1,5 +1,7 @@
-import { Edit, Trash2 } from 'lucide-react'
+import { useState, useMemo } from 'react'
+import { Edit, Trash2, Search } from 'lucide-react'
 import { TableLoader } from '@/components/ui/TableLoader'
+import { SortDropdown } from '@/components/ui/SortDropdown'
 
 export interface PaymentMethod {
   id: string | number
@@ -17,8 +19,72 @@ export interface PaymentMethodTableProps {
 }
 
 export function PaymentMethodTable({ paymentMethods, loading, onEdit, onDelete }: PaymentMethodTableProps) {
+  const [search, setSearch] = useState('')
+  const [sortBy, setSortBy] = useState<string>('bank_name')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
+
+  const filteredMethods = useMemo(() => {
+    return paymentMethods.filter(pm => 
+      (pm.bank_name && pm.bank_name.toLowerCase().includes(search.toLowerCase())) ||
+      (pm.account_name && pm.account_name.toLowerCase().includes(search.toLowerCase())) ||
+      (pm.account_number && pm.account_number.toLowerCase().includes(search.toLowerCase()))
+    )
+  }, [paymentMethods, search])
+
+  const sortedMethods = useMemo(() => {
+    return [...filteredMethods].sort((a, b) => {
+      let valA: any = ''
+      let valB: any = ''
+
+      if (sortBy === 'bank_name') {
+        valA = (a.bank_name || '').toLowerCase()
+        valB = (b.bank_name || '').toLowerCase()
+      } else if (sortBy === 'account_name') {
+        valA = (a.account_name || '').toLowerCase()
+        valB = (b.account_name || '').toLowerCase()
+      } else if (sortBy === 'account_number') {
+        valA = (a.account_number || '').toLowerCase()
+        valB = (b.account_number || '').toLowerCase()
+      } else if (sortBy === 'status') {
+        valA = (a.status || '').toLowerCase()
+        valB = (b.status || '').toLowerCase()
+      }
+
+      if (valA < valB) return sortOrder === 'asc' ? -1 : 1
+      if (valA > valB) return sortOrder === 'asc' ? 1 : -1
+      return 0
+    })
+  }, [filteredMethods, sortBy, sortOrder])
+
   return (
-    <div className="card-container">
+    <div className="card-container p-0 overflow-hidden">
+      <div className="p-4 sm:p-6 border-b border-border flex flex-col sm:flex-row gap-4 justify-between items-center bg-gray-50/50">
+        <div className="relative w-full sm:max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <input 
+            type="text" 
+            placeholder="Cari bank, atas nama, atau no. rekening..." 
+            className="form-input pl-10 bg-white h-[42px]"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          <SortDropdown
+            options={[
+              { label: 'Nama Bank / E-Wallet', value: 'bank_name' },
+              { label: 'Atas Nama', value: 'account_name' },
+              { label: 'No. Rekening', value: 'account_number' },
+              { label: 'Status', value: 'status' }
+            ]}
+            sortBy={sortBy}
+            onSortByChange={setSortBy}
+            sortOrder={sortOrder}
+            onSortOrderChange={setSortOrder}
+          />
+        </div>
+      </div>
+
       <div className="overflow-x-auto w-full">
         <table className="min-w-[650px] w-full text-left text-sm text-gray-600">
           <thead className="bg-[#F8FAFC] text-gray-700 text-xs uppercase font-semibold border-b border-border">
@@ -33,14 +99,14 @@ export function PaymentMethodTable({ paymentMethods, loading, onEdit, onDelete }
           <tbody className="divide-y divide-gray-100">
             {loading ? (
               <TableLoader colSpan={5} />
-            ) : paymentMethods.length === 0 ? (
+            ) : sortedMethods.length === 0 ? (
               <tr>
                 <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
                   Belum ada metode pembayaran.
                 </td>
               </tr>
             ) : (
-              paymentMethods.map((pm, idx) => (
+              sortedMethods.map((pm, idx) => (
                 <tr key={idx} className="hover:bg-primary-soft/30 transition-colors">
                   <td className="px-6 py-4 font-medium text-gray-900">{pm.bank_name}</td>
                   <td className="px-6 py-4">{pm.account_name}</td>

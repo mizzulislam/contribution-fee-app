@@ -118,7 +118,7 @@ export default function ManajemenWarga() {
       // Mode Tambah
       const generatedId = generateSecureId('USR')
       const newUser = { id: generatedId, ...formData }
-      const { success } = await spreadsheetApi.post('Users', newUser)
+      const { success, error } = await spreadsheetApi.post('Users', newUser)
       
       if (success) {
         setUsers([...users, newUser])
@@ -134,7 +134,7 @@ export default function ManajemenWarga() {
         setSuccessDialog({
           isOpen: true,
           title: 'Gagal Menyimpan',
-          message: 'Gagal menambahkan pengguna baru ke Google Sheets.',
+          message: error instanceof Error ? error.message : 'Gagal menambahkan pengguna baru ke Google Sheets.',
           variant: 'danger'
         })
       }

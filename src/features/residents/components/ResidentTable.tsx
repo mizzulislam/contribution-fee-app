@@ -1,6 +1,8 @@
+import { useState, useMemo } from 'react'
 import { Search, Users, Edit, Trash2, Shield } from 'lucide-react'
 import Select from '@/components/ui/Select'
 import { TableLoader } from '@/components/ui/TableLoader'
+import { SortDropdown } from '@/components/ui/SortDropdown'
 
 export interface WargaTableProps {
   users: any[]
@@ -23,17 +25,48 @@ export function WargaTable({
   onEdit,
   onDelete
 }: WargaTableProps) {
+  const [sortBy, setSortBy] = useState<string>('full_name')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
 
-  const filteredUsers = users.filter(u => {
-    const matchesSearch = 
-      u.full_name?.toLowerCase().includes(search.toLowerCase()) || 
-      u.email?.toLowerCase().includes(search.toLowerCase()) ||
-      String(u.role || '').toLowerCase().includes(search.toLowerCase())
-    
-    const matchesRole = roleFilter === '' || String(u.role || '').toLowerCase().split(',').map(r => r.trim()).includes(roleFilter)
-    
-    return matchesSearch && matchesRole
-  })
+  const filteredUsers = useMemo(() => {
+    return users.filter(u => {
+      const matchesSearch = 
+        u.full_name?.toLowerCase().includes(search.toLowerCase()) || 
+        u.email?.toLowerCase().includes(search.toLowerCase()) ||
+        String(u.role || '').toLowerCase().includes(search.toLowerCase())
+      
+      const matchesRole = roleFilter === '' || String(u.role || '').toLowerCase().split(',').map(r => r.trim()).includes(roleFilter)
+      
+      return matchesSearch && matchesRole
+    })
+  }, [users, search, roleFilter])
+
+  const sortedUsers = useMemo(() => {
+    return [...filteredUsers].sort((a, b) => {
+      let valA: any = ''
+      let valB: any = ''
+
+      if (sortBy === 'full_name') {
+        valA = (a.full_name || a.name || '').toLowerCase()
+        valB = (b.full_name || b.name || '').toLowerCase()
+      } else if (sortBy === 'role') {
+        valA = String(a.role || '').toLowerCase()
+        valB = String(b.role || '').toLowerCase()
+      } else if (sortBy === 'status') {
+        valA = String(a.status || '').toLowerCase()
+        valB = String(b.status || '').toLowerCase()
+      } else if (sortBy === 'room_number') {
+        const roomA = a.room_number || a.rooms?.room_number || ''
+        const roomB = b.room_number || b.rooms?.room_number || ''
+        valA = Number(roomA) || roomA
+        valB = Number(roomB) || roomB
+      }
+
+      if (valA < valB) return sortOrder === 'asc' ? -1 : 1
+      if (valA > valB) return sortOrder === 'asc' ? 1 : -1
+      return 0
+    })
+  }, [filteredUsers, sortBy, sortOrder])
 
   const getRoleBadge = (roleStr: string | number | undefined | null) => {
     if (!roleStr) return <span className="text-gray-400">-</span>
@@ -61,9 +94,9 @@ export function WargaTable({
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <div className="flex space-x-2 w-full sm:w-auto">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           <Select 
-            className="w-full sm:w-48 text-sm"
+            className="w-full sm:w-44 text-sm"
             value={roleFilter}
             onChange={(val) => setRoleFilter(val)}
             options={[
@@ -72,6 +105,18 @@ export function WargaTable({
               { label: 'Bendahara', value: 'admin' },
               { label: 'Warga', value: 'user' }
             ]}
+          />
+          <SortDropdown
+            options={[
+              { label: 'Nama Pengguna', value: 'full_name' },
+              { label: 'Role', value: 'role' },
+              { label: 'Status', value: 'status' },
+              { label: 'Nomor Kamar', value: 'room_number' }
+            ]}
+            sortBy={sortBy}
+            onSortByChange={setSortBy}
+            sortOrder={sortOrder}
+            onSortOrderChange={setSortOrder}
           />
         </div>
       </div>
@@ -91,7 +136,7 @@ export function WargaTable({
           <tbody className="divide-y divide-border text-gray-700 bg-white">
             {loading ? (
               <TableLoader colSpan={6} />
-            ) : filteredUsers.length === 0 ? (
+            ) : sortedUsers.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-6 py-12 text-center text-text-muted flex flex-col items-center">
                   <Users className="w-8 h-8 text-gray-300 mb-2" />
@@ -99,7 +144,7 @@ export function WargaTable({
                 </td>
               </tr>
             ) : (
-              filteredUsers.map((r) => (
+              sortedUsers.map((r) => (
                 <tr key={r.id} className="hover:bg-primary-soft/30 transition-colors">
                   <td className="px-6 py-4">
                     <div className="font-medium text-gray-900">

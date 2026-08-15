@@ -472,7 +472,7 @@ export default function SplitBillCalculator() {
     await new Promise(resolve => setTimeout(resolve, 100))
     try {
       const canvas = await html2canvas(element, {
-        backgroundColor: '#ffffff', // Match the new white receipt theme
+        backgroundColor: '#022c22', // Match the receipt theme
         scale: 2, // High DPI capture
         logging: false,
         useCORS: true,
@@ -587,69 +587,53 @@ export default function SplitBillCalculator() {
           </div>
 
           {/* Premium Receipt Card (Rendered Read-Only) */}
-          <div id="premium-receipt-card" className={`rounded-[24px] relative overflow-hidden flex flex-col p-6 space-y-6 transition-colors duration-100 ${
-            isExporting 
-              ? 'bg-white text-gray-900 border border-gray-200 shadow-none' 
-              : 'bg-gradient-to-b from-emerald-950 via-[#064e3b] to-[#042f2c] text-white border border-emerald-800/40 shadow-[0_20px_50px_rgba(4,120,87,0.25)]'
-          }`}>
-            {/* Background decoration patterns - visible only in dark web theme */}
-            {!isExporting && (
-              <>
-                <div className="absolute right-[-40px] top-[-40px] h-36 w-36 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none no-export" />
-                <div className="absolute left-[-20px] bottom-[-20px] h-36 w-36 bg-teal-500/10 rounded-full blur-3xl pointer-events-none no-export" />
-              </>
-            )}
+          <div id="premium-receipt-card" className="bg-gradient-to-b from-emerald-950 via-[#064e3b] to-[#042f2c] rounded-[24px] text-white shadow-[0_20px_50px_rgba(4,120,87,0.25)] border border-emerald-800/40 relative overflow-hidden flex flex-col p-6 space-y-6">
+            <div className="absolute right-[-40px] top-[-40px] h-36 w-36 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none no-export" />
+            <div className="absolute left-[-20px] bottom-[-20px] h-36 w-36 bg-teal-500/10 rounded-full blur-3xl pointer-events-none no-export" />
             
-            <div className={`flex justify-between items-center pb-4 ${isExporting ? 'border-b border-gray-150' : 'border-b border-white/10'}`}>
+            <div className="flex justify-between items-center border-b border-white/10 pb-4">
               <div className="flex items-center gap-2">
-                <Receipt className={`w-5 h-5 ${isExporting ? 'text-emerald-600' : 'text-emerald-400'}`} />
-                <h2 className={`text-base sm:text-lg font-extrabold tracking-wide ${isExporting ? 'text-gray-950' : 'text-white'}`}>Ringkasan Pembagian</h2>
+                <Receipt className="w-5 h-5 text-emerald-400" />
+                <h2 className="text-base sm:text-lg font-extrabold tracking-wide text-white">Ringkasan Pembagian</h2>
               </div>
-              <span className={`inline-flex items-center justify-center text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-lg select-none ${
-                isExporting 
-                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-250/20' 
-                  : 'bg-white/10 text-emerald-300 border border-white/5'
-              }`}>
+              <span className="text-[10px] font-black uppercase tracking-wider bg-white/10 px-2.5 py-1 rounded-md text-emerald-300 border border-white/5">
                 {sharedSplitMode === 'equal' ? 'Bagi Rata' : 'Bagi Kustom'}
               </span>
             </div>
 
             <div className="space-y-3.5 text-sm">
-              <div className={`flex justify-between items-center ${isExporting ? 'text-gray-600' : 'text-emerald-200/80'}`}>
-                <span className="font-semibold flex items-center gap-2">
-                  <Receipt className={`w-4 h-4 shrink-0 ${isExporting ? 'text-emerald-600' : 'text-emerald-400'}`} />
-                  Subtotal Belanja
-                </span>
-                <span className={`font-bold text-base ${isExporting ? 'text-gray-900' : 'text-white'}`}>{formatCurrency(rawSubtotal)}</span>
+              <div className="flex justify-between items-center text-emerald-200/80">
+                <span className="font-medium">Subtotal Belanja</span>
+                <span className="font-bold text-white text-base">{formatCurrency(rawSubtotal)}</span>
               </div>
 
               {sharedTaxValue > 0 && (
-                <div className={`flex justify-between items-center ${isExporting ? 'text-gray-600' : 'text-emerald-200/80'}`}>
-                  <span className="flex items-center gap-2">
-                    <Percent className={`w-4 h-4 shrink-0 ${isExporting ? 'text-emerald-600' : 'text-emerald-400'}`} /> 
+                <div className="flex justify-between items-center text-emerald-200/80">
+                  <span className="flex items-center gap-1">
+                    <Percent className="w-3.5 h-3.5 text-emerald-400" /> 
                     Pajak (Tax {sharedTaxValueType === 'percentage' ? `${sharedTaxValue}%` : ''})
                   </span>
-                  <span className={`font-bold ${isExporting ? 'text-gray-900' : 'text-white'}`}>+{formatCurrency(taxAmount)}</span>
+                  <span className="font-bold text-white">+{formatCurrency(taxAmount)}</span>
                 </div>
               )}
 
               {sharedServiceValue > 0 && (
-                <div className={`flex justify-between items-center ${isExporting ? 'text-gray-600' : 'text-emerald-200/80'}`}>
-                  <span className="flex items-center gap-2">
-                    <Percent className={`w-4 h-4 shrink-0 ${isExporting ? 'text-emerald-600' : 'text-emerald-400'}`} /> 
+                <div className="flex justify-between items-center text-emerald-200/80">
+                  <span className="flex items-center gap-1">
+                    <Percent className="w-3.5 h-3.5 text-emerald-400" /> 
                     Layanan (Service {sharedServiceValueType === 'percentage' ? `${sharedServiceValue}%` : ''})
                   </span>
-                  <span className={`font-bold ${isExporting ? 'text-gray-900' : 'text-white'}`}>+{formatCurrency(serviceAmount)}</span>
+                  <span className="font-bold text-white">+{formatCurrency(serviceAmount)}</span>
                 </div>
               )}
 
               {sharedDiscountValue > 0 && (
-                <div className={`flex justify-between items-center ${isExporting ? 'text-gray-600' : 'text-emerald-200/80'}`}>
-                  <span className="flex items-center gap-2">
-                    <Tag className={`w-4 h-4 shrink-0 ${isExporting ? 'text-amber-600' : 'text-amber-400'}`} /> 
+                <div className="flex justify-between items-center text-emerald-200/80">
+                  <span className="flex items-center gap-1">
+                    <Tag className="w-3.5 h-3.5 text-amber-400" /> 
                     Diskon (Discount {sharedDiscountValueType === 'percentage' ? `${sharedDiscountValue}%` : ''})
                   </span>
-                  <span className={`font-bold ${isExporting ? 'text-amber-600' : 'text-amber-400'}`}>-{formatCurrency(discountAmount)}</span>
+                  <span className="font-bold text-amber-400">-{formatCurrency(discountAmount)}</span>
                 </div>
               )}
 
@@ -663,72 +647,64 @@ export default function SplitBillCalculator() {
                 }
                 const isDiscount = adj.type === 'discount'
                 return (
-                  <div key={adj.id} className={`flex justify-between items-center animate-in fade-in duration-200 ${isExporting ? 'text-gray-600' : 'text-emerald-200/80'}`}>
-                    <span className="flex items-center gap-2">
+                  <div key={adj.id} className="flex justify-between items-center text-emerald-200/80">
+                    <span className="flex items-center gap-1">
                       {isDiscount ? (
-                        <Tag className={`w-4 h-4 shrink-0 ${isExporting ? 'text-amber-600' : 'text-amber-400'}`} />
+                        <Tag className="w-3.5 h-3.5 text-amber-400" />
                       ) : (
-                        <Receipt className={`w-4 h-4 shrink-0 ${isExporting ? 'text-emerald-600' : 'text-emerald-400'}`} />
+                        <Receipt className="w-3.5 h-3.5 text-emerald-400" />
                       )}
                       {adj.name || (isDiscount ? 'Diskon Kustom' : 'Biaya Kustom')} 
                       {adj.valueType === 'percentage' && ` (${adj.value}%)`}
                     </span>
-                    <span className={`font-bold ${isDiscount ? 'text-amber-600' : (isExporting ? 'text-gray-900' : 'text-white')}`}>
+                    <span className={`font-bold ${isDiscount ? 'text-amber-400' : 'text-white'}`}>
                       {isDiscount ? '-' : '+'}{formatCurrency(amount)}
                     </span>
                   </div>
                 )
               })}
 
-              <div className={`flex justify-between items-baseline pt-4 ${isExporting ? 'border-t border-gray-150' : 'border-t border-white/10'}`}>
-                <span className={`text-xs font-extrabold uppercase tracking-wider ${isExporting ? 'text-gray-500' : 'text-emerald-400'}`}>Total Akhir</span>
-                <span className={`text-3xl font-black tracking-tight ${isExporting ? 'text-gray-950' : 'text-white'}`}>
+              <div className="flex justify-between items-baseline border-t border-white/10 pt-4">
+                <span className="text-xs font-extrabold uppercase tracking-wider text-emerald-400">Total Akhir</span>
+                <span className="text-3xl font-black tracking-tight text-white">
                   {formatCurrency(grandTotal)}
                 </span>
               </div>
             </div>
 
-            <div className={`border-t border-dashed my-2 select-none pointer-events-none ${isExporting ? 'border-gray-200' : 'border-white/20'}`} />
+            <div className="relative my-1 flex items-center justify-between gap-1.5 overflow-hidden opacity-20 select-none pointer-events-none">
+              {Array.from({ length: 30 }).map((_, i) => (
+                <div key={i} className="w-1.5 h-1.5 bg-white rounded-full shrink-0" />
+              ))}
+            </div>
 
             <div className="flex-1 flex flex-col space-y-3">
-              <span className={`text-[10px] font-black uppercase tracking-widest block ${isExporting ? 'text-emerald-600' : 'text-emerald-400'}`}>Rincian Pembayaran:</span>
+              <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400 block">Rincian Pembayaran:</span>
               <div className="space-y-2.5">
                 {shares.map((share: any) => (
-                  <div key={share.id} className={`flex justify-between items-center p-3.5 rounded-xl transition-all duration-200 ${
-                    isExporting 
-                      ? 'bg-gray-50 border border-gray-200 text-gray-900 shadow-none' 
-                      : 'bg-white/5 border border-white/5 hover:bg-white/[0.08] hover:border-white/10 text-white'
-                  }`}>
+                  <div key={share.id} className="flex justify-between items-center bg-white/5 p-3 rounded-xl border border-white/5 hover:bg-white/[0.08] hover:border-white/10 transition-all duration-200">
                     <div className="min-w-0 pr-3 flex-grow">
-                      <p className={`font-extrabold text-xs sm:text-sm flex items-center gap-1.5 ${isExporting ? 'text-gray-900' : 'text-white'}`}>
+                      <p className="font-extrabold text-xs sm:text-sm text-white flex items-center gap-1.5">
                         {share.name}
                         {share.phone && (
-                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                            isExporting 
-                              ? 'text-emerald-700 bg-emerald-50 border border-emerald-250/20' 
-                              : 'text-emerald-300 bg-emerald-950/60 border border-emerald-800/40'
-                          }`}>
+                          <span className="text-[9px] text-emerald-300 font-bold bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-800/40">
                             {share.phone}
                           </span>
                         )}
                       </p>
-                      <p className={`text-[10px] mt-0.5 ${isExporting ? 'text-gray-500' : 'text-emerald-300/70'}`}>
+                      <p className="text-[10px] text-emerald-300/70 mt-0.5">
                         Murni: {formatCurrency(share.subtotal)} 
                         {sharedTaxValue > 0 || sharedServiceValue > 0 || sharedDiscountValue > 0 || customAdjustmentsTotal !== 0 ? ' + Penyesuaian' : ''}
                       </p>
                     </div>
-                    <span className={`font-black text-xs sm:text-base ${isExporting ? 'text-gray-950' : 'text-emerald-300'}`}>{formatCurrency(share.total)}</span>
+                    <span className="font-black text-xs sm:text-base text-emerald-300">{formatCurrency(share.total)}</span>
                   </div>
                 ))}
               </div>
             </div>
             
-            <div className={`p-3 rounded-xl flex items-start gap-2.5 text-[10.5px] leading-relaxed no-export ${
-              isExporting 
-                ? 'bg-emerald-50/50 border border-emerald-100 text-emerald-800' 
-                : 'bg-emerald-950/40 border border-white/5 text-emerald-200/90 shadow-inner'
-            }`}>
-              <Info className={`w-4 h-4 shrink-0 mt-0.5 ${isExporting ? 'text-emerald-600' : 'text-emerald-400'}`} />
+            <div className="bg-emerald-950/40 backdrop-blur-sm p-3 rounded-xl border border-white/5 flex items-start gap-2.5 text-[10.5px] text-emerald-200/90 leading-relaxed no-export">
+              <Info className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
               <p>Pajak, biaya layanan, dan diskon dialokasikan secara proporsional sesuai porsi belanja masing-masing peserta.</p>
             </div>
 
@@ -736,7 +712,7 @@ export default function SplitBillCalculator() {
             <div className="no-export pt-2">
               <button
                 onClick={handleDownloadPNG}
-                className="w-full py-3 rounded-xl font-extrabold text-xs tracking-wide shadow-md transition-all duration-300 flex items-center justify-center gap-2 active:scale-98 cursor-pointer bg-emerald-600 hover:bg-emerald-500 text-white"
+                className="w-full py-3 rounded-xl font-extrabold text-xs tracking-wide shadow-lg transition-all duration-300 flex items-center justify-center gap-2 active:scale-98 cursor-pointer bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white border border-emerald-400/20 hover:shadow-emerald-500/10 shadow-xl"
               >
                 Unduh Gambar (PNG)
               </button>
@@ -1186,34 +1162,22 @@ export default function SplitBillCalculator() {
             </div>
           </div>
         </div>
-                 {/* Right Column: Premium Receipt Card */}
+             {/* Right Column: Premium Receipt Card */}
         <div className="lg:col-span-5 flex flex-col">
-          <div id="premium-receipt-card" className={`rounded-[24px] relative overflow-hidden flex flex-col transition-colors duration-100 ${
-            isExporting 
-              ? 'bg-white text-gray-900 border border-gray-200 shadow-none h-auto' 
-              : 'bg-gradient-to-b from-emerald-950 via-[#064e3b] to-[#042f2c] text-white border border-emerald-800/40 shadow-[0_20px_50px_rgba(4,120,87,0.12)] h-full'
-          }`}>
-            {/* Background decoration patterns - visible only in dark web theme */}
-            {!isExporting && (
-              <>
-                <div className="absolute right-[-40px] top-[-40px] h-36 w-36 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none no-export" />
-                <div className="absolute left-[-20px] bottom-[-20px] h-36 w-36 bg-teal-500/10 rounded-full blur-3xl pointer-events-none no-export" />
-              </>
-            )}
+          <div id="premium-receipt-card" className={`bg-gradient-to-b from-emerald-950 via-[#064e3b] to-[#042f2c] rounded-[24px] text-white shadow-[0_20px_50px_rgba(4,120,87,0.12)] border border-emerald-800/40 relative overflow-hidden flex flex-col ${isExporting ? 'h-auto' : 'h-full'}`}>
+            {/* Background blur patterns */}
+            <div className="absolute right-[-40px] top-[-40px] h-36 w-36 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none no-export" />
+            <div className="absolute left-[-20px] bottom-[-20px] h-36 w-36 bg-teal-500/10 rounded-full blur-3xl pointer-events-none no-export" />
             
             {/* Card Title Header (aligned with left tab bar) */}
-            <div className={`h-[60px] flex justify-between items-center px-6 shrink-0 ${isExporting ? 'border-b border-gray-150' : 'border-b border-white/10'}`}>
+            <div className="h-[60px] flex justify-between items-center px-6 border-b border-white/10 shrink-0 bg-white/[0.02]">
               <div className="flex items-center gap-2">
-                <Receipt className={`w-5 h-5 ${isExporting ? 'text-emerald-600' : 'text-emerald-400'}`} />
-                <h2 className={`text-base sm:text-lg font-extrabold tracking-wide ${isExporting ? 'text-gray-955' : 'text-white'}`}>
+                <Receipt className="w-5 h-5 text-emerald-400" />
+                <h2 className="text-base sm:text-lg font-extrabold tracking-wide text-white">
                   Ringkasan Pembagian
                 </h2>
               </div>
-              <span className={`inline-flex items-center justify-center text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-lg select-none ${
-                isExporting 
-                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-250/20' 
-                  : 'bg-white/10 text-emerald-300 border border-white/5'
-              }`}>
+              <span className="text-[10px] font-black uppercase tracking-wider bg-white/10 px-2.5 py-1 rounded-md text-emerald-300 border border-white/5">
                 {splitMode === 'equal' ? 'Bagi Rata' : 'Bagi Kustom'}
               </span>
             </div>
@@ -1221,41 +1185,38 @@ export default function SplitBillCalculator() {
             <div className="p-6 space-y-6 flex-1 flex flex-col">
               {/* Calculations List */}
               <div className="space-y-3.5 text-sm">
-                <div className={`flex justify-between items-center ${isExporting ? 'text-gray-600' : 'text-emerald-200/80'}`}>
-                  <span className="font-semibold flex items-center gap-2">
-                    <Receipt className={`w-4 h-4 shrink-0 ${isExporting ? 'text-emerald-600' : 'text-emerald-400'}`} />
-                    Subtotal Belanja
-                  </span>
-                  <span className={`font-bold text-base ${isExporting ? 'text-gray-900' : 'text-white'}`}>{formatCurrency(rawSubtotal)}</span>
+                <div className="flex justify-between items-center text-emerald-200/80">
+                  <span className="font-medium">Subtotal Belanja</span>
+                  <span className="font-bold text-white text-base">{formatCurrency(rawSubtotal)}</span>
                 </div>
 
                 {taxValue > 0 && (
-                  <div className={`flex justify-between items-center ${isExporting ? 'text-gray-600' : 'text-emerald-200/80'}`}>
-                    <span className="flex items-center gap-2">
-                      <Percent className={`w-4 h-4 shrink-0 ${isExporting ? 'text-emerald-600' : 'text-emerald-400'}`} /> 
+                  <div className="flex justify-between items-center text-emerald-200/80">
+                    <span className="flex items-center gap-1">
+                      <Percent className="w-3.5 h-3.5 text-emerald-400" /> 
                       Pajak (Tax {taxValueType === 'percentage' ? `${taxValue}%` : ''})
                     </span>
-                    <span className={`font-bold ${isExporting ? 'text-gray-900' : 'text-white'}`}>+{formatCurrency(taxAmount)}</span>
+                    <span className="font-bold text-white">+{formatCurrency(taxAmount)}</span>
                   </div>
                 )}
 
                 {serviceValue > 0 && (
-                  <div className={`flex justify-between items-center ${isExporting ? 'text-gray-600' : 'text-emerald-200/80'}`}>
-                    <span className="flex items-center gap-2">
-                      <Percent className={`w-4 h-4 shrink-0 ${isExporting ? 'text-emerald-600' : 'text-emerald-400'}`} /> 
+                  <div className="flex justify-between items-center text-emerald-200/80">
+                    <span className="flex items-center gap-1">
+                      <Percent className="w-3.5 h-3.5 text-emerald-400" /> 
                       Layanan (Service {serviceValueType === 'percentage' ? `${serviceValue}%` : ''})
                     </span>
-                    <span className={`font-bold ${isExporting ? 'text-gray-900' : 'text-white'}`}>+{formatCurrency(serviceAmount)}</span>
+                    <span className="font-bold text-white">+{formatCurrency(serviceAmount)}</span>
                   </div>
                 )}
 
                 {discountValue > 0 && (
-                  <div className={`flex justify-between items-center ${isExporting ? 'text-gray-600' : 'text-emerald-200/80'}`}>
-                    <span className="flex items-center gap-2">
-                      <Tag className={`w-4 h-4 shrink-0 ${isExporting ? 'text-amber-600' : 'text-amber-400'}`} /> 
+                  <div className="flex justify-between items-center text-emerald-200/80">
+                    <span className="flex items-center gap-1">
+                      <Tag className="w-3.5 h-3.5 text-amber-400" /> 
                       Diskon (Discount {discountValueType === 'percentage' ? `${discountValue}%` : ''})
                     </span>
-                    <span className={`font-bold ${isExporting ? 'text-amber-600' : 'text-amber-400'}`}>-{formatCurrency(discountAmount)}</span>
+                    <span className="font-bold text-amber-400">-{formatCurrency(discountAmount)}</span>
                   </div>
                 )}
 
@@ -1269,17 +1230,17 @@ export default function SplitBillCalculator() {
                   }
                   const isDiscount = adj.type === 'discount'
                   return (
-                    <div key={adj.id} className={`flex justify-between items-center animate-in fade-in duration-200 ${isExporting ? 'text-gray-600' : 'text-emerald-200/80'}`}>
-                      <span className="flex items-center gap-2">
+                    <div key={adj.id} className="flex justify-between items-center text-emerald-200/80 animate-in fade-in duration-200">
+                      <span className="flex items-center gap-1">
                         {isDiscount ? (
-                          <Tag className={`w-4 h-4 shrink-0 ${isExporting ? 'text-amber-600' : 'text-amber-400'}`} />
+                          <Tag className="w-3.5 h-3.5 text-amber-400" />
                         ) : (
-                          <Receipt className={`w-4 h-4 shrink-0 ${isExporting ? 'text-emerald-600' : 'text-emerald-400'}`} />
+                          <Receipt className="w-3.5 h-3.5 text-emerald-400" />
                         )}
                         {adj.name || (isDiscount ? 'Diskon Kustom' : 'Biaya Kustom')} 
                         {adj.valueType === 'percentage' && ` (${adj.value}%)`}
                       </span>
-                      <span className={`font-bold ${isDiscount ? 'text-amber-600' : (isExporting ? 'text-gray-900' : 'text-white')}`}>
+                      <span className={`font-bold ${isDiscount ? 'text-amber-400' : 'text-white'}`}>
                         {isDiscount ? '-' : '+'}{formatCurrency(amount)}
                       </span>
                     </div>
@@ -1287,62 +1248,50 @@ export default function SplitBillCalculator() {
                 })}
 
                 {/* Total Display */}
-                <div className={`flex justify-between items-baseline pt-4 ${isExporting ? 'border-t border-gray-150' : 'border-t border-white/10'}`}>
-                  <span className={`text-xs font-extrabold uppercase tracking-wider ${isExporting ? 'text-gray-500' : 'text-emerald-400'}`}>Total Akhir</span>
-                  <span className={`text-3xl font-black tracking-tight ${isExporting ? 'text-gray-950' : 'text-white'}`}>
+                <div className="flex justify-between items-baseline border-t border-white/10 pt-4">
+                  <span className="text-xs font-extrabold uppercase tracking-wider text-emerald-400">Total Akhir</span>
+                  <span className="text-3xl font-black tracking-tight text-white">
                     {formatCurrency(grandTotal)}
                   </span>
                 </div>
               </div>
 
               {/* Serrated Border Separator */}
-              <div className={`border-t border-dashed my-2 select-none pointer-events-none ${isExporting ? 'border-gray-200' : 'border-white/20'}`} />
+              <div className="border-t-2 border-dashed border-white/20 my-2 select-none pointer-events-none" />
 
               {/* Shares Detail list */}
               <div className="flex-1 flex flex-col space-y-3 min-h-[220px]">
-                <span className={`text-[10px] font-black uppercase tracking-widest block ${isExporting ? 'text-emerald-600' : 'text-emerald-400'}`}>Rincian Pembayaran:</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400 block">Rincian Pembayaran:</span>
                 
                 <div className={isExporting ? "space-y-2.5" : "flex-1 space-y-2.5 overflow-y-auto pr-1 max-h-[250px] lg:max-h-[300px] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-white/20"}>
                   {shares.length === 0 ? (
-                    <div className={`text-center text-xs py-8 flex flex-col items-center gap-2 ${isExporting ? 'text-gray-400' : 'text-emerald-350/60'}`}>
+                    <div className="text-center text-xs text-emerald-300/60 py-8 flex flex-col items-center gap-2">
                       <Users className="w-8 h-8 opacity-30" />
                       Belum ada peserta terdaftar.
                     </div>
                   ) : (
                     shares.map(share => (
-                      <div key={share.id} className={`flex justify-between items-center p-3.5 rounded-xl transition-all duration-200 animate-in fade-in duration-300 ${
-                        isExporting 
-                          ? 'bg-gray-50 border border-gray-200 text-gray-900 shadow-none' 
-                          : 'bg-white/5 border border-white/5 hover:bg-white/[0.08] hover:border-white/10 text-white'
-                      }`}>
+                      <div key={share.id} className="flex justify-between items-center bg-white/5 p-3 rounded-xl border border-white/5 hover:bg-white/[0.08] hover:border-white/10 transition-all duration-200 animate-in fade-in duration-300">
                         <div className="min-w-0 pr-3 flex-grow">
-                          <p className={`font-extrabold text-xs sm:text-sm truncate flex items-center gap-1.5 ${isExporting ? 'text-gray-900' : 'text-white'}`}>
+                          <p className="font-extrabold text-xs sm:text-sm truncate text-white flex items-center gap-1.5">
                             {share.name}
                             {share.phone && (
-                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                                isExporting 
-                                  ? 'text-emerald-700 bg-emerald-50 border border-emerald-250/20' 
-                                  : 'text-emerald-300 bg-emerald-950/60 border border-emerald-800/40'
-                              }`}>
+                              <span className="text-[9px] text-emerald-300 font-bold bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-800/40">
                                 {share.phone}
                               </span>
                             )}
                           </p>
-                          <p className={`text-[10px] mt-0.5 ${isExporting ? 'text-gray-500' : 'text-emerald-300/70'}`}>
+                          <p className="text-[10px] text-emerald-300/70 mt-0.5">
                             Murni: {formatCurrency(share.subtotal)} 
                             {taxValue > 0 || serviceValue > 0 || discountValue > 0 || customAdjustmentsTotal !== 0 ? ' + Penyesuaian' : ''}
                           </p>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
-                          <span className={`font-black text-xs sm:text-base text-right ${isExporting ? 'text-gray-955' : 'text-white'}`}>{formatCurrency(share.total)}</span>
+                          <span className="font-black text-xs sm:text-base text-emerald-300 text-right">{formatCurrency(share.total)}</span>
                           <button
                             type="button"
                             onClick={() => handleSendIndividualWhatsApp(share)}
-                            className={`p-1.5 rounded-lg transition-all cursor-pointer flex items-center justify-center no-export ${
-                              isExporting 
-                                ? 'text-emerald-600 hover:text-white hover:bg-emerald-600 border border-emerald-250 hover:border-emerald-600' 
-                                : 'text-emerald-400 hover:text-white hover:bg-emerald-500 border border-emerald-800/40 hover:border-emerald-500'
-                            }`}
+                            className="p-1.5 text-emerald-400 hover:text-white hover:bg-emerald-500 rounded-lg transition-all border border-emerald-800/40 hover:border-emerald-500 cursor-pointer flex items-center justify-center no-export"
                             title={`Kirim WA personal ke ${share.name}`}
                           >
                             <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
@@ -1357,12 +1306,8 @@ export default function SplitBillCalculator() {
               </div>
 
               {/* Info Message */}
-              <div className={`p-3 rounded-xl flex items-start gap-2.5 text-[10.5px] leading-relaxed no-export ${
-                isExporting 
-                  ? 'bg-emerald-50/50 border border-emerald-100 text-emerald-800' 
-                  : 'bg-emerald-950/40 border border-white/5 text-emerald-200/90 shadow-inner'
-              }`}>
-                <Info className={`w-4 h-4 shrink-0 mt-0.5 ${isExporting ? 'text-emerald-600' : 'text-emerald-400'}`} />
+              <div className="bg-emerald-950/40 backdrop-blur-sm p-3 rounded-xl border border-white/5 flex items-start gap-2.5 text-[10.5px] text-emerald-200/90 leading-relaxed shadow-inner no-export">
+                <Info className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                 <p>Pajak, biaya layanan, dan diskon dialokasikan secara proporsional sesuai porsi belanja masing-masing peserta.</p>
               </div>
 
@@ -1371,11 +1316,7 @@ export default function SplitBillCalculator() {
                 <button
                   type="button"
                   onClick={() => setIsShareModalOpen(true)}
-                  className={`w-full py-3 rounded-xl font-extrabold text-xs tracking-wide shadow-md transition-all duration-300 flex items-center justify-center gap-2 active:scale-98 cursor-pointer ${
-                    isExporting
-                      ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
-                      : 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white border border-emerald-400/20 shadow-lg'
-                  }`}
+                  className="w-full py-3 rounded-xl font-extrabold text-xs tracking-wide shadow-lg transition-all duration-300 flex items-center justify-center gap-2 active:scale-98 cursor-pointer bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white border border-emerald-400/20 hover:shadow-emerald-500/10 shadow-xl"
                 >
                   <Send className="w-4 h-4" /> Bagikan
                 </button>

@@ -4,8 +4,8 @@ import type { User, Bill, Payment, Expense, JournalEntry, MasterData, Gallon, Ga
  * Soematra Kost - Spreadsheet API Integration
  * URL Web App (Google Apps Script) akan diletakkan di sini.
  */
-const SPREADSHEET_API_URL = import.meta.env.VITE_SPREADSHEET_API_URL || 'https://script.google.com/macros/s/AKfycbwYOUR_SCRIPT_ID/exec'
-const SOEMATRA_API_TOKEN = import.meta.env.VITE_SOEMATRA_API_TOKEN || ''
+const SPREADSHEET_API_URL = (import.meta.env.VITE_SPREADSHEET_API_URL || 'https://script.google.com/macros/s/AKfycbwYOUR_SCRIPT_ID/exec').trim().replace(/^["']|["']$/g, '')
+const SOEMATRA_API_TOKEN = (import.meta.env.VITE_SOEMATRA_API_TOKEN || '').trim().replace(/^["']|["']$/g, '')
 
 const clientSessionId = Math.random().toString(36).substring(2, 15)
 
