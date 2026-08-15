@@ -1092,8 +1092,20 @@ export function useBillsManager(period: PeriodFilter = { preset: 'all' }, reside
     }
   }
 
-  // Filter bills based on search query, period filter, and resident filter
+  // Filter bills based on search query, period filter, resident filter, and active resident status
   const filteredBills = bills.filter(bill => {
+    // Sembunyikan tagihan milik penghuni yang berstatus Nonaktif
+    const residentUser = users.find(u => 
+      (u.full_name && bill.resident_name && u.full_name.trim().toLowerCase() === bill.resident_name.trim().toLowerCase()) ||
+      (u.email && bill.resident_email && u.email.trim().toLowerCase() === bill.resident_email.trim().toLowerCase())
+    )
+    if (residentUser) {
+      const statusStr = String(residentUser.status || '').toLowerCase()
+      if (statusStr === 'nonaktif' || statusStr === 'inactive') {
+        return false
+      }
+    }
+
     const query = search.toLowerCase()
     
     // Check search query
