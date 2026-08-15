@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { spreadsheetApi } from '@/services/sheets-client'
+import { spreadsheetApi, formatPhoneNumber } from '@/services/sheets-client'
 import { Plus, Users } from 'lucide-react'
 import { WargaTable } from '@/features/residents/components/ResidentTable'
 import { WargaFormModal, type WargaFormData } from '@/features/residents/components/ResidentFormModal'
@@ -91,13 +91,16 @@ export default function ManajemenWarga() {
     e.preventDefault()
     setIsSubmitting(true)
     
+    const formattedPhone = formatPhoneNumber(formData.phone_number)
+    const normalizedFormData = { ...formData, phone_number: formattedPhone }
+
     if (editingId) {
       // Mode Edit
-      const updatedUser = { id: editingId, ...formData }
+      const updatedUser = { id: editingId, ...normalizedFormData }
       const { success } = await spreadsheetApi.put('Users', updatedUser)
 
       if (success) {
-        setUsers(users.map(u => u.id === editingId ? { ...u, ...formData } : u))
+        setUsers(users.map(u => u.id === editingId ? { ...u, ...normalizedFormData } : u))
         setIsModalOpen(false)
         resetForm()
         setSuccessDialog({
@@ -117,7 +120,7 @@ export default function ManajemenWarga() {
     } else {
       // Mode Tambah
       const generatedId = generateSecureId('USR')
-      const newUser = { id: generatedId, ...formData }
+      const newUser = { id: generatedId, ...normalizedFormData }
       const { success, error } = await spreadsheetApi.post('Users', newUser)
       
       if (success) {
@@ -148,7 +151,7 @@ export default function ManajemenWarga() {
       nickname: user.nickname || '',
       email: user.email || '',
       room_number: user.room_number || '',
-      phone_number: user.phone_number || '',
+      phone_number: formatPhoneNumber(user.phone_number),
       role: user.role || 'user',
       status: user.status || 'Aktif'
     })

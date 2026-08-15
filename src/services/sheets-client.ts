@@ -434,6 +434,21 @@ export function parseGoogleSheetsObject(str: string): any {
 }
 
 /**
+ * Normalisasi format nomor telepon/WhatsApp agar selalu memiliki awalan '0' (contoh: 08123456789)
+ */
+export function formatPhoneNumber(val: string | number | undefined | null): string {
+  if (val === undefined || val === null || val === '') return ''
+  let str = String(val).trim()
+  if (str.startsWith("'")) str = str.slice(1)
+  if (str.startsWith('62') && str.length >= 10) {
+    str = '0' + str.slice(2)
+  } else if (str.startsWith('8')) {
+    str = '0' + str
+  }
+  return str
+}
+
+/**
  * Normalisasi data mentah dari Google Sheets untuk mencegah crash di UI jika ada format yang tidak lengkap/null.
  */
 export function normalizeData(sheetName: string, data: unknown): Record<string, any>[] {
@@ -456,6 +471,7 @@ export function normalizeData(sheetName: string, data: unknown): Record<string, 
       normalized.role = item.role || 'user'
       normalized.room_number = item.room_number !== undefined ? String(item.room_number) : ''
       normalized.status = item.status || 'Aktif'
+      normalized.phone_number = formatPhoneNumber(item.phone_number)
     } else if (sheetName === 'Bills') {
       normalized.amount = Number(item.amount) || 0
       normalized.status = item.status || 'unpaid'

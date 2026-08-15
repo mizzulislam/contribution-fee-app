@@ -36,10 +36,20 @@ export default function ContributionsList() {
   })
 
   // Sorting States
-  const [sortBy, setSortBy] = useState<'title' | 'category' | 'amount' | 'due_date'>('due_date')
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
+  const [sortBy, setSortBy] = useState<'title' | 'category' | 'amount' | 'due_date'>(() => (localStorage.getItem('soematra_sort_contrib_by') as any) || 'due_date')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(() => (localStorage.getItem('soematra_sort_contrib_order') as any) || 'asc')
   const [isSortDropdownOpen, setIsSortDropdownOpen] = useState(false)
   const sortDropdownRef = useRef<HTMLDivElement>(null)
+
+  const handleSortByChange = (val: 'title' | 'category' | 'amount' | 'due_date') => {
+    setSortBy(val)
+    localStorage.setItem('soematra_sort_contrib_by', val)
+  }
+
+  const handleSortOrderChange = (order: 'asc' | 'desc') => {
+    setSortOrder(order)
+    localStorage.setItem('soematra_sort_contrib_order', order)
+  }
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -460,7 +470,7 @@ export default function ContributionsList() {
                         key={cat.value}
                         type="button"
                         onClick={() => {
-                          setSortBy(cat.value as any)
+                          handleSortByChange(cat.value as any)
                           setIsSortDropdownOpen(false)
                         }}
                         className={cn(
@@ -486,7 +496,7 @@ export default function ContributionsList() {
                         key={dir.value}
                         type="button"
                         onClick={() => {
-                          setSortOrder(dir.value as any)
+                          handleSortOrderChange(dir.value as any)
                           setIsSortDropdownOpen(false)
                         }}
                         className={cn(

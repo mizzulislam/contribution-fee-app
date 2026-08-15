@@ -16,8 +16,18 @@ export default function AuditLogs() {
   const [logs, setLogs] = useState<AuditLog[]>([])
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
-  const [sortBy, setSortBy] = useState<string>('created_at')
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+  const [sortBy, setSortBy] = useState<string>(() => localStorage.getItem('soematra_sort_audit_by') || 'created_at')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(() => (localStorage.getItem('soematra_sort_audit_order') as 'asc' | 'desc') || 'desc')
+
+  const handleSortByChange = (val: string) => {
+    setSortBy(val)
+    localStorage.setItem('soematra_sort_audit_by', val)
+  }
+
+  const handleSortOrderChange = (order: 'asc' | 'desc') => {
+    setSortOrder(order)
+    localStorage.setItem('soematra_sort_audit_order', order)
+  }
 
   async function fetchLogs() {
     try {
@@ -98,9 +108,9 @@ export default function AuditLogs() {
                 { label: 'Jenis Aksi', value: 'action' }
               ]}
               sortBy={sortBy}
-              onSortByChange={setSortBy}
+              onSortByChange={handleSortByChange}
               sortOrder={sortOrder}
-              onSortOrderChange={setSortOrder}
+              onSortOrderChange={handleSortOrderChange}
             />
             <button className="btn-secondary flex items-center h-[42px]">
               <Filter className="w-4 h-4 mr-2" /> Filter Waktu

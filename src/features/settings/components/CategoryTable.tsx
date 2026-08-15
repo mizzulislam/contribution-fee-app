@@ -13,8 +13,18 @@ export interface CategoryTableProps {
 
 export function CategoryTable({ categories, loading, onEdit, onDelete }: CategoryTableProps) {
   const [search, setSearch] = useState('')
-  const [sortBy, setSortBy] = useState<string>('account_number')
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
+  const [sortBy, setSortBy] = useState<string>(() => localStorage.getItem('soematra_sort_category_by') || 'account_number')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(() => (localStorage.getItem('soematra_sort_category_order') as 'asc' | 'desc') || 'asc')
+
+  const handleSortByChange = (val: string) => {
+    setSortBy(val)
+    localStorage.setItem('soematra_sort_category_by', val)
+  }
+
+  const handleSortOrderChange = (order: 'asc' | 'desc') => {
+    setSortOrder(order)
+    localStorage.setItem('soematra_sort_category_order', order)
+  }
 
   const filteredCategories = useMemo(() => {
     return categories.filter(cat => 
@@ -71,9 +81,9 @@ export function CategoryTable({ categories, loading, onEdit, onDelete }: Categor
               { label: 'Status', value: 'status' }
             ]}
             sortBy={sortBy}
-            onSortByChange={setSortBy}
+            onSortByChange={handleSortByChange}
             sortOrder={sortOrder}
-            onSortOrderChange={setSortOrder}
+            onSortOrderChange={handleSortOrderChange}
           />
         </div>
       </div>

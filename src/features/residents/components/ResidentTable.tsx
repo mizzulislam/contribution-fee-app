@@ -3,6 +3,7 @@ import { Search, Users, Edit, Trash2, Shield } from 'lucide-react'
 import Select from '@/components/ui/Select'
 import { TableLoader } from '@/components/ui/TableLoader'
 import { SortDropdown } from '@/components/ui/SortDropdown'
+import { formatPhoneNumber } from '@/services/sheets-client'
 
 export interface WargaTableProps {
   users: any[]
@@ -25,8 +26,18 @@ export function WargaTable({
   onEdit,
   onDelete
 }: WargaTableProps) {
-  const [sortBy, setSortBy] = useState<string>('full_name')
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
+  const [sortBy, setSortBy] = useState<string>(() => localStorage.getItem('soematra_sort_warga_by') || 'full_name')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(() => (localStorage.getItem('soematra_sort_warga_order') as 'asc' | 'desc') || 'asc')
+
+  const handleSortByChange = (val: string) => {
+    setSortBy(val)
+    localStorage.setItem('soematra_sort_warga_by', val)
+  }
+
+  const handleSortOrderChange = (order: 'asc' | 'desc') => {
+    setSortOrder(order)
+    localStorage.setItem('soematra_sort_warga_order', order)
+  }
 
   const filteredUsers = useMemo(() => {
     return users.filter(u => {
@@ -114,9 +125,9 @@ export function WargaTable({
               { label: 'Nomor Kamar', value: 'room_number' }
             ]}
             sortBy={sortBy}
-            onSortByChange={setSortBy}
+            onSortByChange={handleSortByChange}
             sortOrder={sortOrder}
-            onSortOrderChange={setSortOrder}
+            onSortOrderChange={handleSortOrderChange}
           />
         </div>
       </div>
@@ -169,7 +180,7 @@ export function WargaTable({
                       <span className="text-text-muted">-</span>
                     )}
                   </td>
-                  <td className="px-6 py-4">{r.phone_number || <span className="text-text-muted">-</span>}</td>
+                  <td className="px-6 py-4">{formatPhoneNumber(r.phone_number) || <span className="text-text-muted">-</span>}</td>
                   <td className="px-6 py-4">
                     <div className="flex justify-center space-x-2">
                       <button 

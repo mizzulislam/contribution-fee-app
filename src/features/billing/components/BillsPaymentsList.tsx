@@ -137,10 +137,20 @@ export default function BillsPayments({ period = defaultPeriod, residentFilter =
     return bill.month || 'Tagihan Penghuni'
   }
 
-  const [sortBy, setSortBy] = useState<'due_date' | 'name' | 'category' | 'status'>('due_date')
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
+  const [sortBy, setSortBy] = useState<'due_date' | 'name' | 'category' | 'status'>(() => (localStorage.getItem('soematra_sort_bills_by') as any) || 'due_date')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(() => (localStorage.getItem('soematra_sort_bills_order') as any) || 'asc')
   const [isSortDropdownOpen, setIsSortDropdownOpen] = useState(false)
   const sortDropdownRef = useRef<HTMLDivElement>(null)
+
+  const handleSortByChange = (val: 'due_date' | 'name' | 'category' | 'status') => {
+    setSortBy(val)
+    localStorage.setItem('soematra_sort_bills_by', val)
+  }
+
+  const handleSortOrderChange = (order: 'asc' | 'desc') => {
+    setSortOrder(order)
+    localStorage.setItem('soematra_sort_bills_order', order)
+  }
 
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false)
   const userDropdownRef = useRef<HTMLDivElement>(null)
@@ -529,7 +539,10 @@ export default function BillsPayments({ period = defaultPeriod, residentFilter =
                         <button
                           key={cat.value}
                           type="button"
-                          onClick={() => setSortBy(cat.value as any)}
+                          onClick={() => {
+                            handleSortByChange(cat.value as any)
+                            setIsSortDropdownOpen(false)
+                          }}
                           className={cn(
                             "w-full text-left px-2.5 py-1.5 text-xs font-medium rounded-lg transition-colors hover:bg-gray-50 flex items-center justify-between",
                             sortBy === cat.value ? "text-emerald-700 bg-emerald-50/40 font-semibold" : "text-gray-600"
@@ -552,7 +565,10 @@ export default function BillsPayments({ period = defaultPeriod, residentFilter =
                         <button
                           key={dir.value}
                           type="button"
-                          onClick={() => setSortOrder(dir.value as any)}
+                          onClick={() => {
+                            handleSortOrderChange(dir.value as any)
+                            setIsSortDropdownOpen(false)
+                          }}
                           className={cn(
                             "w-full text-left px-2.5 py-1.5 text-xs font-medium rounded-lg transition-colors hover:bg-gray-50 flex items-center justify-between",
                             sortOrder === dir.value ? "text-emerald-700 bg-emerald-50/40 font-semibold" : "text-gray-600"

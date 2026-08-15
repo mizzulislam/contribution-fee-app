@@ -20,8 +20,18 @@ export interface PaymentMethodTableProps {
 
 export function PaymentMethodTable({ paymentMethods, loading, onEdit, onDelete }: PaymentMethodTableProps) {
   const [search, setSearch] = useState('')
-  const [sortBy, setSortBy] = useState<string>('bank_name')
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
+  const [sortBy, setSortBy] = useState<string>(() => localStorage.getItem('soematra_sort_payment_by') || 'bank_name')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(() => (localStorage.getItem('soematra_sort_payment_order') as 'asc' | 'desc') || 'asc')
+
+  const handleSortByChange = (val: string) => {
+    setSortBy(val)
+    localStorage.setItem('soematra_sort_payment_by', val)
+  }
+
+  const handleSortOrderChange = (order: 'asc' | 'desc') => {
+    setSortOrder(order)
+    localStorage.setItem('soematra_sort_payment_order', order)
+  }
 
   const filteredMethods = useMemo(() => {
     return paymentMethods.filter(pm => 
@@ -78,9 +88,9 @@ export function PaymentMethodTable({ paymentMethods, loading, onEdit, onDelete }
               { label: 'Status', value: 'status' }
             ]}
             sortBy={sortBy}
-            onSortByChange={setSortBy}
+            onSortByChange={handleSortByChange}
             sortOrder={sortOrder}
-            onSortOrderChange={setSortOrder}
+            onSortOrderChange={handleSortOrderChange}
           />
         </div>
       </div>
